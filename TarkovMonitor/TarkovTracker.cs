@@ -44,6 +44,8 @@ namespace TarkovMonitor
             var path = "/progress/quest/{id}";
             var request = GetRequest(path.Replace("{id}", questId.ToString()));
             request.Method = HttpMethod.Post;
+            var payload = $"{{\"complete\":true,\"timeComplete\":{DateTime.Now.Ticks}}}";
+            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
             HttpResponseMessage response = await client.SendAsync(request);
             var code = ((int)response.StatusCode).ToString();
             try
