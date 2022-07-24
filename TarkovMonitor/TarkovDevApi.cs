@@ -71,11 +71,24 @@ namespace TarkovMonitor
 
         public async static Task<string> PostQueueTime(string mapNameId, int queueTime, string type)
         {
+            //var queueApiUrl = "https://manager.tarkov.dev/api/queue";
+            var queueApiUrl = "http://localhost:4000/api/queue";
             var payload = $"{{\"map\":\"{mapNameId}\",\"time\":{queueTime}, \"type\": \"{type}\"}}";
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://manager.tarkov.dev/api/queue");
-            request.Content = new StringContent(payload);
+            var request = new HttpRequestMessage(HttpMethod.Post, queueApiUrl);
+            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
             var response = await httpClient.SendAsync(request);
-            return response.Content.ToString();
+            var stream = response.Content.ReadAsStream();
+            var content = await response.Content.ReadAsStringAsync();
+            try
+            {
+                response.EnsureSuccessStatusCode();
+                return content;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(content);
+            }
+            
         }
 
         public class QuestsResponse

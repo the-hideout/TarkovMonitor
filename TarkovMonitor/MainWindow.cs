@@ -42,6 +42,13 @@ namespace TarkovMonitor
                 TarkovTracker.SetToken(Properties.Settings.Default.tarkovTrackerToken);
             }
             if (txtToken.Text.Length == 0) tabsMain.SelectedIndex = 1;
+            test();
+        }
+
+        private async Task test()
+        {
+            var response = await TarkovTracker.SetQuestComplete(40);
+            logMessage(response);
         }
 
         private void Eft_NewLogMessage(object? sender, LogMonitor.NewLogEventArgs e)
@@ -197,7 +204,6 @@ namespace TarkovMonitor
                     return;
                 }
                 new MaterialDialog(this, "Success", "Token authenticated successfully!").ShowDialog(this);
-                logMessage("Token test success!");
             }
             catch (Exception ex)
             {
@@ -205,7 +211,21 @@ namespace TarkovMonitor
             }
         }
 
-        private void materialLabel1_Click(object sender, EventArgs e)
+        private void panelSettings_SaveClick(object sender, EventArgs e)
+        {
+            TarkovTracker.SetToken(txtToken.Text);
+            Properties.Settings.Default.tarkovTrackerToken = txtToken.Text;
+            Properties.Settings.Default.submitQueueTime = chkQueue.Checked;
+            Properties.Settings.Default.Save();
+        }
+
+        private void panelSettings_CancelClick(object sender, EventArgs e)
+        {
+            txtToken.Text = Properties.Settings.Default.tarkovTrackerToken;
+            chkQueue.Checked = Properties.Settings.Default.submitQueueTime;
+        }
+
+        private void btnTarkovTrackerLink_Click(object sender, EventArgs e)
         {
             var url = "https://tarkovtracker.io/settings/";
             try
@@ -233,20 +253,6 @@ namespace TarkovMonitor
                     throw;
                 }
             }
-        }
-
-        private void panelSettings_SaveClick(object sender, EventArgs e)
-        {
-            TarkovTracker.SetToken(txtToken.Text);
-            Properties.Settings.Default.tarkovTrackerToken = txtToken.Text;
-            Properties.Settings.Default.submitQueueTime = chkQueue.Checked;
-            Properties.Settings.Default.Save();
-        }
-
-        private void panelSettings_CancelClick(object sender, EventArgs e)
-        {
-            txtToken.Text = Properties.Settings.Default.tarkovTrackerToken;
-            chkQueue.Checked = Properties.Settings.Default.submitQueueTime;
         }
     }
 }

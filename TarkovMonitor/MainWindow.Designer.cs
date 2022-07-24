@@ -36,6 +36,7 @@
             this.tabsMain = new MaterialSkin.Controls.MaterialTabControl();
             this.tabMessages = new System.Windows.Forms.TabPage();
             this.tabSettings = new System.Windows.Forms.TabPage();
+            this.btnTarkovTrackerLink = new MaterialSkin.Controls.MaterialButton();
             this.btnCancelSettings = new MaterialSkin.Controls.MaterialButton();
             this.btnSaveSettings = new MaterialSkin.Controls.MaterialButton();
             this.tabPage1 = new System.Windows.Forms.TabPage();
@@ -67,7 +68,7 @@
             // 
             this.chkQueue.AutoSize = true;
             this.chkQueue.Depth = 0;
-            this.chkQueue.Location = new System.Drawing.Point(455, 23);
+            this.chkQueue.Location = new System.Drawing.Point(6, 62);
             this.chkQueue.Margin = new System.Windows.Forms.Padding(0);
             this.chkQueue.MouseLocation = new System.Drawing.Point(-1, -1);
             this.chkQueue.MouseState = MaterialSkin.MouseState.HOVER;
@@ -86,7 +87,7 @@
             this.btnTestToken.Depth = 0;
             this.btnTestToken.HighEmphasis = true;
             this.btnTestToken.Icon = null;
-            this.btnTestToken.Location = new System.Drawing.Point(338, 23);
+            this.btnTestToken.Location = new System.Drawing.Point(410, 23);
             this.btnTestToken.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
             this.btnTestToken.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnTestToken.Name = "btnTestToken";
@@ -162,6 +163,7 @@
             // 
             // tabSettings
             // 
+            this.tabSettings.Controls.Add(this.btnTarkovTrackerLink);
             this.tabSettings.Controls.Add(this.btnCancelSettings);
             this.tabSettings.Controls.Add(this.btnSaveSettings);
             this.tabSettings.Controls.Add(this.txtToken);
@@ -175,6 +177,26 @@
             this.tabSettings.Text = "Settings";
             this.tabSettings.UseVisualStyleBackColor = true;
             // 
+            // btnTarkovTrackerLink
+            // 
+            this.btnTarkovTrackerLink.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnTarkovTrackerLink.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnTarkovTrackerLink.Depth = 0;
+            this.btnTarkovTrackerLink.HighEmphasis = true;
+            this.btnTarkovTrackerLink.Icon = null;
+            this.btnTarkovTrackerLink.Location = new System.Drawing.Point(338, 23);
+            this.btnTarkovTrackerLink.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnTarkovTrackerLink.MouseState = MaterialSkin.MouseState.HOVER;
+            this.btnTarkovTrackerLink.Name = "btnTarkovTrackerLink";
+            this.btnTarkovTrackerLink.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnTarkovTrackerLink.Size = new System.Drawing.Size(64, 36);
+            this.btnTarkovTrackerLink.TabIndex = 8;
+            this.btnTarkovTrackerLink.Text = "🔗";
+            this.btnTarkovTrackerLink.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnTarkovTrackerLink.UseAccentColor = false;
+            this.btnTarkovTrackerLink.UseVisualStyleBackColor = true;
+            this.btnTarkovTrackerLink.Click += new System.EventHandler(this.btnTarkovTrackerLink_Click);
+            // 
             // btnCancelSettings
             // 
             this.btnCancelSettings.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
@@ -182,7 +204,7 @@
             this.btnCancelSettings.Depth = 0;
             this.btnCancelSettings.HighEmphasis = true;
             this.btnCancelSettings.Icon = null;
-            this.btnCancelSettings.Location = new System.Drawing.Point(78, 68);
+            this.btnCancelSettings.Location = new System.Drawing.Point(78, 105);
             this.btnCancelSettings.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
             this.btnCancelSettings.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnCancelSettings.Name = "btnCancelSettings";
@@ -202,7 +224,7 @@
             this.btnSaveSettings.Depth = 0;
             this.btnSaveSettings.HighEmphasis = true;
             this.btnSaveSettings.Icon = null;
-            this.btnSaveSettings.Location = new System.Drawing.Point(6, 68);
+            this.btnSaveSettings.Location = new System.Drawing.Point(6, 105);
             this.btnSaveSettings.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
             this.btnSaveSettings.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnSaveSettings.Name = "btnSaveSettings";
@@ -274,5 +296,6 @@
         private MaterialSkin.Controls.MaterialButton btnSaveSettings;
         private TabPage tabPage1;
         private MaterialSkin.Controls.MaterialMultiLineTextBox txtLogs;
+        private MaterialSkin.Controls.MaterialButton btnTarkovTrackerLink;
     }
 }

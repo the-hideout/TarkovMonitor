@@ -199,7 +199,18 @@ namespace TarkovMonitor
             watcher.Path = logsPath;
             watcher.EnableRaisingEvents = true;
             var logFolders = System.IO.Directory.GetDirectories(logsPath);
+            var latestDate = new DateTime(0);
             var latestLogFolder = logFolders.Last();
+            foreach (var logFolder in logFolders)
+            {
+                var dateTimeString = new Regex(@"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Match(logFolder).Groups["timestamp"].Value;
+                var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
+                if (logDate > latestDate)
+                {
+                    latestDate = logDate;
+                    latestLogFolder = logFolder;
+                }
+            }
             Debug.WriteLine($"Using log folder {latestLogFolder}");
             initialRead = new();
             initialRead.Add(LogType.Application, false);
