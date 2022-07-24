@@ -47,8 +47,12 @@ namespace TarkovMonitor
         private void Eft_NewLogMessage(object? sender, LogMonitor.NewLogEventArgs e)
         {
             txtLogs.Invoke((MethodInvoker)delegate {
-                txtLogs.Text += "\n" + e.Type.ToString() + "\n" + e.NewMessage;
+                txtLogs.AppendText("\n" + e.Type.ToString() + "\n" + e.NewMessage);
+                txtLogs.SelectionStart = txtLogs.TextLength;
+                txtLogs.ScrollToCaret();
+                //txtLogs.Text += "\n" + e.Type.ToString() + "\n" + e.NewMessage;
             });
+            //txtLogs.scro
         }
 
         private void Eft_FleaSold(object? sender, GameWatcher.FleaSoldEventArgs e)
@@ -62,14 +66,22 @@ namespace TarkovMonitor
             logMessage($"{e.Buyer} purchesed {e.soldItemCount} {soldItemName} for {String.Join(", ", received.ToArray())}");
         }
 
-        private void Eft_QueueComplete(object? sender, GameWatcher.QueueEventArgs e)
+        private async void Eft_QueueComplete(object? sender, GameWatcher.QueueEventArgs e)
         {
             var mapName = e.Map;
             var map = maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            logMessage($"Finished queueing for {mapName} in {e.QueueTime} seconds");
+            logMessage($"Finished queueing for {mapName} as {e.RaidType} in {e.QueueTime} seconds");
             if (!Properties.Settings.Default.submitQueueTime) return;
-            TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime));
+            try
+            {
+                var response = await TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType);
+                //logMessage($")
+            }
+            catch (Exception ex)
+            {
+                logMessage($"Error submitting queue time: {ex.Message}");
+            }
         }
 
         private async void Eft_QuestModified(object? sender, GameWatcher.QuestEventArgs e)
@@ -123,7 +135,9 @@ namespace TarkovMonitor
         private void logMessage(string message)
         {
             txtMessages.Invoke((MethodInvoker)delegate {
-                txtMessages.Text += "\n" + message;
+                txtMessages.AppendText("\n" + message);
+                txtMessages.SelectionStart = txtMessages.TextLength;
+                txtMessages.ScrollToCaret();
             });
         }
 

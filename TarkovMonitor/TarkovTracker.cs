@@ -44,7 +44,7 @@ namespace TarkovMonitor
             var path = "/progress/quest/{id}";
             var request = GetRequest(path.Replace("{id}", questId.ToString()));
             request.Method = HttpMethod.Post;
-            HttpResponseMessage response = client.Send(request);
+            HttpResponseMessage response = await client.SendAsync(request);
             var code = ((int)response.StatusCode).ToString();
             try
             {

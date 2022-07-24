@@ -69,9 +69,9 @@ namespace TarkovMonitor
             return response.Data.items;
         }
 
-        public async static Task<string> PostQueueTime(string mapNameId, int queueTime)
+        public async static Task<string> PostQueueTime(string mapNameId, int queueTime, string type)
         {
-            var payload = $"{{\"map\":\"{mapNameId}\",\"time\":{queueTime}}}";
+            var payload = $"{{\"map\":\"{mapNameId}\",\"time\":{queueTime}, \"type\": \"{type}\"}}";
             var request = new HttpRequestMessage(HttpMethod.Post, "https://manager.tarkov.dev/api/queue");
             request.Content = new StringContent(payload);
             var response = await httpClient.SendAsync(request);

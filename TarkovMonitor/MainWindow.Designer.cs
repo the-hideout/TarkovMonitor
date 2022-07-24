@@ -187,7 +187,7 @@
             this.btnCancelSettings.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnCancelSettings.Name = "btnCancelSettings";
             this.btnCancelSettings.NoAccentTextColor = System.Drawing.Color.Empty;
-            this.btnCancelSettings.Size = new System.Drawing.Size(65, 36);
+            this.btnCancelSettings.Size = new System.Drawing.Size(75, 36);
             this.btnCancelSettings.TabIndex = 7;
             this.btnCancelSettings.Text = "Revert";
             this.btnCancelSettings.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
@@ -231,11 +231,12 @@
             this.txtLogs.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtLogs.Depth = 0;
             this.txtLogs.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtLogs.Font = new System.Drawing.Font("Roboto", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
+            this.txtLogs.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
             this.txtLogs.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(222)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.txtLogs.Location = new System.Drawing.Point(0, 0);
             this.txtLogs.MouseState = MaterialSkin.MouseState.HOVER;
             this.txtLogs.Name = "txtLogs";
+            this.txtLogs.ReadOnly = true;
             this.txtLogs.Size = new System.Drawing.Size(780, 295);
             this.txtLogs.TabIndex = 0;
             this.txtLogs.Text = "";

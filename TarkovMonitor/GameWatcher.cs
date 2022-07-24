@@ -19,6 +19,7 @@ namespace TarkovMonitor
         private Dictionary<LogType, LogMonitor> monitors;
         private string lastLoadedMap = "";
         private bool lastLoadedOnline = false;
+        private float lastQueueTime = 0;
         public event EventHandler<LogMonitor.NewLogEventArgs> NewLogMessage;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
         public event EventHandler<QuestEventArgs> QuestModified;
@@ -61,8 +62,8 @@ namespace TarkovMonitor
         private void GameWatcher_NewLog(object? sender, LogMonitor.NewLogEventArgs e)
         {
             NewLogMessage?.Invoke(this, e);
-            Debug.WriteLine(e.Type.ToString());
-            Debug.WriteLine(e.NewMessage);
+            //Debug.WriteLine(e.Type.ToString());
+            //Debug.WriteLine(e.NewMessage);
             if (e.NewMessage.Contains("Got notification | UserMatchOver"))
             {
                 var rx = new Regex("\"location\": \"(?<map>[^\"]+)\"");
@@ -95,7 +96,7 @@ namespace TarkovMonitor
                 var id = match.Groups["messageId"].Value;
                 QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Started });
             }
-            if (e.NewMessage.Contains("Got notification | UserConfirmed"))
+            /*if (e.NewMessage.Contains("Got notification | UserConfirmed"))
             {
                 var message = JsonSerializer.Deserialize<UserConfirmed>(getJson(e.NewMessage));
                 lastLoadedOnline = false;
@@ -104,13 +105,36 @@ namespace TarkovMonitor
                 {
                     lastLoadedOnline = true;
                 }
-            }
-            if (e.NewMessage.Contains("GamePrepared") && lastLoadedOnline)
+            }*/
+            if (e.NewMessage.Contains("GamePrepared") && e.Type == LogType.Application)
             {
                 var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
                 var match = rx.Match(e.NewMessage);
-                var queueTime = float.Parse(match.Groups["queueTime"].Value);
-                QueueComplete?.Invoke(this, new QueueEventArgs { Map = lastLoadedMap, QueueTime = queueTime });
+                lastQueueTime = float.Parse(match.Groups["queueTime"].Value);
+                //QueueComplete?.Invoke(this, new QueueEventArgs { Map = lastLoadedMap, QueueTime = queueTime });
+            }
+            if (e.NewMessage.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
+            {
+                lastLoadedOnline = false;
+                lastLoadedMap = new Regex("Location: (?<map>[^,]+)").Match(e.NewMessage).Groups["map"].Value;
+                if (e.NewMessage.Contains("RaidMode: Online"))
+                {
+                    lastLoadedOnline = true;
+                }
+            }
+            if (e.NewMessage.Contains("application|GameStarted") && e.Type == LogType.Application)
+            {
+                var raidType = "scav";
+                if (e.NewMessage.Contains("application|GameStarting"))
+                {
+                    raidType = "pmc";
+                }
+                if (lastLoadedOnline)
+                {
+                    QueueComplete?.Invoke(this, new QueueEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = raidType });
+                }
+                lastLoadedMap = "";
+                lastQueueTime = 0;
             }
             if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5bdac0b686f7743e1665e09e")) {
                 try
@@ -191,6 +215,10 @@ namespace TarkovMonitor
                 {
                     StartNewMonitor(file);
                 }
+                /*if (file.Contains("traces.log"))
+                {
+                    StartNewMonitor(file);
+                }*/
             }
         }
 
@@ -204,6 +232,10 @@ namespace TarkovMonitor
             if (path.Contains("notifications.log"))
             {
                 newType = LogType.Notifications;
+            }
+            if (path.Contains("traces.log"))
+            {
+                newType = LogType.Traces;
             }
             if (newType != null)
             {
@@ -222,55 +254,8 @@ namespace TarkovMonitor
         public enum LogType
         {
             Application,
-            Notifications
-        }
-
-        private async Task MonitorLog(string filePath, LogType type, long offset)
-        {
-            await Task.Run(() =>
-            {
-                var initialFileSize = new FileInfo(filePath).Length;
-                var lastReadLength = offset;
-
-                while (true)
-                {
-                    if (process == null) break;
-                    try
-                    {
-                        var fileSize = new FileInfo(filePath).Length;
-                        if (fileSize > lastReadLength)
-                        {
-                            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                            {
-                                fs.Seek(lastReadLength, SeekOrigin.Begin);
-                                var buffer = new byte[1024];
-                                var lines = new List<string>();
-                                while (true)
-                                {
-                                    var bytesRead = fs.Read(buffer, 0, buffer.Length);
-                                    lastReadLength += bytesRead;
-
-                                    if (bytesRead == 0)
-                                        break;
-
-                                    var text = ASCIIEncoding.ASCII.GetString(buffer, 0, bytesRead);
-
-                                    lines.Add(text);
-                                }
-                                if (initialRead[type])
-                                {
-                                    //NewLog?.Invoke(this, new NewLogEventArgs { Type = type, NewMessage = String.Join("", lines.ToArray()) });
-                                }
-                                initialRead[type] = true;
-                            }
-                        }
-                    }
-                    catch { }
-
-                    Thread.Sleep(5000);
-                }
-            });
-            
+            Notifications,
+            Traces
         }
         public enum QuestStatus
         {
@@ -292,6 +277,7 @@ namespace TarkovMonitor
         {
             public string Map { get; set; }
             public float QueueTime { get; set; }
+            public string RaidType { get; set; }
         }
         public class FleaSoldEventArgs : EventArgs
         {
