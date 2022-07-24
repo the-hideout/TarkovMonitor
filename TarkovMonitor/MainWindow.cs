@@ -42,7 +42,7 @@ namespace TarkovMonitor
                 TarkovTracker.SetToken(Properties.Settings.Default.tarkovTrackerToken);
             }
             if (txtToken.Text.Length == 0) tabsMain.SelectedIndex = 1;
-            test();
+            //test();
         }
 
         private async Task test()
