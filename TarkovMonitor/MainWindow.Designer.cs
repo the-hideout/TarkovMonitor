@@ -36,12 +36,13 @@
             this.tabsMain = new MaterialSkin.Controls.MaterialTabControl();
             this.tabMessages = new System.Windows.Forms.TabPage();
             this.tabSettings = new System.Windows.Forms.TabPage();
+            this.btnPlayRaidSound = new MaterialSkin.Controls.MaterialButton();
+            this.chkRaidStartAlert = new MaterialSkin.Controls.MaterialCheckbox();
             this.btnTarkovTrackerLink = new MaterialSkin.Controls.MaterialButton();
             this.btnCancelSettings = new MaterialSkin.Controls.MaterialButton();
             this.btnSaveSettings = new MaterialSkin.Controls.MaterialButton();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.txtLogs = new MaterialSkin.Controls.MaterialMultiLineTextBox();
-            this.chkRaidStartAlert = new MaterialSkin.Controls.MaterialCheckbox();
             this.tabsMain.SuspendLayout();
             this.tabMessages.SuspendLayout();
             this.tabSettings.SuspendLayout();
@@ -164,6 +165,7 @@
             // 
             // tabSettings
             // 
+            this.tabSettings.Controls.Add(this.btnPlayRaidSound);
             this.tabSettings.Controls.Add(this.chkRaidStartAlert);
             this.tabSettings.Controls.Add(this.btnTarkovTrackerLink);
             this.tabSettings.Controls.Add(this.btnCancelSettings);
@@ -178,6 +180,42 @@
             this.tabSettings.TabIndex = 1;
             this.tabSettings.Text = "Settings";
             this.tabSettings.UseVisualStyleBackColor = true;
+            // 
+            // btnPlayRaidSound
+            // 
+            this.btnPlayRaidSound.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnPlayRaidSound.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnPlayRaidSound.Depth = 0;
+            this.btnPlayRaidSound.HighEmphasis = true;
+            this.btnPlayRaidSound.Icon = null;
+            this.btnPlayRaidSound.Location = new System.Drawing.Point(210, 100);
+            this.btnPlayRaidSound.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnPlayRaidSound.MouseState = MaterialSkin.MouseState.HOVER;
+            this.btnPlayRaidSound.Name = "btnPlayRaidSound";
+            this.btnPlayRaidSound.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnPlayRaidSound.Size = new System.Drawing.Size(64, 36);
+            this.btnPlayRaidSound.TabIndex = 10;
+            this.btnPlayRaidSound.Text = "🔊";
+            this.btnPlayRaidSound.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnPlayRaidSound.UseAccentColor = false;
+            this.btnPlayRaidSound.UseVisualStyleBackColor = true;
+            this.btnPlayRaidSound.Click += new System.EventHandler(this.btnPlayRaidSound_Click);
+            // 
+            // chkRaidStartAlert
+            // 
+            this.chkRaidStartAlert.AutoSize = true;
+            this.chkRaidStartAlert.Depth = 0;
+            this.chkRaidStartAlert.Location = new System.Drawing.Point(6, 99);
+            this.chkRaidStartAlert.Margin = new System.Windows.Forms.Padding(0);
+            this.chkRaidStartAlert.MouseLocation = new System.Drawing.Point(-1, -1);
+            this.chkRaidStartAlert.MouseState = MaterialSkin.MouseState.HOVER;
+            this.chkRaidStartAlert.Name = "chkRaidStartAlert";
+            this.chkRaidStartAlert.ReadOnly = false;
+            this.chkRaidStartAlert.Ripple = true;
+            this.chkRaidStartAlert.Size = new System.Drawing.Size(200, 37);
+            this.chkRaidStartAlert.TabIndex = 9;
+            this.chkRaidStartAlert.Text = "Audio alert on raid start";
+            this.chkRaidStartAlert.UseVisualStyleBackColor = true;
             // 
             // btnTarkovTrackerLink
             // 
@@ -265,22 +303,6 @@
             this.txtLogs.TabIndex = 0;
             this.txtLogs.Text = "";
             // 
-            // chkRaidStartAlert
-            // 
-            this.chkRaidStartAlert.AutoSize = true;
-            this.chkRaidStartAlert.Depth = 0;
-            this.chkRaidStartAlert.Location = new System.Drawing.Point(6, 99);
-            this.chkRaidStartAlert.Margin = new System.Windows.Forms.Padding(0);
-            this.chkRaidStartAlert.MouseLocation = new System.Drawing.Point(-1, -1);
-            this.chkRaidStartAlert.MouseState = MaterialSkin.MouseState.HOVER;
-            this.chkRaidStartAlert.Name = "chkRaidStartAlert";
-            this.chkRaidStartAlert.ReadOnly = false;
-            this.chkRaidStartAlert.Ripple = true;
-            this.chkRaidStartAlert.Size = new System.Drawing.Size(200, 37);
-            this.chkRaidStartAlert.TabIndex = 9;
-            this.chkRaidStartAlert.Text = "Audio alert on raid start";
-            this.chkRaidStartAlert.UseVisualStyleBackColor = true;
-            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -316,5 +338,6 @@
         private MaterialSkin.Controls.MaterialMultiLineTextBox txtLogs;
         private MaterialSkin.Controls.MaterialButton btnTarkovTrackerLink;
         private MaterialSkin.Controls.MaterialCheckbox chkRaidStartAlert;
+        private MaterialSkin.Controls.MaterialButton btnPlayRaidSound;
     }
 }
