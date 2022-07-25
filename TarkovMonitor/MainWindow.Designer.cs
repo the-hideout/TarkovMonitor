@@ -41,6 +41,7 @@
             this.btnSaveSettings = new MaterialSkin.Controls.MaterialButton();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.txtLogs = new MaterialSkin.Controls.MaterialMultiLineTextBox();
+            this.chkRaidStartAlert = new MaterialSkin.Controls.MaterialCheckbox();
             this.tabsMain.SuspendLayout();
             this.tabMessages.SuspendLayout();
             this.tabSettings.SuspendLayout();
@@ -163,6 +164,7 @@
             // 
             // tabSettings
             // 
+            this.tabSettings.Controls.Add(this.chkRaidStartAlert);
             this.tabSettings.Controls.Add(this.btnTarkovTrackerLink);
             this.tabSettings.Controls.Add(this.btnCancelSettings);
             this.tabSettings.Controls.Add(this.btnSaveSettings);
@@ -204,7 +206,7 @@
             this.btnCancelSettings.Depth = 0;
             this.btnCancelSettings.HighEmphasis = true;
             this.btnCancelSettings.Icon = null;
-            this.btnCancelSettings.Location = new System.Drawing.Point(78, 105);
+            this.btnCancelSettings.Location = new System.Drawing.Point(79, 142);
             this.btnCancelSettings.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
             this.btnCancelSettings.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnCancelSettings.Name = "btnCancelSettings";
@@ -224,7 +226,7 @@
             this.btnSaveSettings.Depth = 0;
             this.btnSaveSettings.HighEmphasis = true;
             this.btnSaveSettings.Icon = null;
-            this.btnSaveSettings.Location = new System.Drawing.Point(6, 105);
+            this.btnSaveSettings.Location = new System.Drawing.Point(7, 142);
             this.btnSaveSettings.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
             this.btnSaveSettings.MouseState = MaterialSkin.MouseState.HOVER;
             this.btnSaveSettings.Name = "btnSaveSettings";
@@ -263,6 +265,22 @@
             this.txtLogs.TabIndex = 0;
             this.txtLogs.Text = "";
             // 
+            // chkRaidStartAlert
+            // 
+            this.chkRaidStartAlert.AutoSize = true;
+            this.chkRaidStartAlert.Depth = 0;
+            this.chkRaidStartAlert.Location = new System.Drawing.Point(6, 99);
+            this.chkRaidStartAlert.Margin = new System.Windows.Forms.Padding(0);
+            this.chkRaidStartAlert.MouseLocation = new System.Drawing.Point(-1, -1);
+            this.chkRaidStartAlert.MouseState = MaterialSkin.MouseState.HOVER;
+            this.chkRaidStartAlert.Name = "chkRaidStartAlert";
+            this.chkRaidStartAlert.ReadOnly = false;
+            this.chkRaidStartAlert.Ripple = true;
+            this.chkRaidStartAlert.Size = new System.Drawing.Size(200, 37);
+            this.chkRaidStartAlert.TabIndex = 9;
+            this.chkRaidStartAlert.Text = "Audio alert on raid start";
+            this.chkRaidStartAlert.UseVisualStyleBackColor = true;
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -297,5 +315,6 @@
         private TabPage tabPage1;
         private MaterialSkin.Controls.MaterialMultiLineTextBox txtLogs;
         private MaterialSkin.Controls.MaterialButton btnTarkovTrackerLink;
+        private MaterialSkin.Controls.MaterialCheckbox chkRaidStartAlert;
     }
 }

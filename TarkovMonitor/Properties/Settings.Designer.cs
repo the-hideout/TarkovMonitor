@@ -46,5 +46,17 @@ namespace TarkovMonitor.Properties {
                 this["submitQueueTime"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool raidStartAlert {
+            get {
+                return ((bool)(this["raidStartAlert"]));
+            }
+            set {
+                this["raidStartAlert"] = value;
+            }
+        }
     }
 }

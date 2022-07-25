@@ -59,5 +59,15 @@ namespace TarkovMonitor.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] raid_starting {
+            get {
+                object obj = ResourceManager.GetObject("raid_starting", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }

@@ -76,4 +76,86 @@ namespace TarkovMonitor
         public string shortId { get; set; }
         public string[] additiona_info { get; set; }
     }
+
+    public class GroupMatchInviteAccept : LogMessage
+    {
+        public string _id { get; set; }
+        public int aid { get; set; }
+        public PlayerInfo Info { get; set; }
+        public PlayerLoadout PlayerVisualRepresentation { get; set; }
+    }
+    public class PlayerInfo
+    {
+        public string Side { get; set; }
+        public int Level { get; set; }
+        public string Nickname { get; set; }
+        public int MemberCategory { get; set; }
+    }
+    public class PlayerLoadout
+    {
+        public PlayerInfo Info { get; set; }
+        public PlayerEquipment Equipment { get; set; }
+        public PlayerClothes Customization { get; set; }
+    }
+    public class PlayerEquipment
+    {
+        public string Id { get; set; }
+        public LoadoutItem[] Items { get; set; }
+    }
+    public class LoadoutItem
+    {
+        public string _id { get; set; }
+        public string _tpl { get; set; }
+        public string? parentId { get; set; }
+        public string? slotId { get; set; }
+        public LoadoutItemLocation? location { get; set; }
+        public LoadoutItemProperties? upd { get; set; }
+    }
+    public class LoadoutItemLocation
+    {
+        public int x { get; set; }
+        public int y { get; set; }
+        public int r { get; set; }
+        public bool isSearched { get; set; }
+    }
+    public class LoadoutItemProperties
+    {
+        public LoadoutItemPropertiesDurability? Repairable { get; set; }
+        public LoadoutItemPropertiesMeds? MedKit { get; set; }
+        public LoadoutItemPropertiesFoodDrink? FoodDrink { get; set; }
+        public LoadoutItemPropertiesFireMode? FireMode { get; set; }
+        public LoadoutItemPropertiesScope? Sight { get; set; }
+        public int? StackObjectsCount { get; set; }
+        public bool? SpawnedInSession { get; set; }
+    }
+    public class LoadoutItemPropertiesDurability
+    {
+        public float MaxDurability { get; set; }
+        public float Durability { get; set; }
+    }
+    public class LoadoutItemPropertiesMeds
+    {
+        public int HpResource { get; set; }
+    }
+    public class LoadoutItemPropertiesFoodDrink
+    {
+        public int HpPercent { get; set; }
+    }
+    public class LoadoutItemPropertiesFireMode
+    {
+        public string FireMode { get; set; }
+    }
+    public class LoadoutItemPropertiesScope
+    {
+        public int[] ScopesCurrentCalibPointIndexes { get; set; }
+        public int[] ScopesSelectedModes { get; set; }
+        public int SelectedScope { get; set; }
+    }
+    public class PlayerClothes
+    {
+        public string Head { get; set; }
+        public string Body { get; set; }
+        public string Feet { get; set; }
+        public string Hands { get; set; }
+    }
 }

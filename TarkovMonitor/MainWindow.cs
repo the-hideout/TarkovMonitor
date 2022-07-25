@@ -4,6 +4,8 @@ using System.Diagnostics;
 using MaterialSkin;
 using MaterialSkin.Controls;
 using System.Text.RegularExpressions;
+using System.Media;
+using NAudio.Wave;
 
 namespace TarkovMonitor
 {
@@ -25,7 +27,8 @@ namespace TarkovMonitor
             eft = new GameWatcher();
             eft.RaidExited += Eft_RaidExited;
             eft.QuestModified += Eft_QuestModified;
-            eft.QueueComplete += Eft_QueueComplete;
+            eft.GroupInviteAccepted += Eft_GroupInviteAccepted;
+            eft.RaidLoaded += Eft_RaidLoaded;
             eft.FleaSold += Eft_FleaSold;
             eft.NewLogMessage += Eft_NewLogMessage;
             //TarkovTracker.Initialized += TarkovTracker_Initialized;
@@ -36,6 +39,7 @@ namespace TarkovMonitor
             updateMaps();
             updateItems();
             chkQueue.Checked = Properties.Settings.Default.submitQueueTime;
+            chkRaidStartAlert.Checked = Properties.Settings.Default.raidStartAlert;
             if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
             {
                 txtToken.Text = Properties.Settings.Default.tarkovTrackerToken;
@@ -43,6 +47,11 @@ namespace TarkovMonitor
             }
             if (txtToken.Text.Length == 0) tabsMain.SelectedIndex = 1;
             //test();
+        }
+
+        private void Eft_GroupInviteAccepted(object? sender, GameWatcher.GroupInviteAcceptedEventArgs e)
+        {
+            logMessage($"{e.PlayerLoadout.Info.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.");
         }
 
         private async Task test()
@@ -73,8 +82,9 @@ namespace TarkovMonitor
             logMessage($"{e.Buyer} purchesed {e.soldItemCount} {soldItemName} for {String.Join(", ", received.ToArray())}");
         }
 
-        private async void Eft_QueueComplete(object? sender, GameWatcher.QueueEventArgs e)
+        private async void Eft_RaidLoaded(object? sender, GameWatcher.RaidLoadedEventArgs e)
         {
+            if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
             var mapName = e.Map;
             var map = maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
@@ -116,7 +126,7 @@ namespace TarkovMonitor
                     return;
                 }
             }
-            logMessage($"{e.Status} quest");
+            //logMessage($"{e.Status} quest");
         }
 
         private void Eft_RaidExited(object? sender, GameWatcher.RaidExitedEventArgs e)
@@ -216,6 +226,7 @@ namespace TarkovMonitor
             TarkovTracker.SetToken(txtToken.Text);
             Properties.Settings.Default.tarkovTrackerToken = txtToken.Text;
             Properties.Settings.Default.submitQueueTime = chkQueue.Checked;
+            Properties.Settings.Default.raidStartAlert = chkRaidStartAlert.Checked;
             Properties.Settings.Default.Save();
         }
 
@@ -223,6 +234,7 @@ namespace TarkovMonitor
         {
             txtToken.Text = Properties.Settings.Default.tarkovTrackerToken;
             chkQueue.Checked = Properties.Settings.Default.submitQueueTime;
+            chkRaidStartAlert.Checked = Properties.Settings.Default.raidStartAlert;
         }
 
         private void btnTarkovTrackerLink_Click(object sender, EventArgs e)
@@ -253,6 +265,15 @@ namespace TarkovMonitor
                     throw;
                 }
             }
+        }
+
+        private void PlaySoundFromResource(byte[] resource)
+        {
+            Stream stream = new MemoryStream(resource);
+            var reader = new NAudio.Wave.Mp3FileReader(stream);
+            var waveOut = new WaveOut();
+            waveOut.Init(reader);
+            waveOut.Play();
         }
     }
 }

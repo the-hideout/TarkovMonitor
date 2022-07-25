@@ -18,12 +18,14 @@ namespace TarkovMonitor
         //private event EventHandler<NewLogEventArgs> NewLog;
         private Dictionary<LogType, LogMonitor> monitors;
         private string lastLoadedMap = "";
+        private string lastQueueType = "scav";
         private bool lastLoadedOnline = false;
         private float lastQueueTime = 0;
         public event EventHandler<LogMonitor.NewLogEventArgs> NewLogMessage;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
         public event EventHandler<QuestEventArgs> QuestModified;
-        public event EventHandler<QueueEventArgs> QueueComplete;
+        public event EventHandler<GroupInviteAcceptedEventArgs> GroupInviteAccepted;
+        public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public GameWatcher()
         {
@@ -44,7 +46,14 @@ namespace TarkovMonitor
             };
             watcher.Created += Watcher_Created;
             updateProcess();
-            //NewLog += GameWatcher_NewLog;
+
+            var testDataPath = Path.Join(Directory.GetCurrentDirectory(), "..", "..", "..", "test data", "GroupMatchInviteAccept.log");
+            var testData = getJsonStrings(File.ReadAllText(testDataPath));
+            foreach (var item in testData)
+            {
+                var message = JsonSerializer.Deserialize<GroupMatchInviteAccept>(item);
+                Debug.WriteLine(message.Info.Nickname);
+            }
         }
 
         private void Watcher_Created(object sender, FileSystemEventArgs e)
@@ -96,22 +105,21 @@ namespace TarkovMonitor
                 var id = match.Groups["messageId"].Value;
                 QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Started });
             }
-            /*if (e.NewMessage.Contains("Got notification | UserConfirmed"))
+            if (e.NewMessage.Contains("GroupMatchInviteAccept"))
             {
-                var message = JsonSerializer.Deserialize<UserConfirmed>(getJson(e.NewMessage));
-                lastLoadedOnline = false;
-                lastLoadedMap = message.location;
-                if (message.raidMode == "Online")
+                var jsonStrings = getJsonStrings(e.NewMessage);
+                foreach (var jsonString in jsonStrings)
                 {
-                    lastLoadedOnline = true;
+                    var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
+                    GroupInviteAccepted?.Invoke(this, new GroupInviteAcceptedEventArgs { PlayerLoadout = loadout });
                 }
-            }*/
+            }
             if (e.NewMessage.Contains("GamePrepared") && e.Type == LogType.Application)
             {
                 var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
                 var match = rx.Match(e.NewMessage);
                 lastQueueTime = float.Parse(match.Groups["queueTime"].Value);
-                //QueueComplete?.Invoke(this, new QueueEventArgs { Map = lastLoadedMap, QueueTime = queueTime });
+                lastQueueType = "scav";
             }
             if (e.NewMessage.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
             {
@@ -122,24 +130,24 @@ namespace TarkovMonitor
                     lastLoadedOnline = true;
                 }
             }
+            if (e.NewMessage.Contains("application|GameStarting"))
+            {
+                lastQueueType = "pmc";
+            }
             if (e.NewMessage.Contains("application|GameStarted") && e.Type == LogType.Application)
             {
-                var raidType = "scav";
-                if (e.NewMessage.Contains("application|GameStarting"))
-                {
-                    raidType = "pmc";
-                }
                 if (lastLoadedOnline)
                 {
-                    QueueComplete?.Invoke(this, new QueueEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = raidType });
+                    RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
                 }
                 lastLoadedMap = "";
+                lastQueueType = "scav";
                 lastQueueTime = 0;
             }
             if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5bdac0b686f7743e1665e09e")) {
                 try
                 {
-                    var message = JsonSerializer.Deserialize<FleaSoldNewMessage>(getJson(e.NewMessage));
+                    var message = JsonSerializer.Deserialize<FleaSoldNewMessage>(getJsonStrings(e.NewMessage).First());
                     var args = new FleaSoldEventArgs
                     {
                         Buyer = message.message.systemData.buyerNickname,
@@ -164,10 +172,15 @@ namespace TarkovMonitor
             }
         }
 
-        private string getJson(string log)
+        private List<string> getJsonStrings(string log)
         {
-            var match = new Regex(@"^{[\s\S]+?^}", RegexOptions.Multiline).Match(log);
-            return match.Value;
+            List<string> result = new List<string>();
+            var matches = new Regex(@"^{[\s\S]+?^}", RegexOptions.Multiline).Matches(log);
+            foreach (Match match in matches)
+            {
+                result.Add(match.Value);
+            }
+            return result;
         }
 
         private void ProcessTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -284,7 +297,11 @@ namespace TarkovMonitor
             public string MessageId { get; set; }
             public QuestStatus Status { get; set; }
         }
-        public class QueueEventArgs : EventArgs
+        public class GroupInviteAcceptedEventArgs : EventArgs
+        {
+            public GroupMatchInviteAccept PlayerLoadout { get; set; }
+        }
+        public class RaidLoadedEventArgs : EventArgs
         {
             public string Map { get; set; }
             public float QueueTime { get; set; }
