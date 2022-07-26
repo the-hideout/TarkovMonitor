@@ -46,14 +46,6 @@ namespace TarkovMonitor
             };
             watcher.Created += Watcher_Created;
             updateProcess();
-
-            var testDataPath = Path.Join(Directory.GetCurrentDirectory(), "..", "..", "..", "test data", "GroupMatchInviteAccept.log");
-            var testData = getJsonStrings(File.ReadAllText(testDataPath));
-            foreach (var item in testData)
-            {
-                var message = JsonSerializer.Deserialize<GroupMatchInviteAccept>(item);
-                Debug.WriteLine(message.Info.Nickname);
-            }
         }
 
         private void Watcher_Created(object sender, FileSystemEventArgs e)
@@ -172,7 +164,7 @@ namespace TarkovMonitor
             }
         }
 
-        private List<string> getJsonStrings(string log)
+        public List<string> getJsonStrings(string log)
         {
             List<string> result = new List<string>();
             var matches = new Regex(@"^{[\s\S]+?^}", RegexOptions.Multiline).Matches(log);

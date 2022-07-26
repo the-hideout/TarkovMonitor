@@ -35,18 +35,22 @@
             this.materialTabSelector1 = new MaterialSkin.Controls.MaterialTabSelector();
             this.tabsMain = new MaterialSkin.Controls.MaterialTabControl();
             this.tabMessages = new System.Windows.Forms.TabPage();
+            this.tabLoadouts = new System.Windows.Forms.TabPage();
+            this.listBoxLoadout = new MaterialSkin.Controls.MaterialListBox();
+            this.comboGroupMembers = new MaterialSkin.Controls.MaterialComboBox();
             this.tabSettings = new System.Windows.Forms.TabPage();
             this.btnPlayRaidSound = new MaterialSkin.Controls.MaterialButton();
             this.chkRaidStartAlert = new MaterialSkin.Controls.MaterialCheckbox();
             this.btnTarkovTrackerLink = new MaterialSkin.Controls.MaterialButton();
             this.btnCancelSettings = new MaterialSkin.Controls.MaterialButton();
             this.btnSaveSettings = new MaterialSkin.Controls.MaterialButton();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.tabLogs = new System.Windows.Forms.TabPage();
             this.txtLogs = new MaterialSkin.Controls.MaterialMultiLineTextBox();
             this.tabsMain.SuspendLayout();
             this.tabMessages.SuspendLayout();
+            this.tabLoadouts.SuspendLayout();
             this.tabSettings.SuspendLayout();
-            this.tabPage1.SuspendLayout();
+            this.tabLogs.SuspendLayout();
             this.SuspendLayout();
             // 
             // txtMessages
@@ -141,8 +145,9 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.tabsMain.Controls.Add(this.tabMessages);
+            this.tabsMain.Controls.Add(this.tabLoadouts);
             this.tabsMain.Controls.Add(this.tabSettings);
-            this.tabsMain.Controls.Add(this.tabPage1);
+            this.tabsMain.Controls.Add(this.tabLogs);
             this.tabsMain.Depth = 0;
             this.tabsMain.Location = new System.Drawing.Point(6, 121);
             this.tabsMain.MouseState = MaterialSkin.MouseState.HOVER;
@@ -162,6 +167,57 @@
             this.tabMessages.TabIndex = 0;
             this.tabMessages.Text = "Messages";
             this.tabMessages.UseVisualStyleBackColor = true;
+            // 
+            // tabLoadouts
+            // 
+            this.tabLoadouts.Controls.Add(this.listBoxLoadout);
+            this.tabLoadouts.Controls.Add(this.comboGroupMembers);
+            this.tabLoadouts.Location = new System.Drawing.Point(4, 24);
+            this.tabLoadouts.Name = "tabLoadouts";
+            this.tabLoadouts.Size = new System.Drawing.Size(780, 295);
+            this.tabLoadouts.TabIndex = 3;
+            this.tabLoadouts.Text = "Group Loadouts";
+            this.tabLoadouts.UseVisualStyleBackColor = true;
+            // 
+            // listBoxLoadout
+            // 
+            this.listBoxLoadout.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.listBoxLoadout.BackColor = System.Drawing.Color.White;
+            this.listBoxLoadout.BorderColor = System.Drawing.Color.LightGray;
+            this.listBoxLoadout.Depth = 0;
+            this.listBoxLoadout.Font = new System.Drawing.Font("Microsoft Sans Serif", 16F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel);
+            this.listBoxLoadout.Location = new System.Drawing.Point(3, 58);
+            this.listBoxLoadout.MouseState = MaterialSkin.MouseState.HOVER;
+            this.listBoxLoadout.Name = "listBoxLoadout";
+            this.listBoxLoadout.SelectedIndex = -1;
+            this.listBoxLoadout.SelectedItem = null;
+            this.listBoxLoadout.Size = new System.Drawing.Size(774, 234);
+            this.listBoxLoadout.TabIndex = 2;
+            // 
+            // comboGroupMembers
+            // 
+            this.comboGroupMembers.AutoResize = false;
+            this.comboGroupMembers.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(255)))), ((int)(((byte)(255)))));
+            this.comboGroupMembers.Depth = 0;
+            this.comboGroupMembers.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawVariable;
+            this.comboGroupMembers.DropDownHeight = 174;
+            this.comboGroupMembers.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboGroupMembers.DropDownWidth = 121;
+            this.comboGroupMembers.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Pixel);
+            this.comboGroupMembers.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(222)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.comboGroupMembers.FormattingEnabled = true;
+            this.comboGroupMembers.IntegralHeight = false;
+            this.comboGroupMembers.ItemHeight = 43;
+            this.comboGroupMembers.Location = new System.Drawing.Point(3, 3);
+            this.comboGroupMembers.MaxDropDownItems = 4;
+            this.comboGroupMembers.MouseState = MaterialSkin.MouseState.OUT;
+            this.comboGroupMembers.Name = "comboGroupMembers";
+            this.comboGroupMembers.Size = new System.Drawing.Size(474, 49);
+            this.comboGroupMembers.StartIndex = 0;
+            this.comboGroupMembers.TabIndex = 0;
+            this.comboGroupMembers.SelectedIndexChanged += new System.EventHandler(this.comboGroupMembers_SelectedIndexChanged);
             // 
             // tabSettings
             // 
@@ -277,15 +333,15 @@
             this.btnSaveSettings.UseVisualStyleBackColor = true;
             this.btnSaveSettings.Click += new System.EventHandler(this.panelSettings_SaveClick);
             // 
-            // tabPage1
+            // tabLogs
             // 
-            this.tabPage1.Controls.Add(this.txtLogs);
-            this.tabPage1.Location = new System.Drawing.Point(4, 24);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Size = new System.Drawing.Size(780, 295);
-            this.tabPage1.TabIndex = 2;
-            this.tabPage1.Text = "Logs Output";
-            this.tabPage1.UseVisualStyleBackColor = true;
+            this.tabLogs.Controls.Add(this.txtLogs);
+            this.tabLogs.Location = new System.Drawing.Point(4, 24);
+            this.tabLogs.Name = "tabLogs";
+            this.tabLogs.Size = new System.Drawing.Size(780, 295);
+            this.tabLogs.TabIndex = 2;
+            this.tabLogs.Text = "Logs Output";
+            this.tabLogs.UseVisualStyleBackColor = true;
             // 
             // txtLogs
             // 
@@ -315,9 +371,10 @@
             this.Text = "Tarkov Monitor";
             this.tabsMain.ResumeLayout(false);
             this.tabMessages.ResumeLayout(false);
+            this.tabLoadouts.ResumeLayout(false);
             this.tabSettings.ResumeLayout(false);
             this.tabSettings.PerformLayout();
-            this.tabPage1.ResumeLayout(false);
+            this.tabLogs.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -334,10 +391,13 @@
         private TabPage tabSettings;
         private MaterialSkin.Controls.MaterialButton btnCancelSettings;
         private MaterialSkin.Controls.MaterialButton btnSaveSettings;
-        private TabPage tabPage1;
+        private TabPage tabLogs;
         private MaterialSkin.Controls.MaterialMultiLineTextBox txtLogs;
         private MaterialSkin.Controls.MaterialButton btnTarkovTrackerLink;
         private MaterialSkin.Controls.MaterialCheckbox chkRaidStartAlert;
         private MaterialSkin.Controls.MaterialButton btnPlayRaidSound;
+        private TabPage tabLoadouts;
+        private MaterialSkin.Controls.MaterialComboBox comboGroupMembers;
+        private MaterialSkin.Controls.MaterialListBox listBoxLoadout;
     }
 }

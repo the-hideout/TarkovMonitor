@@ -83,6 +83,10 @@ namespace TarkovMonitor
         public int aid { get; set; }
         public PlayerInfo Info { get; set; }
         public PlayerLoadout PlayerVisualRepresentation { get; set; }
+        public override string ToString()
+        {
+            return $"{this.Info.Nickname} ({this.PlayerVisualRepresentation.Info.Side}, {this.PlayerVisualRepresentation.Info.Level})";
+        }
     }
     public class PlayerInfo
     {
@@ -110,6 +114,15 @@ namespace TarkovMonitor
         public string? slotId { get; set; }
         public LoadoutItemLocation? location { get; set; }
         public LoadoutItemProperties? upd { get; set; }
+        public string? name { get; set; }
+        public override string ToString()
+        {
+            var displayName = this._tpl;
+            if (this.name != null) displayName = this.name;
+            if (this.upd?.StackObjectsCount > 1) displayName += $" (x{this.upd.StackObjectsCount})";
+            if (this.upd?.Repairable != null) displayName += $" ({Math.Round(this.upd.Repairable.Durability, 2)}/{this.upd.Repairable.MaxDurability})";
+            return displayName;
+        }
     }
     public class LoadoutItemLocation
     {

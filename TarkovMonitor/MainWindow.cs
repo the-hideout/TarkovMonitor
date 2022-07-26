@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Diagnostics;
 using MaterialSkin;
 using MaterialSkin.Controls;
-using System.Text.RegularExpressions;
+using System.Text.Json;
 using System.Media;
 using NAudio.Wave;
 
@@ -15,6 +15,10 @@ namespace TarkovMonitor
         private List<TarkovDevApi.Map> maps;
         private List<TarkovDevApi.Item> items;
         private GameWatcher eft;
+        private bool staleGroupList = true;
+        private Task questsTask;
+        private Task mapsTask;
+        private Task itemsTask;
         public MainWindow()
         {
             InitializeComponent();
@@ -35,9 +39,9 @@ namespace TarkovMonitor
             TarkovTracker.Init();
             quests = new List<TarkovDevApi.Quest>();
             maps = new List<TarkovDevApi.Map>();
-            updateQuests();
-            updateMaps();
-            updateItems();
+            questsTask = updateQuests();
+            mapsTask = updateMaps();
+            itemsTask = updateItems();
             chkQueue.Checked = Properties.Settings.Default.submitQueueTime;
             chkRaidStartAlert.Checked = Properties.Settings.Default.raidStartAlert;
             if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
@@ -51,13 +55,46 @@ namespace TarkovMonitor
 
         private void Eft_GroupInviteAccepted(object? sender, GameWatcher.GroupInviteAcceptedEventArgs e)
         {
+            comboGroupMembers.Invoke((MethodInvoker)delegate {
+                if (staleGroupList)
+                {
+                    comboGroupMembers.Items.Clear();
+                    staleGroupList = false;
+                }
+                var added = false;
+                foreach (GroupMatchInviteAccept loadout in comboGroupMembers.Items)
+                {
+                    if (loadout.Info.Nickname == e.PlayerLoadout.Info.Nickname)
+                    {
+                        var index = comboGroupMembers.Items.IndexOf(loadout);
+                        comboGroupMembers.Items.Insert(index, e.PlayerLoadout);
+                        added = true;
+                    }
+                }
+                if (!added)
+                {
+                    comboGroupMembers.Items.Add(e.PlayerLoadout);
+                    if (comboGroupMembers.SelectedIndex == -1)
+                    {
+                        comboGroupMembers.SelectedIndex = 0;
+                    }
+                }
+            });
             logMessage($"{e.PlayerLoadout.Info.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.");
         }
 
         private async Task test()
         {
-            var response = await TarkovTracker.SetQuestComplete(40);
-            logMessage(response);
+            //Task.WaitAll(questsTask, mapsTask, itemsTask);
+            await itemsTask;
+            var testDataPath = Path.Join(Directory.GetCurrentDirectory(), "..", "..", "..", "test data", "GroupMatchInviteAccept.log");
+            var testData = eft.getJsonStrings(File.ReadAllText(testDataPath));
+            foreach (var item in testData)
+            {
+                var message = JsonSerializer.Deserialize<GroupMatchInviteAccept>(item);
+                Debug.WriteLine(message.Info.Nickname);
+                Eft_GroupInviteAccepted(eft, new GameWatcher.GroupInviteAcceptedEventArgs { PlayerLoadout = message });
+            }
         }
 
         private void Eft_NewLogMessage(object? sender, LogMonitor.NewLogEventArgs e)
@@ -66,7 +103,6 @@ namespace TarkovMonitor
                 txtLogs.AppendText("\n" + e.Type.ToString() + "\n" + e.NewMessage);
                 txtLogs.SelectionStart = txtLogs.TextLength;
                 txtLogs.ScrollToCaret();
-                //txtLogs.Text += "\n" + e.Type.ToString() + "\n" + e.NewMessage;
             });
             //txtLogs.scro
         }
@@ -99,6 +135,7 @@ namespace TarkovMonitor
             {
                 logMessage($"Error submitting queue time: {ex.Message}");
             }
+            staleGroupList = true;
         }
 
         private async void Eft_QuestModified(object? sender, GameWatcher.QuestEventArgs e)
@@ -280,6 +317,57 @@ namespace TarkovMonitor
         private void btnPlayRaidSound_Click(object sender, EventArgs e)
         {
             PlaySoundFromResource(Properties.Resources.raid_starting);
+        }
+
+        private TarkovDevApi.Item GetItemData(string id)
+        {
+            foreach (TarkovDevApi.Item item in items)
+            {
+                if (item.id == id) return item;
+            }
+            throw new Exception($"Item with id {id} not found");
+        }
+
+        private void comboGroupMembers_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboGroupMembers.SelectedIndex == -1) return;
+            var loadout = comboGroupMembers.SelectedItem as GroupMatchInviteAccept;
+            listBoxLoadout.Items.Clear();
+            //var inventoryTpl = "62ddc8e72f8bb3af180e59c9";
+            var pocketsTpl = "627a4e6b255f7527fb05a0f6";
+            var inventoryId = loadout.PlayerVisualRepresentation.Equipment.Id;
+            var pocketsId = "";
+            foreach (LoadoutItem item in loadout.PlayerVisualRepresentation.Equipment.Items)
+            {
+                if (item._id == inventoryId)
+                {
+                    item.name = "Inventory";
+                    continue;
+                }
+                if (item._tpl == pocketsTpl)
+                {
+                    pocketsId = item._id;
+                    item.name = "Pockets";
+                    continue;
+                }
+                try
+                {
+                    var itemData = GetItemData(item._tpl);
+                    item.name = itemData.name;
+                    //var displayName = itemData.name;
+                    //if (item.upd?.StackObjectsCount > 1) displayName += $" x{item.upd.StackObjectsCount}";
+                    var listBoxItem = new MaterialSkin.MaterialListBoxItem(item.ToString());
+                    listBoxItem.SecondaryText = "secondary text";
+                    listBoxItem.Tag = "tag";
+                    var card = new MaterialCard();
+                    card.Show();
+                    listBoxLoadout.Items.Add(listBoxItem);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+            }
         }
     }
 }
