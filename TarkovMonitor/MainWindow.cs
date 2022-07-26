@@ -310,7 +310,6 @@ namespace TarkovMonitor
             var reader = new NAudio.Wave.Mp3FileReader(stream);
             var waveOut = new WaveOut();
             waveOut.Init(reader);
-            Debug.WriteLine(waveOut.Volume);
             waveOut.Play();
         }
 
