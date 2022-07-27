@@ -24,6 +24,7 @@ namespace TarkovMonitor
                             id
                             tarkovDataId
                             name
+                            descriptionMessageId
                             startMessageId
                             successMessageId
                             failMessageId
@@ -101,6 +102,7 @@ namespace TarkovMonitor
             public string id { get; set; }
             public int? tarkovDataId { get; set; }
             public string name { get; set; }
+            public string descriptionMessageId { get; set; }
             public string startMessageId { get; set; } 
             public string successMessageId { get; set; }
             public string failMessageId { get; set; }

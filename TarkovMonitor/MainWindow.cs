@@ -141,7 +141,7 @@ namespace TarkovMonitor
         {
             foreach (var quest in quests)
             {
-                if (e.Status == GameWatcher.QuestStatus.Started && quest.startMessageId == e.MessageId)
+                if (e.Status == GameWatcher.QuestStatus.Started && (quest.descriptionMessageId == e.MessageId || quest.startMessageId == e.MessageId))
                 {
                     logMessage($"Started quest {quest.name}");
                     return;
