@@ -31,7 +31,7 @@ namespace TarkovMonitor
             eft = new GameWatcher();
             eft.RaidExited += Eft_RaidExited;
             eft.QuestModified += Eft_QuestModified;
-            eft.GroupInviteAccepted += Eft_GroupInviteAccepted;
+            eft.GroupInvite += Eft_GroupInvite;
             eft.RaidLoaded += Eft_RaidLoaded;
             eft.FleaSold += Eft_FleaSold;
             eft.NewLogMessage += Eft_NewLogMessage;
@@ -52,8 +52,7 @@ namespace TarkovMonitor
             if (txtToken.Text.Length == 0) tabsMain.SelectedIndex = 1;
             //test();
         }
-
-        private void Eft_GroupInviteAccepted(object? sender, GameWatcher.GroupInviteAcceptedEventArgs e)
+        private void Eft_GroupInvite(object? sender, GameWatcher.GroupInviteEventArgs e)
         {
             comboGroupMembers.Invoke((MethodInvoker)delegate {
                 if (staleGroupList)
@@ -62,27 +61,27 @@ namespace TarkovMonitor
                     staleGroupList = false;
                 }
                 var added = false;
-                foreach (GroupMatchInviteAccept loadout in comboGroupMembers.Items)
+                foreach (GameWatcher.GroupInviteEventArgs loadout in comboGroupMembers.Items)
                 {
-                    if (loadout.Info.Nickname == e.PlayerLoadout.Info.Nickname)
+                    if (loadout.PlayerInfo.Nickname == e.PlayerInfo.Nickname)
                     {
                         var index = comboGroupMembers.Items.IndexOf(loadout);
                         comboGroupMembers.Items.Insert(index, e.PlayerLoadout);
                         added = true;
+                        break;
                     }
                 }
                 if (!added)
                 {
-                    comboGroupMembers.Items.Add(e.PlayerLoadout);
+                    comboGroupMembers.Items.Add(e);
                     if (comboGroupMembers.SelectedIndex == -1)
                     {
                         comboGroupMembers.SelectedIndex = 0;
                     }
                 }
             });
-            logMessage($"{e.PlayerLoadout.Info.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.");
+            logMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.");
         }
-
         private async Task test()
         {
             //Task.WaitAll(questsTask, mapsTask, itemsTask);
@@ -93,7 +92,7 @@ namespace TarkovMonitor
             {
                 var message = JsonSerializer.Deserialize<GroupMatchInviteAccept>(item);
                 Debug.WriteLine(message.Info.Nickname);
-                Eft_GroupInviteAccepted(eft, new GameWatcher.GroupInviteAcceptedEventArgs { PlayerLoadout = message });
+                Eft_GroupInvite(eft, new GameWatcher.GroupInviteEventArgs(message));
             }
         }
 
@@ -330,13 +329,13 @@ namespace TarkovMonitor
         private void comboGroupMembers_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboGroupMembers.SelectedIndex == -1) return;
-            var loadout = comboGroupMembers.SelectedItem as GroupMatchInviteAccept;
+            var loadout = comboGroupMembers.SelectedItem as GameWatcher.GroupInviteEventArgs;
             listBoxLoadout.Items.Clear();
             //var inventoryTpl = "62ddc8e72f8bb3af180e59c9";
             var pocketsTpl = "627a4e6b255f7527fb05a0f6";
-            var inventoryId = loadout.PlayerVisualRepresentation.Equipment.Id;
+            var inventoryId = loadout.PlayerLoadout.Equipment.Id;
             var pocketsId = "";
-            foreach (LoadoutItem item in loadout.PlayerVisualRepresentation.Equipment.Items)
+            foreach (LoadoutItem item in loadout.PlayerLoadout.Equipment.Items)
             {
                 if (item._id == inventoryId)
                 {

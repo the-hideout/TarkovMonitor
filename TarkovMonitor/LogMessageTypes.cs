@@ -83,10 +83,15 @@ namespace TarkovMonitor
         public int aid { get; set; }
         public PlayerInfo Info { get; set; }
         public PlayerLoadout PlayerVisualRepresentation { get; set; }
-        public override string ToString()
-        {
-            return $"{this.Info.Nickname} ({this.PlayerVisualRepresentation.Info.Side}, {this.PlayerVisualRepresentation.Info.Level})";
-        }
+    }
+    public class GroupMatchInviteSend : LogMessage
+    {
+        public string groupId { get; set; }
+        public int dt { get; set; }
+        public string from { get; set; }
+        public string to { get; set; }
+
+        public GroupMatchInviteSendProfile fromProfile { get; set; }
     }
     public class PlayerInfo
     {
@@ -170,5 +175,12 @@ namespace TarkovMonitor
         public string Body { get; set; }
         public string Feet { get; set; }
         public string Hands { get; set; }
+    }
+    public class GroupMatchInviteSendProfile
+    {
+        public string _id { get; set; }
+        public int aid { get; set; }
+        public PlayerInfo Info { get; set; }
+        public PlayerLoadout PlayerVisualRepresentation { get; set; }
     }
 }

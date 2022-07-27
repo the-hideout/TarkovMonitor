@@ -24,7 +24,7 @@ namespace TarkovMonitor
         public event EventHandler<LogMonitor.NewLogEventArgs> NewLogMessage;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
         public event EventHandler<QuestEventArgs> QuestModified;
-        public event EventHandler<GroupInviteAcceptedEventArgs> GroupInviteAccepted;
+        public event EventHandler<GroupInviteEventArgs> GroupInvite;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public GameWatcher()
@@ -103,7 +103,16 @@ namespace TarkovMonitor
                 foreach (var jsonString in jsonStrings)
                 {
                     var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
-                    GroupInviteAccepted?.Invoke(this, new GroupInviteAcceptedEventArgs { PlayerLoadout = loadout });
+                    GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                }
+            }
+            if (e.NewMessage.Contains("GroupMatchInviteSend"))
+            {
+                var jsonStrings = getJsonStrings(e.NewMessage);
+                foreach (var jsonString in jsonStrings)
+                {
+                    var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
+                    GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
                 }
             }
             if (e.NewMessage.Contains("GamePrepared") && e.Type == LogType.Application)
@@ -279,6 +288,11 @@ namespace TarkovMonitor
             Failed,
             Finished
         }
+        public enum GroupInviteType
+        {
+            Accepted,
+            Sent
+        }
         public class RaidExitedEventArgs : EventArgs
         {
             public string Map { get; set; }   
@@ -289,9 +303,27 @@ namespace TarkovMonitor
             public string MessageId { get; set; }
             public QuestStatus Status { get; set; }
         }
-        public class GroupInviteAcceptedEventArgs : EventArgs
+        public class GroupInviteEventArgs : EventArgs
         {
-            public GroupMatchInviteAccept PlayerLoadout { get; set; }
+            public GroupInviteType GroupInviteType { get; set; }
+            public PlayerInfo PlayerInfo { get; set; }
+            public PlayerLoadout PlayerLoadout { get; set; }
+            public GroupInviteEventArgs(GroupMatchInviteAccept inviteAccept)
+            {
+                this.GroupInviteType = GroupInviteType.Accepted;
+                this.PlayerInfo = inviteAccept.Info;
+                this.PlayerLoadout = inviteAccept.PlayerVisualRepresentation;
+            }
+            public GroupInviteEventArgs(GroupMatchInviteSend inviteSend)
+            {
+                this.GroupInviteType = GroupInviteType.Sent;
+                this.PlayerInfo = inviteSend.fromProfile.Info;
+                this.PlayerLoadout = inviteSend.fromProfile.PlayerVisualRepresentation;
+            }
+            public override string ToString()
+            {
+                return $"{this.PlayerInfo.Nickname} ({this.PlayerLoadout.Info.Side}, {this.PlayerLoadout.Info.Level})";
+            }
         }
         public class RaidLoadedEventArgs : EventArgs
         {
