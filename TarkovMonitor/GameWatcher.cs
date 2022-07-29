@@ -33,7 +33,7 @@ namespace TarkovMonitor
             processTimer = new System.Timers.Timer(30000)
             {
                 AutoReset = true,
-                Enabled = true
+                Enabled = false
             };
             processTimer.Elapsed += ProcessTimer_Elapsed;
             watcher = new FileSystemWatcher { 
@@ -43,6 +43,12 @@ namespace TarkovMonitor
             };
             watcher.Created += Watcher_Created;
             updateProcess();
+        }
+
+        public void Start()
+        {
+            updateProcess();
+            processTimer.Enabled = true;
         }
 
         private void Watcher_Created(object sender, FileSystemEventArgs e)

@@ -35,6 +35,7 @@ namespace TarkovMonitor
             eft.NewLogMessage += Eft_NewLogMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
             eft.DebugMessage += Eft_DebugMessage;
+            eft.Start();
             //TarkovTracker.Initialized += TarkovTracker_Initialized;
             TarkovTracker.Init();
             quests = new List<TarkovDevApi.Quest>();
