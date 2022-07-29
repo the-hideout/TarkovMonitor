@@ -1,10 +1,8 @@
 using System.Runtime.InteropServices;
-using System.Net.Http;
 using System.Diagnostics;
 using MaterialSkin;
 using MaterialSkin.Controls;
 using System.Text.Json;
-using System.Media;
 using NAudio.Wave;
 
 namespace TarkovMonitor
@@ -35,6 +33,8 @@ namespace TarkovMonitor
             eft.RaidLoaded += Eft_RaidLoaded;
             eft.FleaSold += Eft_FleaSold;
             eft.NewLogMessage += Eft_NewLogMessage;
+            eft.ExceptionThrown += Eft_ExceptionThrown;
+            eft.DebugMessage += Eft_DebugMessage;
             //TarkovTracker.Initialized += TarkovTracker_Initialized;
             TarkovTracker.Init();
             quests = new List<TarkovDevApi.Quest>();
@@ -52,6 +52,18 @@ namespace TarkovMonitor
             if (txtToken.Text.Length == 0) tabsMain.SelectedIndex = 1;
             //test();
         }
+
+        private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
+        {
+            logMessage(e.Message);
+        }
+
+        private void Eft_ExceptionThrown(object? sender, GameWatcher.ExceptionEventArgs e)
+        {
+            logMessage($"Error watching logs: {e.Exception.Message}");
+            logMessage(e.Exception.StackTrace);
+        }
+
         private void Eft_GroupInvite(object? sender, GameWatcher.GroupInviteEventArgs e)
         {
             comboGroupMembers.Invoke((MethodInvoker)delegate {

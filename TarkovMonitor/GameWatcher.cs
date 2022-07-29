@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -27,6 +22,8 @@ namespace TarkovMonitor
         public event EventHandler<GroupInviteEventArgs> GroupInvite;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
+        public event EventHandler<ExceptionEventArgs> ExceptionThrown;
+        public event EventHandler<DebugEventArgs> DebugMessage;
         public GameWatcher()
         {
             initialRead = new();
@@ -63,8 +60,6 @@ namespace TarkovMonitor
         private void GameWatcher_NewLog(object? sender, LogMonitor.NewLogEventArgs e)
         {
             NewLogMessage?.Invoke(this, e);
-            //Debug.WriteLine(e.Type.ToString());
-            //Debug.WriteLine(e.NewMessage);
             if (e.NewMessage.Contains("Got notification | UserMatchOver"))
             {
                 var rx = new Regex("\"location\": \"(?<map>[^\"]+)\"");
@@ -73,7 +68,6 @@ namespace TarkovMonitor
                 rx = new Regex("\"shortId\": \"(?<raidId>[^\"]+)\"");
                 match = rx.Match(e.NewMessage);
                 var raidId = match.Groups["raidId"].Value;
-                Debug.WriteLine($"Sending RaidExited event {map} ({raidId})");
                 RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = map, RaidId = raidId });
             }
             if (e.NewMessage.Contains("quest finished"))
@@ -167,8 +161,7 @@ namespace TarkovMonitor
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine(ex.Message);
-                    Debug.WriteLine(ex.StackTrace);
+                    ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex));
                 }
             }
         }
@@ -197,15 +190,15 @@ namespace TarkovMonitor
                 {
                     return;
                 }
+                //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
                 process = null;
             }
             var processes = Process.GetProcessesByName("EscapeFromTarkov");
             if (processes.Length == 0) {
-                Debug.WriteLine("EFT not running");
+                DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
                 process = null;
                 return;
             }
-            Debug.WriteLine("EFT is running");
             process = processes.First();
             var exePath = GetProcessFilename.GetFilename(process);
             var path = exePath.Substring(0, exePath.LastIndexOf(Path.DirectorySeparatorChar));
@@ -225,7 +218,6 @@ namespace TarkovMonitor
                     latestLogFolder = logFolder;
                 }
             }
-            Debug.WriteLine($"Using log folder {latestLogFolder}");
             initialRead = new();
             initialRead.Add(LogType.Application, false);
             initialRead.Add(LogType.Notifications, false);
@@ -264,7 +256,7 @@ namespace TarkovMonitor
             }
             if (newType != null)
             {
-                Debug.WriteLine($"Starting new {newType} monitor at {path}");
+                //Debug.WriteLine($"Starting new {newType} monitor at {path}");
                 if (monitors.ContainsKey((LogType)newType))
                 {
                     monitors[(LogType)newType].Stop();
@@ -337,6 +329,22 @@ namespace TarkovMonitor
             public string SoldItemId { get; set; }
             public int soldItemCount { get; set; }
             public Dictionary<string, int> ReceivedItems { get; set; }
+        }
+        public class ExceptionEventArgs : EventArgs
+        {
+            public Exception Exception { get; set; }
+            public ExceptionEventArgs(Exception ex)
+            {
+                this.Exception = ex;
+            }
+        }
+        public class DebugEventArgs : EventArgs
+        {
+            public string Message { get; set; }
+            public DebugEventArgs(string message)
+            {
+                this.Message = message;
+            }
         }
     }
 }
