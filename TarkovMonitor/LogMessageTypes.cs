@@ -143,6 +143,8 @@ namespace TarkovMonitor
         public LoadoutItemPropertiesFoodDrink? FoodDrink { get; set; }
         public LoadoutItemPropertiesFireMode? FireMode { get; set; }
         public LoadoutItemPropertiesScope? Sight { get; set; }
+        public LoadoutItemPropertiesResource? Resource { get; set; }
+        public LoadoutItemPropertiesDogtag? Dogtag { get; set; }
         public int? StackObjectsCount { get; set; }
         public bool? SpawnedInSession { get; set; }
     }
@@ -168,6 +170,23 @@ namespace TarkovMonitor
         public int[] ScopesCurrentCalibPointIndexes { get; set; }
         public int[] ScopesSelectedModes { get; set; }
         public int SelectedScope { get; set; }
+    }
+    public class LoadoutItemPropertiesResource
+    {
+        public int Value { get; set; }
+    }
+    public class LoadoutItemPropertiesDogtag
+    {
+        public string AccountId { get; set; }
+        public string ProfileId { get; set; }
+        public string Side { get; set; }
+        public int Level { get; set; }
+        public string Time { get; set; }
+        public string Status { get; set; }
+        public string KillerAccountId { get; set; }
+        public string KillerProfileId { get; set; }
+        public string KillerName { get; set; }
+        public string WeaponName { get; set; }
     }
     public class PlayerClothes
     {
