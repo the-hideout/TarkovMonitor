@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using MaterialSkin;
 using MaterialSkin.Controls;
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using NAudio.Wave;
 
 namespace TarkovMonitor
@@ -31,6 +31,7 @@ namespace TarkovMonitor
             eft.QuestModified += Eft_QuestModified;
             eft.GroupInvite += Eft_GroupInvite;
             eft.RaidLoaded += Eft_RaidLoaded;
+            eft.MatchingAborted += Eft_MatchingAborted;
             eft.FleaSold += Eft_FleaSold;
             eft.NewLogMessage += Eft_NewLogMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
@@ -52,6 +53,11 @@ namespace TarkovMonitor
             }
             if (txtToken.Text.Length == 0) tabsMain.SelectedIndex = 1;
             //test();
+        }
+
+        private void Eft_MatchingAborted(object? sender, EventArgs e)
+        {
+            staleGroupList = true;
         }
 
         private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
@@ -97,15 +103,24 @@ namespace TarkovMonitor
         }
         private async Task test()
         {
-            //Task.WaitAll(questsTask, mapsTask, itemsTask);
-            await itemsTask;
-            var testDataPath = Path.Join(Directory.GetCurrentDirectory(), "..", "..", "..", "test data", "GroupMatchInviteAccept.log");
-            var testData = eft.getJsonStrings(File.ReadAllText(testDataPath));
-            foreach (var item in testData)
+            try
             {
-                var message = JsonSerializer.Deserialize<GroupMatchInviteAccept>(item);
-                Debug.WriteLine(message.Info.Nickname);
-                Eft_GroupInvite(eft, new GameWatcher.GroupInviteEventArgs(message));
+                //Task.WaitAll(questsTask, mapsTask, itemsTask);
+                await itemsTask;
+                var testDataPath = Path.Join(Directory.GetCurrentDirectory(), "..", "..", "..", "test data", "GroupMatchInviteAccept.log");
+                var testData = eft.getJsonStrings(File.ReadAllText(testDataPath));
+                foreach (var item in testData)
+                {
+                    var loadout = JsonNode.Parse(item);
+                    //var message = JsonSerializer.Deserialize<GroupMatchInviteAccept>(item);
+                    //Debug.WriteLine(loadout.Info.Nickname);
+                    Eft_GroupInvite(eft, new GameWatcher.GroupInviteEventArgs(loadout));
+                }
+            } 
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                Debug.WriteLine(ex.StackTrace);
             }
         }
 
@@ -136,7 +151,7 @@ namespace TarkovMonitor
             var mapName = e.Map;
             var map = maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            logMessage($"Finished queueing for {mapName} as {e.RaidType} in {e.QueueTime} seconds");
+            logMessage($"Starting raid on {mapName} as {e.RaidType} after matching for {e.QueueTime} seconds");
             if (!Properties.Settings.Default.submitQueueTime) return;
             try
             {

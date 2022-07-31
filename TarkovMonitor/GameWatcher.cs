@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace TarkovMonitor
 {
@@ -21,6 +22,7 @@ namespace TarkovMonitor
         public event EventHandler<QuestEventArgs> QuestModified;
         public event EventHandler<GroupInviteEventArgs> GroupInvite;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
+        public event EventHandler MatchingAborted;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
@@ -65,110 +67,131 @@ namespace TarkovMonitor
 
         private void GameWatcher_NewLog(object? sender, LogMonitor.NewLogEventArgs e)
         {
-            NewLogMessage?.Invoke(this, e);
-            if (e.NewMessage.Contains("Got notification | UserMatchOver"))
+            try
             {
-                var rx = new Regex("\"location\": \"(?<map>[^\"]+)\"");
-                var match = rx.Match(e.NewMessage);
-                var map = match.Groups["map"].Value;
-                rx = new Regex("\"shortId\": \"(?<raidId>[^\"]+)\"");
-                match = rx.Match(e.NewMessage);
-                var raidId = match.Groups["raidId"].Value;
-                RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = map, RaidId = raidId });
-            }
-            if (e.NewMessage.Contains("quest finished"))
-            {
-                var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                var match = rx.Match(e.NewMessage);
-                var id = match.Groups["messageId"].Value;
-                QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Finished });
-            }
-            if (e.NewMessage.Contains("quest failed"))
-            {
-                var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                var match = rx.Match(e.NewMessage);
-                var id = match.Groups["messageId"].Value;
-                QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Failed });
-            }
-            if (e.NewMessage.Contains("quest started"))
-            {
-                var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                var match = rx.Match(e.NewMessage);
-                var id = match.Groups["messageId"].Value;
-                QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Started });
-            }
-            if (e.NewMessage.Contains("GroupMatchInviteAccept"))
-            {
-                var jsonStrings = getJsonStrings(e.NewMessage);
-                foreach (var jsonString in jsonStrings)
+                NewLogMessage?.Invoke(this, e);
+                if (e.NewMessage.Contains("Got notification | UserMatchOver"))
                 {
-                    var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
-                    GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    var rx = new Regex("\"location\": \"(?<map>[^\"]+)\"");
+                    var match = rx.Match(e.NewMessage);
+                    var map = match.Groups["map"].Value;
+                    rx = new Regex("\"shortId\": \"(?<raidId>[^\"]+)\"");
+                    match = rx.Match(e.NewMessage);
+                    var raidId = match.Groups["raidId"].Value;
+                    RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = map, RaidId = raidId });
                 }
-            }
-            if (e.NewMessage.Contains("GroupMatchInviteSend"))
-            {
-                var jsonStrings = getJsonStrings(e.NewMessage);
-                foreach (var jsonString in jsonStrings)
+                if (e.NewMessage.Contains("quest finished"))
                 {
-                    var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
-                    GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
+                    var match = rx.Match(e.NewMessage);
+                    var id = match.Groups["messageId"].Value;
+                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Finished });
                 }
-            }
-            if (e.NewMessage.Contains("GamePrepared") && e.Type == LogType.Application)
-            {
-                var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
-                var match = rx.Match(e.NewMessage);
-                lastQueueTime = float.Parse(match.Groups["queueTime"].Value);
-                lastQueueType = "scav";
-            }
-            if (e.NewMessage.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
-            {
-                lastLoadedOnline = false;
-                lastLoadedMap = new Regex("Location: (?<map>[^,]+)").Match(e.NewMessage).Groups["map"].Value;
-                if (e.NewMessage.Contains("RaidMode: Online"))
+                if (e.NewMessage.Contains("quest failed"))
                 {
-                    lastLoadedOnline = true;
+                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
+                    var match = rx.Match(e.NewMessage);
+                    var id = match.Groups["messageId"].Value;
+                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Failed });
                 }
-            }
-            if (e.NewMessage.Contains("application|GameStarting"))
-            {
-                lastQueueType = "pmc";
-            }
-            if (e.NewMessage.Contains("application|GameStarted") && e.Type == LogType.Application)
-            {
-                if (lastLoadedOnline)
+                if (e.NewMessage.Contains("quest started"))
                 {
-                    RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
+                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
+                    var match = rx.Match(e.NewMessage);
+                    var id = match.Groups["messageId"].Value;
+                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Started });
                 }
-                lastLoadedMap = "";
-                lastQueueType = "scav";
-                lastQueueTime = 0;
-            }
-            if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5bdac0b686f7743e1665e09e")) {
-                try
+                if (e.NewMessage.Contains("GroupMatchInviteAccept"))
                 {
-                    var message = JsonSerializer.Deserialize<FleaSoldNewMessage>(getJsonStrings(e.NewMessage).First());
-                    var args = new FleaSoldEventArgs
+                    var jsonStrings = getJsonStrings(e.NewMessage);
+                    foreach (var jsonString in jsonStrings)
                     {
-                        Buyer = message.message.systemData.buyerNickname,
-                        SoldItemId = message.message.systemData.soldItem,
-                        soldItemCount = message.message.systemData.itemCount,
-                        ReceivedItems = new Dictionary<string, int>()
-                    };
-                    if (message.message.hasRewards)
-                    {
-                        foreach (var item in message.message.items.data)
-                        {
-                            args.ReceivedItems.Add(item._tpl, item.upd.StackObjectsCount);
-                        }
+                        //var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
+                        var loadout = JsonNode.Parse(jsonString);
+                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
                     }
-                    FleaSold?.Invoke(this, args);
                 }
-                catch (Exception ex)
+                if (e.NewMessage.Contains("GroupMatchInviteSend"))
                 {
-                    ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex));
+                    var jsonStrings = getJsonStrings(e.NewMessage);
+                    foreach (var jsonString in jsonStrings)
+                    {
+                        //var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
+                        var loadout = JsonNode.Parse(jsonString);
+                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    }
                 }
+                if (e.NewMessage.Contains("GamePrepared") && e.Type == LogType.Application)
+                {
+                    var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
+                    var match = rx.Match(e.NewMessage);
+                    lastQueueTime = float.Parse(match.Groups["queueTime"].Value);
+                    lastQueueType = "scav";
+                }
+                if (e.NewMessage.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
+                {
+                    lastLoadedOnline = false;
+                    lastLoadedMap = new Regex("Location: (?<map>[^,]+)").Match(e.NewMessage).Groups["map"].Value;
+                    if (e.NewMessage.Contains("RaidMode: Online"))
+                    {
+                        lastLoadedOnline = true;
+                    }
+                }
+                if (e.NewMessage.Contains("application|GameStarting"))
+                {
+                    lastQueueType = "pmc";
+                    if (lastLoadedOnline)
+                    {
+                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
+                    }
+                    lastLoadedMap = "";
+                    lastQueueType = "scav";
+                    lastQueueTime = 0;
+                }
+                else if (e.NewMessage.Contains("application|GameStarted") && e.Type == LogType.Application)
+                {
+                    if (lastLoadedOnline && lastQueueTime > 0)
+                    {
+                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
+                    }
+                    lastLoadedMap = "";
+                    lastQueueType = "scav";
+                    lastQueueTime = 0;
+                }
+                if (e.NewMessage.Contains("Network game matching aborted"))
+                {
+                    MatchingAborted?.Invoke(this, new EventArgs());
+                    lastLoadedMap = "";
+                    lastQueueType = "scav";
+                    lastQueueTime = 0;
+                }
+                if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5bdac0b686f7743e1665e09e")) {
+                    var transactions = getJsonStrings(e.NewMessage);
+                    foreach (var json in transactions)
+                    {
+                        if (!json.Contains("buyerNickname")) continue;
+                        var message = JsonSerializer.Deserialize<FleaSoldNewMessage>(json);
+                        var args = new FleaSoldEventArgs
+                        {
+                            Buyer = message.message.systemData.buyerNickname,
+                            SoldItemId = message.message.systemData.soldItem,
+                            soldItemCount = message.message.systemData.itemCount,
+                            ReceivedItems = new Dictionary<string, int>()
+                        };
+                        if (message.message.hasRewards)
+                        {
+                            foreach (var item in message.message.items.data)
+                            {
+                                args.ReceivedItems.Add(item._tpl, item.upd.StackObjectsCount);
+                            }
+                        }
+                        FleaSold?.Invoke(this, args);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex));
             }
         }
 
@@ -317,6 +340,17 @@ namespace TarkovMonitor
                 this.GroupInviteType = GroupInviteType.Sent;
                 this.PlayerInfo = inviteSend.fromProfile.Info;
                 this.PlayerLoadout = inviteSend.fromProfile.PlayerVisualRepresentation;
+            }
+            public GroupInviteEventArgs(JsonNode node)
+            {
+                this.GroupInviteType = GroupInviteType.Accepted;
+                if (node["fromProfile"] != null)
+                {
+                    this.GroupInviteType = GroupInviteType.Sent;
+                    node = node["fromProfile"];
+                }
+                this.PlayerInfo = new PlayerInfo(node["Info"]);
+                this.PlayerLoadout = new PlayerLoadout(node["PlayerVisualRepresentation"]);
             }
             public override string ToString()
             {
