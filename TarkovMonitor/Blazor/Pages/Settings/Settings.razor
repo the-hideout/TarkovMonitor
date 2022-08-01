@@ -1,0 +1,37 @@
+﻿@page "/settings"
+@inject GameWatcher eft
+@inject MessageLog messageLog
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-0" Spacing="0">
+	<MudItem xs="12">
+        <MudPaper Class="pa-16 ma-2" Elevation="3">
+            Raid Start
+        </MudPaper>
+	</MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-16 ma-2" Elevation="3">
+            Queue Time Data
+        </MudPaper>
+	</MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-16 ma-2" Elevation="3">
+            TarkovTracker
+        </MudPaper>
+	</MudItem>
+</MudGrid>
+
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+	public void Dispose()
+	{
+	}
+
+}

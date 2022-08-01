@@ -1,0 +1,30 @@
+﻿@page "/"
+@page "/app"
+@using System.Diagnostics
+@inject GameWatcher eft
+@inject MessageLog messageLog
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-0" Spacing="0">
+	<MudItem xs="12">
+        <MessageBoard>
+        </MessageBoard>
+	</MudItem>
+</MudGrid>
+
+@code {
+    private int messageCount = 0;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        messageCount = messageLog.Messages.Count;
+    }
+
+	public void Dispose()
+	{
+	}
+
+}

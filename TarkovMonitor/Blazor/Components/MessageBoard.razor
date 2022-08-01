@@ -1,0 +1,39 @@
+﻿@inject MessageLog messageLog
+<MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center">
+    @foreach (MonitorMessage message in messageLog.Messages)
+    {
+        <MudPaper Class="d-flex align-enter py-1 px-3 mud-theme-secondary" Elevation="3">
+            <MudIcon Icon="@GetTypeIcon(message.Type)" Title="Flea Market Sale" Class="mr-2 my-2"/>
+            <span class="my-auto">
+                @message.Message
+            </span>
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        messageLog.newMessage += MessageAdded;
+    }
+
+    private string GetTypeIcon(string type)
+    {
+        switch (type)
+        {
+            case "flea":
+                return Icons.Material.Filled.Sell;
+            case "debug":
+                return Icons.Material.Filled.BugReport;
+            default:
+                return Icons.Material.Filled.Info;
+        }
+    }
+
+    private void MessageAdded(object? sender, NewLogMessageArgs e)
+    {
+        InvokeAsync(() => StateHasChanged());
+    }
+}

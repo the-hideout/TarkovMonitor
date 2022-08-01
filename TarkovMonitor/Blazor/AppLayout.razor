@@ -1,0 +1,44 @@
+﻿@using System.Diagnostics
+@inherits LayoutComponentBase
+@layout MainLayout
+
+@inject IJSRuntime JSRuntime;
+
+<div style="width: 100%; height: 100%" class="tarkov-dev-bg">
+	<MudLayout>
+		<MudAppBar Elevation="1" Bottom="false" Dense="true">
+			<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
+			Messages
+			<MudSpacer/>
+		</MudAppBar>
+		<MudDrawer @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive">
+			<MudDrawerHeader LinkToIndex="true">
+				<div>
+					<img src="tarkov-dev-logo.svg" width="100%" style="vertical-align: middle;"/>
+					<MudText Align="Align.Center" Typo="Typo.h6">Tarkov Monitor</MudText>
+				</div>
+			</MudDrawerHeader>
+			<MudNavMenu Color="Color.Secondary" Bordered="true">
+				<MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Filled.Message">Messages</MudNavLink>
+				<MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Filled.Settings">Settings</MudNavLink>
+			</MudNavMenu>
+		</MudDrawer>
+		<MudMainContent Class="mt-2">
+			@Body
+		</MudMainContent>
+	</MudLayout>
+</div>
+
+@code {
+
+	bool drawerOpen = true;
+
+	[CascadingParameter]
+    public MudTheme currentTheme { get; set; }
+
+	void ToggleDrawer()
+	{
+		drawerOpen = !drawerOpen;
+	}
+
+}
