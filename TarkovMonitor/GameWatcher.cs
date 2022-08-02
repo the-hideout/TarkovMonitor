@@ -102,8 +102,16 @@ namespace TarkovMonitor
                 var jsonStrings = getJsonStrings(e.NewMessage);
                 foreach (var jsonString in jsonStrings)
                 {
-                    var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
-                    GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    try
+                    {
+                        var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
+                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    }
+                    catch(Exception ex)
+                    {
+                        Debug.WriteLine(ex.ToString());
+                    }
+                    
                 }
             }
             if (e.NewMessage.Contains("GroupMatchInviteSend"))
@@ -111,8 +119,16 @@ namespace TarkovMonitor
                 var jsonStrings = getJsonStrings(e.NewMessage);
                 foreach (var jsonString in jsonStrings)
                 {
-                    var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
-                    GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    try
+                    {
+                        var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
+                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    }
+                    catch(Exception ex)
+                    {
+                        Debug.WriteLine(ex.ToString());
+                    }
+                    
                 }
             }
             if (e.NewMessage.Contains("GamePrepared") && e.Type == LogType.Application)

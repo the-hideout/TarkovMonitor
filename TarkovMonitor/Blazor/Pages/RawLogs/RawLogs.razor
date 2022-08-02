@@ -1,15 +1,13 @@
-﻿@page "/"
-@page "/app"
+﻿@page "/raw"
 @using System.Diagnostics
 @inject GameWatcher eft
-@inject MessageLog messageLog
 @layout AppLayout
 @implements IDisposable
 
 <MudGrid Class="pa-0" Spacing="0">
 	<MudItem xs="12">
-        <MessageBoard>
-        </MessageBoard>
+        <LogBoard>
+        </LogBoard>
 	</MudItem>
 </MudGrid>
 
@@ -34,7 +32,7 @@
         base.OnAfterRender(firstRender);
         if (firstRender)
         {
-            AppLayout.SetTitle("Dashboard");
+            AppLayout.SetTitle("Raw Logs");
         }
     }
 

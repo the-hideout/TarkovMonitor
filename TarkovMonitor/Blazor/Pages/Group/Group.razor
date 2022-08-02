@@ -1,0 +1,66 @@
+﻿@page "/group"
+@using System.Diagnostics
+@using TarkovMonitor.GroupLoadout
+@inject GameWatcher eft
+@inject GroupManager groupManager
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-3" Spacing="0">
+	<MudItem xs="12">
+        @if (groupManager.GroupMembers.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">You aren't in a group or have party members yet.</MudAlert>
+        }else{
+            <MudTabs Elevation="3" Rounded="true" PanelClass="pa-3">
+                @foreach(var member in groupManager.GroupMembers) {
+                    <MudTab Label="@member.Key" Icon="@Icons.Filled.Person">
+                        <MudGrid Class="pa-0" Spacing="0">
+                            <MudItem xs="12">
+                                Test
+                            </MudItem>
+                        </MudGrid>
+                    </MudTab>
+                }
+            </MudTabs>
+        }
+	</MudItem>
+</MudGrid>
+
+@code {
+    [CascadingParameter(Name="AppLayout")]
+    public AppLayout AppLayout { get; set; }
+    
+    private int messageCount = 0;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            AppLayout.SetTitle("Group");
+            groupManager.GroupMemberChanged += OnGroupMemberChanged;
+        }
+    }
+
+    // React to GroupManager update events
+    public void OnGroupMemberChanged(object? sender, GroupMemberChangedArgs e)
+    {
+        StateHasChanged();
+    }
+
+	public void Dispose()
+	{
+	}
+
+}
