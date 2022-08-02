@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
+using TarkovMonitor.GroupLoadout;
 
 namespace TarkovMonitor
 {
@@ -20,6 +21,8 @@ namespace TarkovMonitor
     {
         private GameWatcher eft;
         private MessageLog messageLog;
+        private LogRepository logRepository;
+        private GroupManager groupManager;
         private List<TarkovDevApi.Quest> quests;
         private List<TarkovDevApi.Map> maps;
         private List<TarkovDevApi.Item> items;
@@ -36,9 +39,18 @@ namespace TarkovMonitor
             eft.ExceptionThrown += Eft_ExceptionThrown;
             eft.RaidLoaded += Eft_RaidLoaded;
             eft.RaidExited += Eft_RaidExited;
+            eft.QuestModified += Eft_QuestModified;
+            eft.NewLogMessage += Eft_NewLogMessage;
+            eft.GroupInvite += Eft_GroupInvite;
 
-            // Singleton message log used to record and display messages for the TarkovMonitor
+            // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
+
+            // Singleton log repository to record, display, and analyze logs for TarkovMonitor
+            logRepository = new LogRepository();
+
+            // Singleton Group tracker
+            groupManager = new GroupManager();
 
             // Items collection
             items = new List<TarkovDevApi.Item>();
@@ -50,12 +62,17 @@ namespace TarkovMonitor
             maps = new List<TarkovDevApi.Map>();
             updateMaps();
 
+            // TarkovTracker initialization
+            TarkovTracker.Init();
+
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
             var services = new ServiceCollection();
             services.AddWindowsFormsBlazorWebView();
             services.AddMudServices();
             services.AddSingleton<GameWatcher>(eft);
             services.AddSingleton<MessageLog>(messageLog);
+            services.AddSingleton<LogRepository>(logRepository);
+            services.AddSingleton<GroupManager>(groupManager);
             services.AddSingleton<List<TarkovDevApi.Item>>(items);
             blazorWebView1.HostPage = "wwwroot\\index.html";
             blazorWebView1.Services = services.BuildServiceProvider();
@@ -74,7 +91,7 @@ namespace TarkovMonitor
             try
             {
                 items = await TarkovDevApi.GetItems();
-                messageLog.AddMessage($"Retrieved {items.Count} items from tarkov.dev");
+                messageLog.AddMessage($"Retrieved {items.Count} items from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
@@ -87,7 +104,7 @@ namespace TarkovMonitor
             try
             {
                 quests = await TarkovDevApi.GetQuests();
-                messageLog.AddMessage($"Retrieved {quests.Count} quests from tarkov.dev");
+                messageLog.AddMessage($"Retrieved {quests.Count} quests from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
@@ -100,11 +117,49 @@ namespace TarkovMonitor
             try
             {
                 maps = await TarkovDevApi.GetMaps();
-                messageLog.AddMessage($"Retrieved {maps.Count} maps from tarkov.dev");
+                messageLog.AddMessage($"Retrieved {maps.Count} maps from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
                 messageLog.AddMessage($"Error updating maps: {ex.Message}");
+            }
+        }
+
+        private void Eft_NewLogMessage(object? sender, LogMonitor.NewLogEventArgs e)
+        {
+            logRepository.AddLog(e.NewMessage, e.Type.ToString());
+        }
+
+        private void Eft_GroupInvite(object? sender, GameWatcher.GroupInviteEventArgs e)
+        {
+            groupManager.UpdateGroupMember(e.PlayerInfo.Nickname, new GroupMember(e.PlayerInfo.Nickname, e.PlayerLoadout));
+            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.", "group");
+        }
+
+        private async void Eft_QuestModified(object? sender, GameWatcher.QuestEventArgs e)
+        {
+            foreach (var quest in quests)
+            {
+                if (e.Status == GameWatcher.QuestStatus.Started && (quest.descriptionMessageId == e.MessageId || quest.startMessageId == e.MessageId))
+                {
+                    messageLog.AddMessage($"Started quest {quest.name}", "quest");
+                    return;
+                }
+                if (e.Status == GameWatcher.QuestStatus.Finished && quest.successMessageId == e.MessageId)
+                {
+                    messageLog.AddMessage($"Completed quest {quest.name}", "quest");
+                    if (quest.tarkovDataId != null)
+                    {
+                        var response = await TarkovTracker.SetQuestComplete((int)quest.tarkovDataId);
+                        messageLog.AddMessage(response);
+                    }
+                    return;
+                }
+                if (e.Status == GameWatcher.QuestStatus.Failed && quest.failMessageId == e.MessageId)
+                {
+                    messageLog.AddMessage($"Failed quest {quest.name}", "quest");
+                    return;
+                }
             }
         }
 

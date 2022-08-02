@@ -1,0 +1,30 @@
+﻿@inject LogRepository logRepository
+<MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
+    @if (logRepository.Logs.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No new logs have been seen since launching the monitor.</MudAlert>
+    }else{
+        @foreach (LogLine line in logRepository.Logs)
+        {
+            <MudPaper Class="d-flex align-enter py-1 px-3 mud-theme-secondary" Elevation="3">
+                <span class="my-auto">
+                    @line.Message
+                </span>
+            </MudPaper>
+        }
+    }
+</MudStack>
+
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        logRepository.newLog += LogAdded;
+    }
+
+    private void LogAdded(object? sender, NewLogLineArgs e)
+    {
+        InvokeAsync(() => StateHasChanged());
+    }
+}

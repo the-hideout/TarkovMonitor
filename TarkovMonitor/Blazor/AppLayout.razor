@@ -8,7 +8,7 @@
 	<MudLayout>
 		<MudAppBar Elevation="1" Bottom="false" Dense="true">
 			<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
-			Messages
+			@CurrentPageTitle
 			<MudSpacer/>
 		</MudAppBar>
 		<MudDrawer @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive">
@@ -20,11 +20,15 @@
 			</MudDrawerHeader>
 			<MudNavMenu Color="Color.Secondary" Bordered="true">
 				<MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Filled.Message">Messages</MudNavLink>
+				<MudNavLink Href="/group" Match="NavLinkMatch.All" Icon="@Icons.Filled.Group">Group</MudNavLink>
 				<MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Filled.Settings">Settings</MudNavLink>
+                <MudNavLink Href="/raw" Match="NavLinkMatch.All" Icon="@Icons.Filled.RawOn">Raw Logs</MudNavLink>
 			</MudNavMenu>
 		</MudDrawer>
 		<MudMainContent Class="mt-2">
-			@Body
+			<CascadingValue Name="AppLayout" Value="this">
+				@Body
+			</CascadingValue>
 		</MudMainContent>
 	</MudLayout>
 </div>
@@ -33,8 +37,12 @@
 
 	bool drawerOpen = true;
 
-	[CascadingParameter]
-    public MudTheme currentTheme { get; set; }
+	public string CurrentPageTitle = "TarkovMonitor";
+
+	public void SetTitle(string value) {
+		CurrentPageTitle = value;
+		StateHasChanged();
+	}
 
 	void ToggleDrawer()
 	{
