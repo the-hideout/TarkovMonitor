@@ -1,0 +1,43 @@
+﻿@page "/raw"
+@using System.Diagnostics
+@inject GameWatcher eft
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-0" Spacing="0">
+	<MudItem xs="12">
+        <LogBoard>
+        </LogBoard>
+	</MudItem>
+</MudGrid>
+
+@code {
+    [CascadingParameter(Name="AppLayout")]
+    public AppLayout AppLayout { get; set; }
+    
+    private int messageCount = 0;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            AppLayout.SetTitle("Raw Logs");
+        }
+    }
+
+	public void Dispose()
+	{
+	}
+
+}

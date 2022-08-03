@@ -1,0 +1,17 @@
+﻿@inject TarkovDevRepository devRepository
+<MudImage Src="@itemIconURL" Width="@imgWidth" Height="@imgHeight" Class="ma-2"/>
+
+@code {
+    [Parameter]
+    public LoadoutItem[] Loadout { get; set; } = { };
+
+    [Parameter]
+    public LoadoutItem Item { get; set; }
+
+    private TarkovDevApi.Item? devItem => devRepository.Items.Where(i => i.id == Item._tpl).FirstOrDefault();
+
+    private int imgWidth => devItem != null ? devItem.width * 32 : 96;
+    private int imgHeight => devItem != null ? devItem.height * 32 : 96;
+
+    private string itemIconURL => $"https://assets.tarkov.dev/{Item._tpl}-icon.jpg";
+}
