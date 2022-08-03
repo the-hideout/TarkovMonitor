@@ -1,4 +1,5 @@
-﻿@inject LogRepository logRepository
+﻿@using Humanizer
+@inject LogRepository logRepository
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
     @if (logRepository.Logs.Count == 0)
     {
@@ -6,11 +7,18 @@
     }else{
         @foreach (LogLine line in logRepository.Logs)
         {
-            <MudPaper Class="d-flex align-enter py-1 px-3 mud-theme-secondary" Elevation="3">
-                <span class="my-auto">
-                    @line.Message
-                </span>
-            </MudPaper>
+            <div class="">
+                <div class="d-block">
+                    <MudPaper Class="d-flex align-enter py-1 px-3 mud-theme-secondary" Elevation="0" Square>
+                        <span class="my-auto" style="white-space: pre-wrap">
+                            @line.Message
+                        </span>
+                    </MudPaper>
+                </div>
+                <div class="d-flex justify-end mt-1">
+                    <MudText Style="font-size: .8em">@line.Time.ToUniversalTime().Humanize()</MudText>
+                </div>
+            </div>
         }
     }
 </MudStack>

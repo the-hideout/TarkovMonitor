@@ -12,15 +12,23 @@
         {
             <MudAlert Severity="Severity.Info">You aren't in a group or have party members yet.</MudAlert>
         }else{
-            <MudTabs Elevation="3" Rounded="true" PanelClass="pa-3">
-                @foreach(var member in groupManager.GroupMembers) {
-                    <MudTab Label="@member.Key" Icon="@Icons.Filled.Person">
-                        <MudGrid Class="pa-0" Spacing="0">
-                            <MudItem xs="12">
-                                Test
-                            </MudItem>
-                        </MudGrid>
-                    </MudTab>
+            <MudTabs Elevation="3" Rounded="true" Centered="true" PanelClass="pa-3">
+                @foreach(KeyValuePair<string, GroupMember> member in groupManager.GroupMembers) 
+                {
+                    <MudTabPanel Text="@member.Key" Icon="@Icons.Material.Filled.Person">
+                        <div class="d-flex justify-space-between align-center">
+                            <div class="d-flex align-center"><LevelIcon Level="@member.Value.Loadout.Info.Level" Width="48" /><MudText Typo="Typo.h4">@member.Value.Loadout.Info.Level</MudText></div>
+                            <div><MudText Typo="Typo.h4">@member.Value.Loadout.Info.Nickname</MudText></div>
+                            <div><MudText Typo="Typo.h4">@member.Value.Loadout.Info.Side.ToUpper()</MudText></div>
+                        </div>
+                        <div>
+                            @foreach(LoadoutItem item in parentItems(member.Value.Loadout.Equipment.Items))
+                            {
+                                
+                                    <LoadoutRecursor Loadout="@member.Value.Loadout.Equipment.Items" Item="item" />
+                            }
+                        </div>
+                    </MudTabPanel>
                 }
             </MudTabs>
         }
@@ -30,7 +38,7 @@
 @code {
     [CascadingParameter(Name="AppLayout")]
     public AppLayout AppLayout { get; set; }
-    
+
     private int messageCount = 0;
 
     protected override void OnInitialized()
@@ -51,6 +59,13 @@
             AppLayout.SetTitle("Group");
             groupManager.GroupMemberChanged += OnGroupMemberChanged;
         }
+    }
+
+    public LoadoutItem[] parentItems(LoadoutItem[] loadout)
+    {
+        LoadoutItem defaultInventory = loadout.Where(i => i._tpl == "55d7217a4bdc2d86028b456d").First();
+        LoadoutItem pocketInventory = loadout.Where(i => i._tpl == "627a4e6b255f7527fb05a0f6").First();
+        return loadout.Where(i => (i.parentId == defaultInventory._id || i.parentId == pocketInventory._id) && i._id != pocketInventory._id).ToArray();
     }
 
     // React to GroupManager update events

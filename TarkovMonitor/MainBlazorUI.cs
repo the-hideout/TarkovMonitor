@@ -23,9 +23,7 @@ namespace TarkovMonitor
         private MessageLog messageLog;
         private LogRepository logRepository;
         private GroupManager groupManager;
-        private List<TarkovDevApi.Quest> quests;
-        private List<TarkovDevApi.Map> maps;
-        private List<TarkovDevApi.Item> items;
+        private TarkovDevRepository tarkovdevRepository;
 
         public MainBlazorUI()
         {
@@ -52,14 +50,12 @@ namespace TarkovMonitor
             // Singleton Group tracker
             groupManager = new GroupManager();
 
-            // Items collection
-            items = new List<TarkovDevApi.Item>();
+            // Singleton tarkov.dev repository (to DI the results of the queries)
+            tarkovdevRepository = new TarkovDevRepository();
+
+            // Update tarkov.dev Repository data
             updateItems();
-
-            quests = new List<TarkovDevApi.Quest>();
             updateQuests();
-
-            maps = new List<TarkovDevApi.Map>();
             updateMaps();
 
             // TarkovTracker initialization
@@ -73,7 +69,7 @@ namespace TarkovMonitor
             services.AddSingleton<MessageLog>(messageLog);
             services.AddSingleton<LogRepository>(logRepository);
             services.AddSingleton<GroupManager>(groupManager);
-            services.AddSingleton<List<TarkovDevApi.Item>>(items);
+            services.AddSingleton<TarkovDevRepository>(tarkovdevRepository);
             blazorWebView1.HostPage = "wwwroot\\index.html";
             blazorWebView1.Services = services.BuildServiceProvider();
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
@@ -90,8 +86,8 @@ namespace TarkovMonitor
         {
             try
             {
-                items = await TarkovDevApi.GetItems();
-                messageLog.AddMessage($"Retrieved {items.Count} items from tarkov.dev", "update");
+                tarkovdevRepository.Items = await TarkovDevApi.GetItems();
+                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Items.Count} items from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
@@ -103,8 +99,8 @@ namespace TarkovMonitor
         {
             try
             {
-                quests = await TarkovDevApi.GetQuests();
-                messageLog.AddMessage($"Retrieved {quests.Count} quests from tarkov.dev", "update");
+                tarkovdevRepository.Quests = await TarkovDevApi.GetQuests();
+                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Quests.Count} quests from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
@@ -116,8 +112,8 @@ namespace TarkovMonitor
         {
             try
             {
-                maps = await TarkovDevApi.GetMaps();
-                messageLog.AddMessage($"Retrieved {maps.Count} maps from tarkov.dev", "update");
+                tarkovdevRepository.Maps = await TarkovDevApi.GetMaps();
+                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Maps.Count} maps from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
@@ -138,7 +134,7 @@ namespace TarkovMonitor
 
         private async void Eft_QuestModified(object? sender, GameWatcher.QuestEventArgs e)
         {
-            foreach (var quest in quests)
+            foreach (var quest in tarkovdevRepository.Quests)
             {
                 if (e.Status == GameWatcher.QuestStatus.Started && (quest.descriptionMessageId == e.MessageId || quest.startMessageId == e.MessageId))
                 {
@@ -165,14 +161,14 @@ namespace TarkovMonitor
 
         private void Eft_FleaSold(object? sender, GameWatcher.FleaSoldEventArgs e)
         {
-            if (items != null)
+            if (tarkovdevRepository.Items != null)
             {
                 List<string> received = new();
                 foreach (var receivedId in e.ReceivedItems.Keys)
                 {
-                    received.Add($"{e.ReceivedItems[receivedId]} {items.Find(item => item.id == receivedId).name}");
+                    received.Add($"{e.ReceivedItems[receivedId]} {tarkovdevRepository.Items.Find(item => item.id == receivedId).name}");
                 }
-                var soldItemName = items.Find(item => item.id == e.SoldItemId).name;
+                var soldItemName = tarkovdevRepository.Items.Find(item => item.id == e.SoldItemId).name;
                 messageLog.AddMessage($"{e.Buyer} purchesed {e.soldItemCount} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
             }
         }
@@ -190,7 +186,7 @@ namespace TarkovMonitor
         {
             if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
             var mapName = e.Map;
-            var map = maps.Find(m => m.nameId == mapName);
+            var map = tarkovdevRepository.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
             messageLog.AddMessage($"Finished queueing for {mapName} as {e.RaidType} in {e.QueueTime} seconds", "queue");
             if (!Properties.Settings.Default.submitQueueTime) return;
@@ -209,7 +205,7 @@ namespace TarkovMonitor
             try
             {
                 var mapName = e.Map;
-                var map = maps.Find(m => m.nameId == mapName);
+                var map = tarkovdevRepository.Maps.Find(m => m.nameId == mapName);
                 if (map != null) mapName = map.name;
                 messageLog.AddMessage($"Exited {mapName} raid ({e.RaidId})", "raidleave");
             }

@@ -62,6 +62,8 @@ namespace TarkovMonitor
                         items {
                             id
                             name
+                            width
+                            height
                         }
                     }
                 "
@@ -127,6 +129,8 @@ namespace TarkovMonitor
         {
             public string id { get; set; }
             public string name { get; set; }
+            public int width { get; set; }
+            public int height { get; set; }
         }
     }
 }

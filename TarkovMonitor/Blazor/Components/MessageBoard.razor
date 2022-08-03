@@ -1,4 +1,6 @@
-﻿@inject MessageLog messageLog
+﻿@using Humanizer;
+@using System.Threading
+@inject MessageLog messageLog
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
     @if (messageLog.Messages.Count == 0)
     {
@@ -6,25 +8,38 @@
     }else{
         @foreach (MonitorMessage message in messageLog.Messages)
         {
-            <MudPaper Class="d-flex align-enter py-1 px-3 mud-theme-secondary" Elevation="3">
-                <MudIcon Icon="@GetTypeIcon(message.Type)" Title="Flea Market Sale" Class="mr-2 my-2"/>
-                <span class="my-auto">
-                    @message.Message
-                </span>
-            </MudPaper>
+            <div class="">
+                <div class="d-block">
+                    <MudPaper Class="align-center py-2 px-3 mud-theme-secondary" Elevation="3">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@GetTypeIcon(message.Type)" Title="Flea Market Sale" Class="mr-2"/>
+                            <span class="">
+                                @message.Message
+                            </span>
+                        </div>
+                    </MudPaper>
+                </div>
+                <div class="d-flex justify-end mt-1">
+                    <MudText Style="font-size: .8em">@message.Time.ToUniversalTime().Humanize()</MudText>
+                </div>
+            </div>
         }
     }
     
 </MudStack>
 
 @code {
+    // Force refresh every minute to update timestamps
+    Timer? timer;  
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
         messageLog.newMessage += MessageAdded;
+        timer = new Timer(RefreshCallback, null, 1000, 1000);
     }
-
+    
     private string GetTypeIcon(string type)
     {
         switch (type)
@@ -42,6 +57,11 @@
             default:
                 return Icons.Material.Filled.Info;
         }
+    }
+
+    private void RefreshCallback(object? state)
+    {
+        InvokeAsync(() => StateHasChanged());
     }
 
     private void MessageAdded(object? sender, NewLogMessageArgs e)
