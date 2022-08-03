@@ -224,7 +224,6 @@ namespace TarkovMonitor
             }
             var processes = Process.GetProcessesByName("EscapeFromTarkov");
             if (processes.Length == 0) {
-                DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
                 process = null;
                 return;
             }
