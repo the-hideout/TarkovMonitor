@@ -26,6 +26,7 @@ namespace TarkovMonitor
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
+        public event EventHandler GameStarted;
         public GameWatcher()
         {
             initialRead = new();
@@ -224,10 +225,11 @@ namespace TarkovMonitor
             }
             var processes = Process.GetProcessesByName("EscapeFromTarkov");
             if (processes.Length == 0) {
-                DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
+                //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
                 process = null;
                 return;
             }
+            GameStarted?.Invoke(this, new EventArgs());
             process = processes.First();
             var exePath = GetProcessFilename.GetFilename(process);
             var path = exePath.Substring(0, exePath.LastIndexOf(Path.DirectorySeparatorChar));

@@ -19,11 +19,13 @@ namespace TarkovMonitor.GroupLoadout
     {
         // A list of GroupMembers
         public Dictionary<string, GroupMember> GroupMembers { get; set; }
+        public bool Stale { get; set; }
 
         // Constructor
         public GroupManager()
         {
             GroupMembers = new Dictionary<string, GroupMember>();
+            Stale = false;
         }
 
         // Add a new GroupMember to the list
@@ -48,6 +50,7 @@ namespace TarkovMonitor.GroupLoadout
 
         public void UpdateGroupMember(string name, GroupMember member)
         {
+            if (Stale && GroupMembers.Count > 0) ClearGroup();
             GroupMember? currentMember = GroupMembers.FirstOrDefault(m => m.Key == name).Value;
             if(currentMember != null)
             {

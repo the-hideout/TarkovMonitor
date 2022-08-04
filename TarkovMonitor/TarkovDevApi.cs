@@ -24,6 +24,7 @@ namespace TarkovMonitor
                             id
                             tarkovDataId
                             name
+                            wikiLink
                             descriptionMessageId
                             startMessageId
                             successMessageId
@@ -104,6 +105,7 @@ namespace TarkovMonitor
             public string id { get; set; }
             public int? tarkovDataId { get; set; }
             public string name { get; set; }
+            public string? wikiLink { get; set; }
             public string descriptionMessageId { get; set; }
             public string startMessageId { get; set; } 
             public string successMessageId { get; set; }

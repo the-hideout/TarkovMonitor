@@ -1,4 +1,5 @@
 ﻿@using Humanizer;
+@using System.Diagnostics;
 @using System.Threading
 @inject MessageLog messageLog
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
@@ -12,8 +13,8 @@
                 <div class="d-block">
                     <MudPaper Class="align-center py-2 px-3 mud-theme-secondary" Elevation="3">
                         <div class="d-flex align-center">
-                            <MudIcon Icon="@GetTypeIcon(message.Type)" Title="Flea Market Sale" Class="mr-2"/>
-                            <span class="">
+                            <MudIcon Icon="@GetTypeIcon(message.Type)" Title="@GetTypeTitle(message.Type)" Class="mr-2"/>
+                            <span class="" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">
                                 @message.Message
                             </span>
                         </div>
@@ -39,7 +40,7 @@
         messageLog.newMessage += MessageAdded;
         timer = new Timer(RefreshCallback, null, 1000, 1000);
     }
-    
+
     private string GetTypeIcon(string type)
     {
         switch (type)
@@ -58,6 +59,42 @@
                 return Icons.Material.Filled.Info;
         }
     }
+
+    private string GetTypeTitle(string type)
+    {
+        switch (type)
+        {
+            case "flea":
+                return "Flea Market Sale";
+            case "debug":
+                return "Debug";
+            case "exception":
+                return "Error";
+            case "update":
+                return "Update";
+            case "quest":
+                return "Quest";
+            default:
+                return "Info";
+        }
+    }
+
+    private string GetMessageStyle(string url)
+    {
+        if (url.Length > 0) return "cursor: pointer;";
+        return "";
+    }
+
+    private void OpenURL(string url)
+    {
+        if (url.Length == 0) return;
+        var psi = new ProcessStartInfo
+		{
+			FileName = url,
+			UseShellExecute = true,
+		};
+		Process.Start(psi);
+	}
 
     private void RefreshCallback(object? state)
     {

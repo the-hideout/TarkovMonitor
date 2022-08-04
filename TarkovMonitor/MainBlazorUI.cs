@@ -40,6 +40,8 @@ namespace TarkovMonitor
             eft.QuestModified += Eft_QuestModified;
             eft.NewLogMessage += Eft_NewLogMessage;
             eft.GroupInvite += Eft_GroupInvite;
+            eft.MatchingAborted += Eft_GroupStaleEvent;
+            eft.GameStarted += Eft_GroupStaleEvent;
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
@@ -77,6 +79,11 @@ namespace TarkovMonitor
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
         }
 
+        private void Eft_GroupStaleEvent(object? sender, EventArgs e)
+        {
+            groupManager.Stale = true;
+        }
+
         private void WebView_CoreWebView2InitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
         {
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
@@ -87,7 +94,7 @@ namespace TarkovMonitor
             try
             {
                 tarkovdevRepository.Items = await TarkovDevApi.GetItems();
-                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Items.Count} items from tarkov.dev", "update");
+                messageLog.AddMessage($"Retrieved {String.Format("{0:n0}", tarkovdevRepository.Items.Count)} items from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
@@ -138,16 +145,23 @@ namespace TarkovMonitor
             {
                 if (e.Status == GameWatcher.QuestStatus.Started && (quest.descriptionMessageId == e.MessageId || quest.startMessageId == e.MessageId))
                 {
-                    messageLog.AddMessage($"Started quest {quest.name}", "quest");
+                    messageLog.AddMessage($"Started quest {quest.name}", "quest", quest.wikiLink);
                     return;
                 }
                 if (e.Status == GameWatcher.QuestStatus.Finished && quest.successMessageId == e.MessageId)
                 {
                     messageLog.AddMessage($"Completed quest {quest.name}", "quest");
-                    if (quest.tarkovDataId != null)
+                    if (quest.tarkovDataId != null && Properties.Settings.Default.tarkovTrackerToken.Length > 0)
                     {
-                        var response = await TarkovTracker.SetQuestComplete((int)quest.tarkovDataId);
-                        messageLog.AddMessage(response);
+                        try
+                        {
+                            var response = await TarkovTracker.SetQuestComplete((int)quest.tarkovDataId);
+                            //messageLog.AddMessage(response, "quest");
+                        }
+                        catch (Exception ex)
+                        {
+                            messageLog.AddMessage($"Error updating Tarkov Tracker quest progression: {ex.Message}", "exception");
+                        }
                     }
                     return;
                 }
@@ -166,10 +180,10 @@ namespace TarkovMonitor
                 List<string> received = new();
                 foreach (var receivedId in e.ReceivedItems.Keys)
                 {
-                    received.Add($"{e.ReceivedItems[receivedId]} {tarkovdevRepository.Items.Find(item => item.id == receivedId).name}");
+                    received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {tarkovdevRepository.Items.Find(item => item.id == receivedId).name}");
                 }
                 var soldItemName = tarkovdevRepository.Items.Find(item => item.id == e.SoldItemId).name;
-                messageLog.AddMessage($"{e.Buyer} purchesed {e.soldItemCount} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
+                messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.soldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
             }
         }
         private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
@@ -188,7 +202,7 @@ namespace TarkovMonitor
             var mapName = e.Map;
             var map = tarkovdevRepository.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            messageLog.AddMessage($"Finished queueing for {mapName} as {e.RaidType} in {e.QueueTime} seconds", "queue");
+            messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType} after matching for {e.QueueTime} seconds");
             if (!Properties.Settings.Default.submitQueueTime) return;
             try
             {
@@ -202,6 +216,7 @@ namespace TarkovMonitor
 
         private void Eft_RaidExited(object? sender, GameWatcher.RaidExitedEventArgs e)
         {
+            groupManager.Stale = true;
             try
             {
                 var mapName = e.Map;
