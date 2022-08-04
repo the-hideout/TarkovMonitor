@@ -77,10 +77,6 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
-            if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
-            {
-                TarkovTracker.SetToken(Properties.Settings.Default.tarkovTrackerToken);
-            }
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)

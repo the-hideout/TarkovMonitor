@@ -22,6 +22,10 @@ namespace TarkovMonitor
 
         public static async Task<OpenApiDocument> Init()
         {
+            if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
+            {
+                token = Properties.Settings.Default.tarkovTrackerToken;
+            }
             docs = new OpenApiStreamReader().Read(await client.GetStreamAsync("https://tarkovtracker.io/openapi.yaml"), out var diagnostic);
             Initialized?.Invoke(typeof(TarkovTracker), new InitializedEventArgs { Document = docs });
             return docs;
