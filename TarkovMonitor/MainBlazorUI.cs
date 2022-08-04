@@ -151,12 +151,12 @@ namespace TarkovMonitor
                 if (e.Status == GameWatcher.QuestStatus.Finished && quest.successMessageId == e.MessageId)
                 {
                     messageLog.AddMessage($"Completed quest {quest.name}", "quest");
-                    if (quest.tarkovDataId != null)
+                    if (quest.tarkovDataId != null && Properties.Settings.Default.tarkovTrackerToken.Length > 0)
                     {
                         try
                         {
                             var response = await TarkovTracker.SetQuestComplete((int)quest.tarkovDataId);
-                            messageLog.AddMessage(response);
+                            //messageLog.AddMessage(response, "quest");
                         }
                         catch (Exception ex)
                         {
