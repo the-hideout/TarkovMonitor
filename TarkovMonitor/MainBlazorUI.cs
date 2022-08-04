@@ -94,7 +94,7 @@ namespace TarkovMonitor
             try
             {
                 tarkovdevRepository.Items = await TarkovDevApi.GetItems();
-                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Items.Count} items from tarkov.dev", "update");
+                messageLog.AddMessage($"Retrieved {String.Format("{0:n0}", tarkovdevRepository.Items.Count)} items from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
@@ -180,10 +180,10 @@ namespace TarkovMonitor
                 List<string> received = new();
                 foreach (var receivedId in e.ReceivedItems.Keys)
                 {
-                    received.Add($"{e.ReceivedItems[receivedId]} {tarkovdevRepository.Items.Find(item => item.id == receivedId).name}");
+                    received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {tarkovdevRepository.Items.Find(item => item.id == receivedId).name}");
                 }
                 var soldItemName = tarkovdevRepository.Items.Find(item => item.id == e.SoldItemId).name;
-                messageLog.AddMessage($"{e.Buyer} purchesed {e.soldItemCount} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
+                messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.soldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
             }
         }
         private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
