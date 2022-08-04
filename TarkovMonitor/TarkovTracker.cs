@@ -44,8 +44,10 @@ namespace TarkovMonitor
             var path = "/progress/quest/{id}";
             var request = GetRequest(path.Replace("{id}", questId.ToString()));
             request.Method = HttpMethod.Post;
-            var payload = $"{{\"complete\":true,\"timeComplete\":{DateTime.Now.Ticks}}}";
+            var payload = @$"{{""complete"":true,""timeComplete"":{DateTime.Now.Ticks}}}";
             request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+            Debug.WriteLine(await request.Content.ReadAsStringAsync());
+            Debug.WriteLine(request.RequestUri.ToString());
             HttpResponseMessage response = await client.SendAsync(request);
             var code = ((int)response.StatusCode).ToString();
             try
@@ -55,7 +57,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {   
-                var responses = docs.Paths[path].Operations[OperationType.Get].Responses;
+                var responses = docs.Paths[path].Operations[OperationType.Post].Responses;
                 if (responses.ContainsKey(code))
                 {
                     throw new Exception(responses[code].Description);

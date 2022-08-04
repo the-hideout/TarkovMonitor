@@ -36,9 +36,9 @@ namespace TarkovMonitor
             newMessage(this, new NewLogMessageArgs(message.Type));
         }
 
-        public void AddMessage(string message, string? type = null)
+        public void AddMessage(string message, string? type = null, string? url = null)
         {
-            Messages.Add(new MonitorMessage(message, type));
+            Messages.Add(new MonitorMessage(message, type, url));
 
             // Throw event to let watchers know something has changed
             if (type == null) type = "";
