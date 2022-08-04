@@ -22,6 +22,7 @@ namespace TarkovMonitor
         public event EventHandler<QuestEventArgs> QuestModified;
         public event EventHandler<GroupInviteEventArgs> GroupInvite;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
+        public event EventHandler<MatchFoundEventArgs> MatchFound;
         public event EventHandler MatchingAborted;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
@@ -137,6 +138,12 @@ namespace TarkovMonitor
                     {
                         lastLoadedOnline = true;
                     }
+                }
+                if (e.NewMessage.Contains("application|MatchingCompleted"))
+                {
+                    // When matching is found, you have been locked to a server with other PMCs
+                    // This is not equivalent to game start, which is when the countdown finishes or you load in
+                    MatchFound?.Invoke(this, new MatchFoundEventArgs { });
                 }
                 if (e.NewMessage.Contains("application|GameStarting"))
                 {
@@ -359,6 +366,8 @@ namespace TarkovMonitor
                 return $"{this.PlayerInfo.Nickname} ({this.PlayerLoadout.Info.Side}, {this.PlayerLoadout.Info.Level})";
             }
         }
+
+        public class MatchFoundEventArgs : EventArgs { }
         public class RaidLoadedEventArgs : EventArgs
         {
             public string Map { get; set; }

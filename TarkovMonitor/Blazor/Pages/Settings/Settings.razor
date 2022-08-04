@@ -11,7 +11,12 @@
 	<MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2"/>Notifications</MudText>
-            <MudSwitch @bind-Checked="@RaidStartSwitch" Label="Raid Starting Audio Notification" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRaidStart"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small"/></MudButton>
+            <div>
+                <MudSwitch @bind-Checked="@RaidStartSwitch" Label="Raid Starting Audio Notification" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRaidStart"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small"/></MudButton>
+            </div>
+            <div>
+                <MudSwitch @bind-Checked="@MatchFoundSwitch" Label="Match Found Audio Notification" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayMatchFound"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small"/></MudButton>
+            </div>
         </MudPaper>
 	</MudItem>
 
@@ -64,6 +69,11 @@
         PlaySoundFromResource(Properties.Resources.raid_starting);
     }
 
+    public void PlayMatchFound()
+    {
+        PlaySoundFromResource(Properties.Resources.match_found);
+    }
+
     public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
 
     public bool RaidStartSwitch { 
@@ -74,6 +84,18 @@
         set
         {
             Properties.Settings.Default.raidStartAlert = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool MatchFoundSwitch { 
+        get 
+        {
+            return Properties.Settings.Default.matchFoundAlert;
+        }
+        set
+        {
+            Properties.Settings.Default.matchFoundAlert = value;
             Properties.Settings.Default.Save();
         }
     }
