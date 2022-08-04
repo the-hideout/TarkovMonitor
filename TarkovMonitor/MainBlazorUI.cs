@@ -77,6 +77,10 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+            if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
+            {
+                TarkovTracker.SetToken(Properties.Settings.Default.tarkovTrackerToken);
+            }
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
@@ -112,16 +116,6 @@ namespace TarkovMonitor
             catch (Exception ex)
             {
                 messageLog.AddMessage($"Error updating quests: {ex.Message}");
-            }
-            //test quest completion
-            try
-            {
-                var response = await TarkovTracker.SetQuestComplete(7);
-                messageLog.AddMessage(response);
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error updating Tarkov Tracker quest progression: {ex.Message}", "exception");
             }
         }
 
