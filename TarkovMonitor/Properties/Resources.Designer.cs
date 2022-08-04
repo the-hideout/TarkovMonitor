@@ -63,6 +63,16 @@ namespace TarkovMonitor.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] match_found {
+            get {
+                object obj = ResourceManager.GetObject("match_found", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] raid_starting {
             get {
                 object obj = ResourceManager.GetObject("raid_starting", resourceCulture);

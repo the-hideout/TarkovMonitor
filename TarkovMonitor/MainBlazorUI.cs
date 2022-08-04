@@ -42,6 +42,7 @@ namespace TarkovMonitor
             eft.GroupInvite += Eft_GroupInvite;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
+            eft.MatchFound += Eft_MatchFound;
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
@@ -126,6 +127,11 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Error updating maps: {ex.Message}");
             }
+        }
+
+        private void Eft_MatchFound(object? sender, GameWatcher.MatchFoundEventArgs e)
+        {
+            if (Properties.Settings.Default.matchFoundAlert) PlaySoundFromResource(Properties.Resources.match_found);
         }
 
         private void Eft_NewLogMessage(object? sender, LogMonitor.NewLogEventArgs e)

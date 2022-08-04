@@ -58,5 +58,17 @@ namespace TarkovMonitor.Properties {
                 this["raidStartAlert"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool matchFoundAlert {
+            get {
+                return ((bool)(this["matchFoundAlert"]));
+            }
+            set {
+                this["matchFoundAlert"] = value;
+            }
+        }
     }
 }
