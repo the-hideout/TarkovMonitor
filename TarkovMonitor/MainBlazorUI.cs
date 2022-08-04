@@ -40,12 +40,9 @@ namespace TarkovMonitor
             eft.QuestModified += Eft_QuestModified;
             eft.NewLogMessage += Eft_NewLogMessage;
             eft.GroupInvite += Eft_GroupInvite;
-<<<<<<< Updated upstream
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
-=======
             eft.MatchFound += Eft_MatchFound;
->>>>>>> Stashed changes
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
