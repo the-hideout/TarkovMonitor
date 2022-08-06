@@ -139,7 +139,7 @@ namespace TarkovMonitor
                         lastLoadedOnline = true;
                     }
                 }
-                if (e.NewMessage.Contains("application|MatchingCompleted"))
+                if (e.NewMessage.Contains("application|MatchingCompleted") && e.NewMessage.Contains("GamePrepare"))
                 {
                     // When matching is found, you have been locked to a server with other PMCs
                     // This is not equivalent to game start, which is when the countdown finishes or you load in

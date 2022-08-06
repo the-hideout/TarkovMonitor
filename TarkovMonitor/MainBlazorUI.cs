@@ -228,7 +228,7 @@ namespace TarkovMonitor
                 var mapName = e.Map;
                 var map = tarkovdevRepository.Maps.Find(m => m.nameId == mapName);
                 if (map != null) mapName = map.name;
-                messageLog.AddMessage($"Exited {mapName} raid ({e.RaidId})", "raidleave");
+                messageLog.AddMessage($"Exited {mapName} raid", "raidleave");
             }
             catch (Exception ex)
             {
