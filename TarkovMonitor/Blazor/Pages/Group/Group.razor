@@ -71,7 +71,7 @@
     // React to GroupManager update events
     public void OnGroupMemberChanged(object? sender, GroupMemberChangedArgs e)
     {
-        StateHasChanged();
+        InvokeAsync(StateHasChanged);
     }
 
 	public void Dispose()
