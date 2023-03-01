@@ -46,7 +46,7 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query {
+                    query TarkovMonitorMaps {
                         maps {
                             id
                             name
@@ -63,7 +63,7 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query {
+                    query TarkovMonitorItems {
                         items {
                             id
                             name
