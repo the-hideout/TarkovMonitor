@@ -169,7 +169,9 @@
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage(ex.Message, "exception");
+                //messageLog.AddMessage(ex.Message, "exception");
+                diagParameters.Add("ContentText", "Token is invalid.");
+                DialogService.Show<TokenTestDialog>("Token Test", diagParameters, diagOptions);
 
             }
         }

@@ -82,26 +82,17 @@ namespace TarkovMonitor
                     var raidId = match.Groups["raidId"].Value;
                     RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = map, RaidId = raidId });
                 }
-                if (e.NewMessage.Contains("quest finished"))
+                if (e.NewMessage.Contains("quest started") || e.NewMessage.Contains("quest finished") || e.NewMessage.Contains("quest failed"))
                 {
-                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                    var match = rx.Match(e.NewMessage);
-                    var id = match.Groups["messageId"].Value;
-                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Finished });
-                }
-                if (e.NewMessage.Contains("quest failed"))
-                {
-                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                    var match = rx.Match(e.NewMessage);
-                    var id = match.Groups["messageId"].Value;
-                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Failed });
-                }
-                if (e.NewMessage.Contains("quest started"))
-                {
-                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                    var match = rx.Match(e.NewMessage);
-                    var id = match.Groups["messageId"].Value;
-                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Started });
+                    var rxQuestId = new Regex("\"templateId\": \"(?<messageId>[^ \"]+) [^\"]+\"");
+                    var matchQuestId = rxQuestId.Match(e.NewMessage);
+                    var id = matchQuestId.Groups["questId"].Value;
+
+                    var rxStatus = new Regex("\"type\": (?<questStatus>\\d+)");
+                    var matchStatus = rxStatus.Match(e.NewMessage);
+                    var status = Int32.Parse(matchStatus.Groups["questStatus"].Value);
+
+                    QuestModified?.Invoke(this, new QuestEventArgs { QuestId = id, Status = (QuestStatus)status });
                 }
                 if (e.NewMessage.Contains("GroupMatchInviteAccept"))
                 {
@@ -314,9 +305,9 @@ namespace TarkovMonitor
         }
         public enum QuestStatus
         {
-            Started,
-            Failed,
-            Finished
+            Started = 10,
+            Failed = 11,
+            Finished = 12
         }
         public enum GroupInviteType
         {
@@ -330,7 +321,7 @@ namespace TarkovMonitor
         }
         public class QuestEventArgs : EventArgs
         {
-            public string MessageId { get; set; }
+            public string QuestId { get; set; }
             public QuestStatus Status { get; set; }
         }
         public class GroupInviteEventArgs : EventArgs

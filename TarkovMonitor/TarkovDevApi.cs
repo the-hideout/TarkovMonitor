@@ -19,16 +19,20 @@ namespace TarkovMonitor
         {
             var request = new GraphQL.GraphQLRequest() {
                 Query = @"
-                    query {
+                    query TarkovMonitorTasks {
                         tasks {
                             id
-                            tarkovDataId
                             name
                             wikiLink
-                            descriptionMessageId
-                            startMessageId
-                            successMessageId
-                            failMessageId
+                            restartable
+                            failConditions {
+                              ...on TaskObjectiveTaskStatus {
+                                task {
+                                  id
+                                }
+                                status
+                              }
+                            }
                         }
                     }
                 "
@@ -103,13 +107,21 @@ namespace TarkovMonitor
         public class Quest
         {
             public string id { get; set; }
-            public int? tarkovDataId { get; set; }
             public string name { get; set; }
             public string? wikiLink { get; set; }
-            public string descriptionMessageId { get; set; }
-            public string startMessageId { get; set; } 
-            public string successMessageId { get; set; }
-            public string failMessageId { get; set; }
+            public bool restartable { get; set; }
+            public List<QuestFailCondition> failConditions { get; set; }
+        }
+
+        public class QuestFragment
+        {
+            public string id { get; set; }
+        }
+
+        public class QuestFailCondition
+        {
+            public QuestFragment task { get; set; }
+            public List<string> status { get; set; }
         }
 
         public class MapsResponse
