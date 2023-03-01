@@ -35,7 +35,6 @@ namespace TarkovMonitor
 
         public static async Task<string> SetQuestComplete(string questId)
         {
-            var path = "/progress/quest/{id}";
             var request = GetRequest($"/progress/quest/{questId}");
             request.Method = HttpMethod.Post;
             var payload = @$"{{""complete"":true,""timeComplete"":{DateTime.Now.Ticks}}}";
