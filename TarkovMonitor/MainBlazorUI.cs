@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using MudBlazor.Services;
+﻿using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
@@ -37,7 +28,9 @@ namespace TarkovMonitor
             eft.ExceptionThrown += Eft_ExceptionThrown;
             eft.RaidLoaded += Eft_RaidLoaded;
             eft.RaidExited += Eft_RaidExited;
-            eft.QuestModified += Eft_QuestModified;
+            eft.TaskStarted += Eft_TaskStarted;
+            eft.TaskFailed += Eft_TaskFailed;
+            eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogMessage += Eft_NewLogMessage;
             eft.GroupInvite += Eft_GroupInvite;
             eft.MatchingAborted += Eft_GroupStaleEvent;
@@ -58,7 +51,7 @@ namespace TarkovMonitor
 
             // Update tarkov.dev Repository data
             updateItems();
-            updateQuests();
+            updateTasks();
             updateMaps();
 
             // TarkovTracker initialization
@@ -103,16 +96,16 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task updateQuests()
+        private async Task updateTasks()
         {
             try
             {
-                tarkovdevRepository.Quests = await TarkovDevApi.GetQuests();
-                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Quests.Count} quests from tarkov.dev", "update");
+                tarkovdevRepository.Tasks = await TarkovDevApi.GetTasks();
+                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Tasks.Count} tasks from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage($"Error updating quests: {ex.Message}");
+                messageLog.AddMessage($"Error updating tasks: {ex.Message}");
             }
         }
 
@@ -145,52 +138,55 @@ namespace TarkovMonitor
             messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.", "group");
         }
 
-        private async void Eft_QuestModified(object? sender, GameWatcher.QuestEventArgs e)
+        private void Eft_TaskFinished(object? sender, GameWatcher.TaskEventArgs e)
         {
-            foreach (var quest in tarkovdevRepository.Quests)
+            tarkovdevRepository.Tasks.ForEach(async task => {
+                if (task.id == e.TaskId)
+                {
+                    messageLog.AddMessage($"Completed task {task.name}", "quest");
+                    if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
+                    {
+                        try
+                        {
+                            var response = await TarkovTracker.SetTaskComplete(task.id);
+                            //messageLog.AddMessage(response, "quest");
+                        }
+                        catch (Exception ex)
+                        {
+                            messageLog.AddMessage($"Error updating Tarkov Tracker task progression: {ex.Message}", "exception");
+                        }
+                    }
+                    return;
+                }
+                foreach (var failCondition in task.failConditions)
+                {
+                    if (failCondition.task.id == e.TaskId && failCondition.status.Contains("complete"))
+                    {
+                        Eft_TaskFailed(sender, new GameWatcher.TaskEventArgs { TaskId = failCondition.task.id });
+                    }
+                }
+            });
+        }
+
+        private void Eft_TaskFailed(object? sender, GameWatcher.TaskEventArgs e)
+        {
+            var task = tarkovdevRepository.Tasks.Find(t => t.id == e.TaskId);
+            if (task != null)
             {
-                if (e.Status == GameWatcher.QuestStatus.Started && quest.id == e.QuestId)
+                messageLog.AddMessage($"Failed task {task.name}", "quest", task.wikiLink);
+                if (!task.restartable)
                 {
-                    messageLog.AddMessage($"Started quest {quest.name}", "quest", quest.wikiLink);
-                    return;
+                    // mark quest as failed in TarkovTracker?
                 }
-                if (e.Status == GameWatcher.QuestStatus.Finished)
-                {
-                    if (quest.id == e.QuestId)
-                    {
-                        messageLog.AddMessage($"Completed quest {quest.name}", "quest");
-                        if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
-                        {
-                            try
-                            {
-                                var response = await TarkovTracker.SetQuestComplete(quest.id);
-                                //messageLog.AddMessage(response, "quest");
-                            }
-                            catch (Exception ex)
-                            {
-                                messageLog.AddMessage($"Error updating Tarkov Tracker quest progression: {ex.Message}", "exception");
-                            }
-                        }
-                        continue;
-                    }
-                    foreach (var failCondition in quest.failConditions)
-                    {
-                        if (failCondition.task.id == e.QuestId && failCondition.status.Contains("complete"))
-                        {
-                            var failedQuest = tarkovdevRepository.Quests.Find(q => q.id == failCondition.task.id);
-                            messageLog.AddMessage($"Failed quest {failedQuest.name}", "quest");
-                            if (!failedQuest.restartable)
-                            {
-                                // mark quest as failed in TarkovTracker?
-                            }
-                        }
-                    }
-                }
-                if (e.Status == GameWatcher.QuestStatus.Failed && quest.id == e.QuestId)
-                {
-                    messageLog.AddMessage($"Failed quest {quest.name}", "quest");
-                    return;
-                }
+            }
+        }
+
+        private void Eft_TaskStarted(object? sender, GameWatcher.TaskEventArgs e)
+        {
+            var task = tarkovdevRepository.Tasks.Find(t => t.id == e.TaskId);
+            if (task != null)
+            {
+                messageLog.AddMessage($"Started task {task.name}", "quest", task.wikiLink);
             }
         }
 

@@ -33,7 +33,7 @@ namespace TarkovMonitor
             return GetRequest(path, token);
         }
 
-        public static async Task<string> SetQuestComplete(string questId)
+        public static async Task<string> SetTaskComplete(string questId)
         {
             var request = GetRequest($"/progress/quest/{questId}");
             request.Method = HttpMethod.Post;

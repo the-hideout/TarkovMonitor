@@ -15,7 +15,7 @@ namespace TarkovMonitor
         static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
         static readonly HttpClient httpClient = new();
 
-        public async static Task<List<Quest>> GetQuests()
+        public async static Task<List<Task>> GetTasks()
         {
             var request = new GraphQL.GraphQLRequest() {
                 Query = @"
@@ -37,7 +37,7 @@ namespace TarkovMonitor
                     }
                 "
             };
-            var response = await client.SendQueryAsync<QuestsResponse>(request);
+            var response = await client.SendQueryAsync<TasksResponse>(request);
             return response.Data.tasks;
         }
 
@@ -99,28 +99,28 @@ namespace TarkovMonitor
             
         }
 
-        public class QuestsResponse
+        public class TasksResponse
         {
-            public List<Quest> tasks { get; set; }
+            public List<Task> tasks { get; set; }
         }
 
-        public class Quest
+        public class Task
         {
             public string id { get; set; }
             public string name { get; set; }
             public string? wikiLink { get; set; }
             public bool restartable { get; set; }
-            public List<QuestFailCondition> failConditions { get; set; }
+            public List<TaskFailCondition> failConditions { get; set; }
         }
 
-        public class QuestFragment
+        public class TaskFragment
         {
             public string id { get; set; }
         }
 
-        public class QuestFailCondition
+        public class TaskFailCondition
         {
-            public QuestFragment task { get; set; }
+            public TaskFragment task { get; set; }
             public List<string> status { get; set; }
         }
 

@@ -19,7 +19,10 @@ namespace TarkovMonitor
         private float lastQueueTime = 0;
         public event EventHandler<LogMonitor.NewLogEventArgs> NewLogMessage;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
-        public event EventHandler<QuestEventArgs> QuestModified;
+        public event EventHandler<TaskModifiedEventArgs> TaskModified;
+        public event EventHandler<TaskEventArgs> TaskStarted;
+        public event EventHandler<TaskEventArgs> TaskFailed;
+        public event EventHandler<TaskEventArgs> TaskFinished;
         public event EventHandler<GroupInviteEventArgs> GroupInvite;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<MatchFoundEventArgs> MatchFound;
@@ -84,15 +87,27 @@ namespace TarkovMonitor
                 }
                 if (e.NewMessage.Contains("quest started") || e.NewMessage.Contains("quest finished") || e.NewMessage.Contains("quest failed"))
                 {
-                    var rxQuestId = new Regex("\"templateId\": \"(?<messageId>[^ \"]+) [^\"]+\"");
-                    var matchQuestId = rxQuestId.Match(e.NewMessage);
-                    var id = matchQuestId.Groups["questId"].Value;
+                    var rxTaskId = new Regex("\"templateId\": \"(?<taskId>[^ \"]+) [^\"]+\"");
+                    var matchTaskId = rxTaskId.Match(e.NewMessage);
+                    var id = matchTaskId.Groups["taskId"].Value;
 
-                    var rxStatus = new Regex("\"type\": (?<questStatus>\\d+)");
+                    var rxStatus = new Regex("\"type\": (?<taskStatus>\\d+)");
                     var matchStatus = rxStatus.Match(e.NewMessage);
-                    var status = Int32.Parse(matchStatus.Groups["questStatus"].Value);
+                    var status = (TaskStatus)Int32.Parse(matchStatus.Groups["taskStatus"].Value);
 
-                    QuestModified?.Invoke(this, new QuestEventArgs { QuestId = id, Status = (QuestStatus)status });
+                    TaskModified?.Invoke(this, new TaskModifiedEventArgs { TaskId = id, Status = status });
+                    if (status == TaskStatus.Started)
+                    {
+                        TaskStarted?.Invoke(this, new TaskEventArgs { TaskId = id });
+                    }
+                    if (status == TaskStatus.Failed)
+                    {
+                        TaskFailed?.Invoke(this, new TaskEventArgs { TaskId = id });
+                    }
+                    if (status == TaskStatus.Finished)
+                    {
+                        TaskFinished?.Invoke(this, new TaskEventArgs { TaskId = id });
+                    }
                 }
                 if (e.NewMessage.Contains("GroupMatchInviteAccept"))
                 {
@@ -303,7 +318,7 @@ namespace TarkovMonitor
             Notifications,
             Traces
         }
-        public enum QuestStatus
+        public enum TaskStatus
         {
             Started = 10,
             Failed = 11,
@@ -319,10 +334,14 @@ namespace TarkovMonitor
             public string Map { get; set; }   
             public string RaidId { get; set; }
         }
-        public class QuestEventArgs : EventArgs
+        public class TaskModifiedEventArgs : EventArgs
         {
-            public string QuestId { get; set; }
-            public QuestStatus Status { get; set; }
+            public string TaskId { get; set; }
+            public TaskStatus Status { get; set; }
+        }
+        public class TaskEventArgs : EventArgs
+        {
+            public string TaskId { get; set; }
         }
         public class GroupInviteEventArgs : EventArgs
         {
