@@ -8,11 +8,10 @@ namespace TarkovMonitor
     internal class GameWatcher
     {
         private Process? process;
-        private System.Timers.Timer processTimer;
-        private FileSystemWatcher watcher;
-        private Dictionary<LogType, bool> initialRead;
+        private readonly System.Timers.Timer processTimer;
+        private readonly FileSystemWatcher watcher;
         //private event EventHandler<NewLogEventArgs> NewLog;
-        private Dictionary<LogType, LogMonitor> monitors;
+        private readonly Dictionary<LogType, LogMonitor> monitors;
         private string lastLoadedMap = "";
         private string lastQueueType = "scav";
         private bool lastLoadedOnline = false;
@@ -33,9 +32,6 @@ namespace TarkovMonitor
         public event EventHandler GameStarted;
         public GameWatcher()
         {
-            initialRead = new();
-            initialRead.Add(LogType.Application, false);
-            initialRead.Add(LogType.Notifications, false);
             monitors = new();
             processTimer = new System.Timers.Timer(30000)
             {
@@ -49,12 +45,12 @@ namespace TarkovMonitor
                 EnableRaisingEvents = false,
             };
             watcher.Created += Watcher_Created;
-            updateProcess();
+            UpdateProcess();
         }
 
         public void Start()
         {
-            updateProcess();
+            UpdateProcess();
             processTimer.Enabled = true;
         }
 
@@ -111,7 +107,7 @@ namespace TarkovMonitor
                 }
                 if (e.NewMessage.Contains("GroupMatchInviteAccept"))
                 {
-                    var jsonStrings = getJsonStrings(e.NewMessage);
+                    var jsonStrings = GetJsonStrings(e.NewMessage);
                     foreach (var jsonString in jsonStrings)
                     {
                         //var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
@@ -121,7 +117,7 @@ namespace TarkovMonitor
                 }
                 if (e.NewMessage.Contains("GroupMatchInviteSend"))
                 {
-                    var jsonStrings = getJsonStrings(e.NewMessage);
+                    var jsonStrings = GetJsonStrings(e.NewMessage);
                     foreach (var jsonString in jsonStrings)
                     {
                         //var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
@@ -180,7 +176,7 @@ namespace TarkovMonitor
                     lastQueueTime = 0;
                 }
                 if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5bdac0b686f7743e1665e09e")) {
-                    var transactions = getJsonStrings(e.NewMessage);
+                    var transactions = GetJsonStrings(e.NewMessage);
                     foreach (var json in transactions)
                     {
                         if (!json.Contains("buyerNickname")) continue;
@@ -189,7 +185,7 @@ namespace TarkovMonitor
                         {
                             Buyer = message.message.systemData.buyerNickname,
                             SoldItemId = message.message.systemData.soldItem,
-                            soldItemCount = message.message.systemData.itemCount,
+                            SoldItemCount = message.message.systemData.itemCount,
                             ReceivedItems = new Dictionary<string, int>()
                         };
                         if (message.message.hasRewards)
@@ -209,11 +205,11 @@ namespace TarkovMonitor
             }
         }
 
-        public List<string> getJsonStrings(string log)
+        public static List<string> GetJsonStrings(string log)
         {
-            List<string> result = new List<string>();
+            List<string> result = new();
             var matches = new Regex(@"^{[\s\S]+?^}", RegexOptions.Multiline).Matches(log);
-            foreach (Match match in matches)
+            foreach (Match match in matches.Cast<Match>())
             {
                 result.Add(match.Value);
             }
@@ -222,10 +218,10 @@ namespace TarkovMonitor
 
         private void ProcessTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            updateProcess();
+            UpdateProcess();
         }
 
-        private void updateProcess()
+        private void UpdateProcess()
         {
             if (process != null)
             {
@@ -245,7 +241,7 @@ namespace TarkovMonitor
             GameStarted?.Invoke(this, new EventArgs());
             process = processes.First();
             var exePath = GetProcessFilename.GetFilename(process);
-            var path = exePath.Substring(0, exePath.LastIndexOf(Path.DirectorySeparatorChar));
+            var path = exePath[..exePath.LastIndexOf(Path.DirectorySeparatorChar)];
             var logsPath = System.IO.Path.Combine(path, "Logs");
             watcher.Path = logsPath;
             watcher.EnableRaisingEvents = true;
@@ -262,9 +258,6 @@ namespace TarkovMonitor
                     latestLogFolder = logFolder;
                 }
             }
-            initialRead = new();
-            initialRead.Add(LogType.Application, false);
-            initialRead.Add(LogType.Notifications, false);
             var files = System.IO.Directory.GetFiles(latestLogFolder);
             foreach (var file in files)
             {
@@ -388,7 +381,7 @@ namespace TarkovMonitor
         {
             public string Buyer { get; set; }
             public string SoldItemId { get; set; }
-            public int soldItemCount { get; set; }
+            public int SoldItemCount { get; set; }
             public Dictionary<string, int> ReceivedItems { get; set; }
         }
         public class ExceptionEventArgs : EventArgs

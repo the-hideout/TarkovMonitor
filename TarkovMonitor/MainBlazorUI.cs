@@ -10,11 +10,11 @@ namespace TarkovMonitor
 {
     public partial class MainBlazorUI : Form
     {
-        private GameWatcher eft;
-        private MessageLog messageLog;
-        private LogRepository logRepository;
-        private GroupManager groupManager;
-        private TarkovDevRepository tarkovdevRepository;
+        private readonly GameWatcher eft;
+        private readonly MessageLog messageLog;
+        private readonly LogRepository logRepository;
+        private readonly GroupManager groupManager;
+        private readonly TarkovDevRepository tarkovdevRepository;
 
         public MainBlazorUI()
         {
@@ -50,9 +50,9 @@ namespace TarkovMonitor
             tarkovdevRepository = new TarkovDevRepository();
 
             // Update tarkov.dev Repository data
-            updateItems();
-            updateTasks();
-            updateMaps();
+            UpdateItems();
+            UpdateTasks();
+            UpdateMaps();
 
             // TarkovTracker initialization
             TarkovTracker.Init();
@@ -83,7 +83,7 @@ namespace TarkovMonitor
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
         }
 
-        private async Task updateItems()
+        private async Task UpdateItems()
         {
             try
             {
@@ -96,7 +96,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task updateTasks()
+        private async Task UpdateTasks()
         {
             try
             {
@@ -109,7 +109,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task updateMaps()
+        private async Task UpdateMaps()
         {
             try
             {
@@ -200,7 +200,7 @@ namespace TarkovMonitor
                     received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {tarkovdevRepository.Items.Find(item => item.id == receivedId).name}");
                 }
                 var soldItemName = tarkovdevRepository.Items.Find(item => item.id == e.SoldItemId).name;
-                messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.soldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
+                messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
             }
         }
         private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
@@ -247,7 +247,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void PlaySoundFromResource(byte[] resource)
+        private static void PlaySoundFromResource(byte[] resource)
         {
             Stream stream = new MemoryStream(resource);
             var reader = new NAudio.Wave.Mp3FileReader(stream);

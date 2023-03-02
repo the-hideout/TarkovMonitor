@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Text.Json;
+﻿using System.Text;
 using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.SystemTextJson;
-using System.Diagnostics;
 
 namespace TarkovMonitor
 {
@@ -82,10 +76,11 @@ namespace TarkovMonitor
             var queueApiUrl = "https://manager.tarkov.dev/api/queue";
             //var queueApiUrl = "http://localhost:4000/api/queue";
             var payload = $"{{\"map\":\"{mapNameId}\",\"time\":{queueTime}, \"type\": \"{type}\"}}";
-            var request = new HttpRequestMessage(HttpMethod.Post, queueApiUrl);
-            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, queueApiUrl)
+            {
+                Content = new StringContent(payload, Encoding.UTF8, "application/json")
+            };
             var response = await httpClient.SendAsync(request);
-            var stream = response.Content.ReadAsStream();
             var content = await response.Content.ReadAsStringAsync();
             try
             {
@@ -94,7 +89,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                throw new Exception(content);
+                throw new Exception($"{ex.Message}: {content}");
             }
             
         }
