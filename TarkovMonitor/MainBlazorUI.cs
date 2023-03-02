@@ -163,6 +163,7 @@ namespace TarkovMonitor
                     if (failCondition.task.id == e.TaskId && failCondition.status.Contains("complete"))
                     {
                         Eft_TaskFailed(sender, new GameWatcher.TaskEventArgs { TaskId = task.id });
+                        break;
                     }
                 }
             });
