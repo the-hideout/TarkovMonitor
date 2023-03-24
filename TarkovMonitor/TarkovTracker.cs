@@ -83,10 +83,10 @@ namespace TarkovMonitor
 
         public class TokenResponse
         {
-            public Dictionary<string, int> CreatedAt { get; set; }
-            public string[] Permissions { get; set; }
-            public string Token { get; set; }
-            public int Calls { get; set; }
+            //public Dictionary<string, int> CreatedAt { get; set; }
+            public string[] permissions { get; set; }
+            public string token { get; set; }
+            //public int Calls { get; set; }
         }
     }
 }

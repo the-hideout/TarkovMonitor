@@ -158,7 +158,7 @@
             try
             {
                 var tokenResponse = await TarkovTracker.TestTokenAsync(TarkovTrackerToken);
-                if (!tokenResponse.Permissions.Contains("WP"))
+                if (!tokenResponse.permissions.Contains("WP"))
                 {
                     diagParameters.Add("ContentText", "You do not have write permissions with this token.");
                     DialogService.Show<TokenTestDialog>("Token Test", diagParameters, diagOptions);
