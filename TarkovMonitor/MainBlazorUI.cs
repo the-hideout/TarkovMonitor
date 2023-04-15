@@ -160,6 +160,10 @@ namespace TarkovMonitor
                 }
                 foreach (var failCondition in task.failConditions)
                 {
+                    if (failCondition.task == null)
+                    {
+                        continue;
+                    }
                     if (failCondition.task.id == e.TaskId && failCondition.status.Contains("complete"))
                     {
                         Eft_TaskFailed(sender, new GameWatcher.TaskEventArgs { TaskId = task.id });

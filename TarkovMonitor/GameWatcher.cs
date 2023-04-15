@@ -175,7 +175,7 @@ namespace TarkovMonitor
                     lastQueueType = "scav";
                     lastQueueTime = 0;
                 }
-                if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5bdac0b686f7743e1665e09e")) {
+                if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5ac3b934156ae10c4430e83c")) {
                     var transactions = GetJsonStrings(e.NewMessage);
                     foreach (var json in transactions)
                     {
