@@ -125,6 +125,16 @@ namespace TarkovMonitor
                         GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
                     }
                 }
+                if (e.NewMessage.Contains("groupMatchRaidReady"))
+                {
+                    var jsonStrings = GetJsonStrings(e.NewMessage);
+                    foreach (var jsonString in jsonStrings)
+                    {
+                        //var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
+                        var loadout = JsonNode.Parse(jsonString);
+                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    }
+                }
                 if (e.NewMessage.Contains("GamePrepared") && e.Type == LogType.Application)
                 {
                     var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
