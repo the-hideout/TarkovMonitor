@@ -13,7 +13,6 @@ namespace TarkovMonitor
         //private event EventHandler<NewLogEventArgs> NewLog;
         private readonly Dictionary<LogType, LogMonitor> monitors;
         private string lastLoadedMap = "";
-        private string lastQueueType = "scav";
         private bool lastLoadedOnline = false;
         private float lastQueueTime = 0;
         public event EventHandler<LogMonitor.NewLogEventArgs> NewLogMessage;
@@ -140,10 +139,10 @@ namespace TarkovMonitor
                     var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
                     var match = rx.Match(e.NewMessage);
                     lastQueueTime = float.Parse(match.Groups["queueTime"].Value);
-                    lastQueueType = "scav";
                 }
                 if (e.NewMessage.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
                 {
+                    // Confirm we are starting to queue for an online raid and get the map
                     lastLoadedOnline = false;
                     lastLoadedMap = new Regex("Location: (?<map>[^,]+)").Match(e.NewMessage).Groups["map"].Value;
                     if (e.NewMessage.Contains("RaidMode: Online"))
@@ -159,30 +158,28 @@ namespace TarkovMonitor
                 }
                 if (e.NewMessage.Contains("application|GameStarting"))
                 {
-                    lastQueueType = "pmc";
+                    // When the raid start countdown begins. Only happens for PMCs.
                     if (lastLoadedOnline)
                     {
-                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
+                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = "pmc" });
                     }
                     lastLoadedMap = "";
-                    lastQueueType = "scav";
                     lastQueueTime = 0;
                 }
                 else if (e.NewMessage.Contains("application|GameStarted") && e.Type == LogType.Application)
                 {
+                    // Raid begins, either at the end of the countdown for PMC (no event raised), or immediately as a scav
                     if (lastLoadedOnline && lastQueueTime > 0)
                     {
-                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
+                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = "scav" });
                     }
                     lastLoadedMap = "";
-                    lastQueueType = "scav";
                     lastQueueTime = 0;
                 }
                 if (e.NewMessage.Contains("Network game matching aborted"))
                 {
                     MatchingAborted?.Invoke(this, new EventArgs());
                     lastLoadedMap = "";
-                    lastQueueType = "scav";
                     lastQueueTime = 0;
                 }
                 if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5ac3b934156ae10c4430e83c")) {
