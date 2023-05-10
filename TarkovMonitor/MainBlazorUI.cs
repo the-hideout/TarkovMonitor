@@ -149,7 +149,7 @@ namespace TarkovMonitor
                         try
                         {
                             var response = await TarkovTracker.SetTaskComplete(task.id);
-                            //messageLog.AddMessage(response, "quest");
+                            messageLog.AddMessage(response, "quest");
                         }
                         catch (Exception ex)
                         {
@@ -182,6 +182,7 @@ namespace TarkovMonitor
                 if (!task.restartable)
                 {
                     // mark quest as failed in TarkovTracker?
+                    // happens automatically, so not needed
                 }
             }
         }
