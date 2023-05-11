@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Text.Json;
+﻿using System.Text;
 using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.SystemTextJson;
-using System.Diagnostics;
 
 namespace TarkovMonitor
 {
@@ -15,25 +9,29 @@ namespace TarkovMonitor
         static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
         static readonly HttpClient httpClient = new();
 
-        public async static Task<List<Quest>> GetQuests()
+        public async static Task<List<Task>> GetTasks()
         {
             var request = new GraphQL.GraphQLRequest() {
                 Query = @"
-                    query {
+                    query TarkovMonitorTasks {
                         tasks {
                             id
-                            tarkovDataId
                             name
                             wikiLink
-                            descriptionMessageId
-                            startMessageId
-                            successMessageId
-                            failMessageId
+                            restartable
+                            failConditions {
+                              ...on TaskObjectiveTaskStatus {
+                                task {
+                                  id
+                                }
+                                status
+                              }
+                            }
                         }
                     }
                 "
             };
-            var response = await client.SendQueryAsync<QuestsResponse>(request);
+            var response = await client.SendQueryAsync<TasksResponse>(request);
             return response.Data.tasks;
         }
 
@@ -42,7 +40,7 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query {
+                    query TarkovMonitorMaps {
                         maps {
                             id
                             name
@@ -59,7 +57,7 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query {
+                    query TarkovMonitorItems {
                         items {
                             id
                             name
@@ -78,10 +76,11 @@ namespace TarkovMonitor
             var queueApiUrl = "https://manager.tarkov.dev/api/queue";
             //var queueApiUrl = "http://localhost:4000/api/queue";
             var payload = $"{{\"map\":\"{mapNameId}\",\"time\":{queueTime}, \"type\": \"{type}\"}}";
-            var request = new HttpRequestMessage(HttpMethod.Post, queueApiUrl);
-            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, queueApiUrl)
+            {
+                Content = new StringContent(payload, Encoding.UTF8, "application/json")
+            };
             var response = await httpClient.SendAsync(request);
-            var stream = response.Content.ReadAsStream();
             var content = await response.Content.ReadAsStringAsync();
             try
             {
@@ -90,26 +89,34 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                throw new Exception(content);
+                throw new Exception($"{ex.Message}: {content}");
             }
             
         }
 
-        public class QuestsResponse
+        public class TasksResponse
         {
-            public List<Quest> tasks { get; set; }
+            public List<Task> tasks { get; set; }
         }
 
-        public class Quest
+        public class Task
         {
             public string id { get; set; }
-            public int? tarkovDataId { get; set; }
             public string name { get; set; }
             public string? wikiLink { get; set; }
-            public string descriptionMessageId { get; set; }
-            public string startMessageId { get; set; } 
-            public string successMessageId { get; set; }
-            public string failMessageId { get; set; }
+            public bool restartable { get; set; }
+            public List<TaskFailCondition> failConditions { get; set; }
+        }
+
+        public class TaskFragment
+        {
+            public string id { get; set; }
+        }
+
+        public class TaskFailCondition
+        {
+            public TaskFragment task { get; set; }
+            public List<string> status { get; set; }
         }
 
         public class MapsResponse

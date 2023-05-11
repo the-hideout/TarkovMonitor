@@ -8,18 +8,19 @@ namespace TarkovMonitor
     internal class GameWatcher
     {
         private Process? process;
-        private System.Timers.Timer processTimer;
-        private FileSystemWatcher watcher;
-        private Dictionary<LogType, bool> initialRead;
+        private readonly System.Timers.Timer processTimer;
+        private readonly FileSystemWatcher watcher;
         //private event EventHandler<NewLogEventArgs> NewLog;
-        private Dictionary<LogType, LogMonitor> monitors;
+        private readonly Dictionary<LogType, LogMonitor> monitors;
         private string lastLoadedMap = "";
-        private string lastQueueType = "scav";
         private bool lastLoadedOnline = false;
         private float lastQueueTime = 0;
         public event EventHandler<LogMonitor.NewLogEventArgs> NewLogMessage;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
-        public event EventHandler<QuestEventArgs> QuestModified;
+        public event EventHandler<TaskModifiedEventArgs> TaskModified;
+        public event EventHandler<TaskEventArgs> TaskStarted;
+        public event EventHandler<TaskEventArgs> TaskFailed;
+        public event EventHandler<TaskEventArgs> TaskFinished;
         public event EventHandler<GroupInviteEventArgs> GroupInvite;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<MatchFoundEventArgs> MatchFound;
@@ -28,11 +29,9 @@ namespace TarkovMonitor
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
         public event EventHandler GameStarted;
+        public event EventHandler MatchingStarted;
         public GameWatcher()
         {
-            initialRead = new();
-            initialRead.Add(LogType.Application, false);
-            initialRead.Add(LogType.Notifications, false);
             monitors = new();
             processTimer = new System.Timers.Timer(30000)
             {
@@ -46,12 +45,12 @@ namespace TarkovMonitor
                 EnableRaisingEvents = false,
             };
             watcher.Created += Watcher_Created;
-            updateProcess();
+            UpdateProcess();
         }
 
         public void Start()
         {
-            updateProcess();
+            UpdateProcess();
             processTimer.Enabled = true;
         }
 
@@ -82,30 +81,33 @@ namespace TarkovMonitor
                     var raidId = match.Groups["raidId"].Value;
                     RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = map, RaidId = raidId });
                 }
-                if (e.NewMessage.Contains("quest finished"))
+                if (e.NewMessage.Contains("quest started") || e.NewMessage.Contains("quest finished") || e.NewMessage.Contains("quest failed"))
                 {
-                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                    var match = rx.Match(e.NewMessage);
-                    var id = match.Groups["messageId"].Value;
-                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Finished });
-                }
-                if (e.NewMessage.Contains("quest failed"))
-                {
-                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                    var match = rx.Match(e.NewMessage);
-                    var id = match.Groups["messageId"].Value;
-                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Failed });
-                }
-                if (e.NewMessage.Contains("quest started"))
-                {
-                    var rx = new Regex("\"templateId\": \"(?<messageId>[^\"]+)\"");
-                    var match = rx.Match(e.NewMessage);
-                    var id = match.Groups["messageId"].Value;
-                    QuestModified?.Invoke(this, new QuestEventArgs { MessageId = id, Status = QuestStatus.Started });
+                    var rxTaskId = new Regex("\"templateId\": \"(?<taskId>[^ \"]+) [^\"]+\"");
+                    var matchTaskId = rxTaskId.Match(e.NewMessage);
+                    var id = matchTaskId.Groups["taskId"].Value;
+
+                    var rxStatus = new Regex("\"type\": (?<taskStatus>\\d+)");
+                    var matchStatus = rxStatus.Match(e.NewMessage);
+                    var status = (TaskStatus)Int32.Parse(matchStatus.Groups["taskStatus"].Value);
+
+                    TaskModified?.Invoke(this, new TaskModifiedEventArgs { TaskId = id, Status = status });
+                    if (status == TaskStatus.Started)
+                    {
+                        TaskStarted?.Invoke(this, new TaskEventArgs { TaskId = id });
+                    }
+                    if (status == TaskStatus.Failed)
+                    {
+                        TaskFailed?.Invoke(this, new TaskEventArgs { TaskId = id });
+                    }
+                    if (status == TaskStatus.Finished)
+                    {
+                        TaskFinished?.Invoke(this, new TaskEventArgs { TaskId = id });
+                    }
                 }
                 if (e.NewMessage.Contains("GroupMatchInviteAccept"))
                 {
-                    var jsonStrings = getJsonStrings(e.NewMessage);
+                    var jsonStrings = GetJsonStrings(e.NewMessage);
                     foreach (var jsonString in jsonStrings)
                     {
                         //var loadout = JsonSerializer.Deserialize<GroupMatchInviteAccept>(jsonString);
@@ -115,7 +117,17 @@ namespace TarkovMonitor
                 }
                 if (e.NewMessage.Contains("GroupMatchInviteSend"))
                 {
-                    var jsonStrings = getJsonStrings(e.NewMessage);
+                    var jsonStrings = GetJsonStrings(e.NewMessage);
+                    foreach (var jsonString in jsonStrings)
+                    {
+                        //var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
+                        var loadout = JsonNode.Parse(jsonString);
+                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(loadout));
+                    }
+                }
+                if (e.NewMessage.Contains("groupMatchRaidReady"))
+                {
+                    var jsonStrings = GetJsonStrings(e.NewMessage);
                     foreach (var jsonString in jsonStrings)
                     {
                         //var loadout = JsonSerializer.Deserialize<GroupMatchInviteSend>(jsonString);
@@ -128,15 +140,16 @@ namespace TarkovMonitor
                     var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
                     var match = rx.Match(e.NewMessage);
                     lastQueueTime = float.Parse(match.Groups["queueTime"].Value);
-                    lastQueueType = "scav";
                 }
                 if (e.NewMessage.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
                 {
+                    // Confirm we are starting to queue for an online raid and get the map
                     lastLoadedOnline = false;
                     lastLoadedMap = new Regex("Location: (?<map>[^,]+)").Match(e.NewMessage).Groups["map"].Value;
                     if (e.NewMessage.Contains("RaidMode: Online"))
                     {
                         lastLoadedOnline = true;
+                        MatchingStarted?.Invoke(this, new EventArgs());
                     }
                 }
                 if (e.NewMessage.Contains("application|MatchingCompleted") && e.NewMessage.Contains("GamePrepare"))
@@ -147,34 +160,32 @@ namespace TarkovMonitor
                 }
                 if (e.NewMessage.Contains("application|GameStarting"))
                 {
-                    lastQueueType = "pmc";
+                    // When the raid start countdown begins. Only happens for PMCs.
                     if (lastLoadedOnline)
                     {
-                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
+                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = "pmc" });
                     }
                     lastLoadedMap = "";
-                    lastQueueType = "scav";
                     lastQueueTime = 0;
                 }
                 else if (e.NewMessage.Contains("application|GameStarted") && e.Type == LogType.Application)
                 {
+                    // Raid begins, either at the end of the countdown for PMC (no event raised), or immediately as a scav
                     if (lastLoadedOnline && lastQueueTime > 0)
                     {
-                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = lastQueueType });
+                        RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = "scav" });
                     }
                     lastLoadedMap = "";
-                    lastQueueType = "scav";
                     lastQueueTime = 0;
                 }
                 if (e.NewMessage.Contains("Network game matching aborted"))
                 {
                     MatchingAborted?.Invoke(this, new EventArgs());
                     lastLoadedMap = "";
-                    lastQueueType = "scav";
                     lastQueueTime = 0;
                 }
-                if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5bdac0b686f7743e1665e09e")) {
-                    var transactions = getJsonStrings(e.NewMessage);
+                if (e.NewMessage.Contains("Got notification | ChatMessageReceived") && e.NewMessage.Contains("5ac3b934156ae10c4430e83c")) {
+                    var transactions = GetJsonStrings(e.NewMessage);
                     foreach (var json in transactions)
                     {
                         if (!json.Contains("buyerNickname")) continue;
@@ -183,7 +194,7 @@ namespace TarkovMonitor
                         {
                             Buyer = message.message.systemData.buyerNickname,
                             SoldItemId = message.message.systemData.soldItem,
-                            soldItemCount = message.message.systemData.itemCount,
+                            SoldItemCount = message.message.systemData.itemCount,
                             ReceivedItems = new Dictionary<string, int>()
                         };
                         if (message.message.hasRewards)
@@ -203,11 +214,11 @@ namespace TarkovMonitor
             }
         }
 
-        public List<string> getJsonStrings(string log)
+        public static List<string> GetJsonStrings(string log)
         {
-            List<string> result = new List<string>();
+            List<string> result = new();
             var matches = new Regex(@"^{[\s\S]+?^}", RegexOptions.Multiline).Matches(log);
-            foreach (Match match in matches)
+            foreach (Match match in matches.Cast<Match>())
             {
                 result.Add(match.Value);
             }
@@ -216,10 +227,10 @@ namespace TarkovMonitor
 
         private void ProcessTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            updateProcess();
+            UpdateProcess();
         }
 
-        private void updateProcess()
+        private void UpdateProcess()
         {
             if (process != null)
             {
@@ -239,7 +250,7 @@ namespace TarkovMonitor
             GameStarted?.Invoke(this, new EventArgs());
             process = processes.First();
             var exePath = GetProcessFilename.GetFilename(process);
-            var path = exePath.Substring(0, exePath.LastIndexOf(Path.DirectorySeparatorChar));
+            var path = exePath[..exePath.LastIndexOf(Path.DirectorySeparatorChar)];
             var logsPath = System.IO.Path.Combine(path, "Logs");
             watcher.Path = logsPath;
             watcher.EnableRaisingEvents = true;
@@ -256,9 +267,6 @@ namespace TarkovMonitor
                     latestLogFolder = logFolder;
                 }
             }
-            initialRead = new();
-            initialRead.Add(LogType.Application, false);
-            initialRead.Add(LogType.Notifications, false);
             var files = System.IO.Directory.GetFiles(latestLogFolder);
             foreach (var file in files)
             {
@@ -312,11 +320,11 @@ namespace TarkovMonitor
             Notifications,
             Traces
         }
-        public enum QuestStatus
+        public enum TaskStatus
         {
-            Started,
-            Failed,
-            Finished
+            Started = 10,
+            Failed = 11,
+            Finished = 12
         }
         public enum GroupInviteType
         {
@@ -328,10 +336,14 @@ namespace TarkovMonitor
             public string Map { get; set; }   
             public string RaidId { get; set; }
         }
-        public class QuestEventArgs : EventArgs
+        public class TaskModifiedEventArgs : EventArgs
         {
-            public string MessageId { get; set; }
-            public QuestStatus Status { get; set; }
+            public string TaskId { get; set; }
+            public TaskStatus Status { get; set; }
+        }
+        public class TaskEventArgs : EventArgs
+        {
+            public string TaskId { get; set; }
         }
         public class GroupInviteEventArgs : EventArgs
         {
@@ -378,7 +390,7 @@ namespace TarkovMonitor
         {
             public string Buyer { get; set; }
             public string SoldItemId { get; set; }
-            public int soldItemCount { get; set; }
+            public int SoldItemCount { get; set; }
             public Dictionary<string, int> ReceivedItems { get; set; }
         }
         public class ExceptionEventArgs : EventArgs

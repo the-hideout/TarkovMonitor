@@ -1,29 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using MudBlazor.Services;
+﻿using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
+using System.Text.Json;
 
 namespace TarkovMonitor
 {
     public partial class MainBlazorUI : Form
     {
-        private GameWatcher eft;
-        private MessageLog messageLog;
-        private LogRepository logRepository;
-        private GroupManager groupManager;
-        private TarkovDevRepository tarkovdevRepository;
+        private readonly GameWatcher eft;
+        private readonly MessageLog messageLog;
+        private readonly LogRepository logRepository;
+        private readonly GroupManager groupManager;
+        private readonly TarkovDevRepository tarkovdevRepository;
+        private TarkovTracker.ProgressResponse progress = new ();
 
         public MainBlazorUI()
         {
@@ -37,12 +30,15 @@ namespace TarkovMonitor
             eft.ExceptionThrown += Eft_ExceptionThrown;
             eft.RaidLoaded += Eft_RaidLoaded;
             eft.RaidExited += Eft_RaidExited;
-            eft.QuestModified += Eft_QuestModified;
+            eft.TaskStarted += Eft_TaskStarted;
+            eft.TaskFailed += Eft_TaskFailed;
+            eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogMessage += Eft_NewLogMessage;
             eft.GroupInvite += Eft_GroupInvite;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.MatchFound += Eft_MatchFound;
+            eft.MatchingStarted += Eft_MatchingStarted;
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
@@ -57,12 +53,14 @@ namespace TarkovMonitor
             tarkovdevRepository = new TarkovDevRepository();
 
             // Update tarkov.dev Repository data
-            updateItems();
-            updateQuests();
-            updateMaps();
+            UpdateItems();
+            UpdateTasks();
+            UpdateMaps();
 
             // TarkovTracker initialization
             TarkovTracker.Init();
+
+            UpdateProgress();
 
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
             var services = new ServiceCollection();
@@ -80,6 +78,43 @@ namespace TarkovMonitor
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
         }
 
+        private void Eft_MatchingStarted(object? sender, EventArgs e)
+        {
+            try
+            {
+                var failedTasks = new List<TarkovDevApi.Task>();
+                foreach (var taskStatus in progress.data.tasksProgress)
+                {
+                    Debug.WriteLine(JsonSerializer.Serialize(taskStatus));
+                    if (taskStatus.failed)
+                    {
+                        var task = tarkovdevRepository.Tasks.Find(match: t => t.id == taskStatus.id);
+                        if (task == null)
+                        {
+                            continue;
+                        }
+                        if (task.restartable)
+                        {
+                            failedTasks.Add(task);
+                        }
+                    }
+                }
+                if (failedTasks.Count > 0)
+                {
+                    if (Properties.Settings.Default.restartTaskAlert) PlaySoundFromResource(Properties.Resources.restart_failed_tasks);
+                    foreach (var task in failedTasks)
+                    {
+                        messageLog.AddMessage($"Failed task {task.name} should be restarted", "quest", task.wikiLink);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error on matching started: {ex.Message}");
+                Debug.WriteLine(ex.ToString());
+            }
+        }
+
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
         {
             groupManager.Stale = true;
@@ -90,7 +125,7 @@ namespace TarkovMonitor
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
         }
 
-        private async Task updateItems()
+        private async Task UpdateItems()
         {
             try
             {
@@ -103,25 +138,42 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task updateQuests()
+        private async Task UpdateTasks()
         {
             try
             {
-                tarkovdevRepository.Quests = await TarkovDevApi.GetQuests();
-                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Quests.Count} quests from tarkov.dev", "update");
+                tarkovdevRepository.Tasks = await TarkovDevApi.GetTasks();
+                messageLog.AddMessage($"Retrieved {tarkovdevRepository.Tasks.Count} tasks from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage($"Error updating quests: {ex.Message}");
+                messageLog.AddMessage($"Error updating tasks: {ex.Message}");
             }
         }
 
-        private async Task updateMaps()
+        private async Task UpdateMaps()
         {
             try
             {
                 tarkovdevRepository.Maps = await TarkovDevApi.GetMaps();
                 messageLog.AddMessage($"Retrieved {tarkovdevRepository.Maps.Count} maps from tarkov.dev", "update");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error updating maps: {ex.Message}");
+            }
+        }
+
+        private async Task UpdateProgress()
+        {
+            if (Properties.Settings.Default.tarkovTrackerToken == "")
+            {
+                return;
+            }
+            try
+            {
+                progress = await TarkovTracker.GetProgress();
+                messageLog.AddMessage($"Retrieved level {progress.data.playerLevel} progress from Tarkov Tracker", "update");
             }
             catch (Exception ex)
             {
@@ -145,36 +197,99 @@ namespace TarkovMonitor
             messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.", "group");
         }
 
-        private async void Eft_QuestModified(object? sender, GameWatcher.QuestEventArgs e)
+        private void Eft_TaskFinished(object? sender, GameWatcher.TaskEventArgs e)
         {
-            foreach (var quest in tarkovdevRepository.Quests)
-            {
-                if (e.Status == GameWatcher.QuestStatus.Started && (quest.descriptionMessageId == e.MessageId || quest.startMessageId == e.MessageId))
+            tarkovdevRepository.Tasks.ForEach(async task => {
+                if (task.id == e.TaskId)
                 {
-                    messageLog.AddMessage($"Started quest {quest.name}", "quest", quest.wikiLink);
-                    return;
-                }
-                if (e.Status == GameWatcher.QuestStatus.Finished && quest.successMessageId == e.MessageId)
-                {
-                    messageLog.AddMessage($"Completed quest {quest.name}", "quest");
-                    if (quest.tarkovDataId != null && Properties.Settings.Default.tarkovTrackerToken.Length > 0)
+                    messageLog.AddMessage($"Completed task {task.name}", "quest");
+                    if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
                     {
                         try
                         {
-                            var response = await TarkovTracker.SetQuestComplete((int)quest.tarkovDataId);
+                            var response = await TarkovTracker.SetTaskComplete(task.id);
                             //messageLog.AddMessage(response, "quest");
                         }
                         catch (Exception ex)
                         {
-                            messageLog.AddMessage($"Error updating Tarkov Tracker quest progression: {ex.Message}", "exception");
+                            messageLog.AddMessage($"Error updating Tarkov Tracker task progression: {ex.Message}", "exception");
                         }
                     }
                     return;
                 }
-                if (e.Status == GameWatcher.QuestStatus.Failed && quest.failMessageId == e.MessageId)
+                foreach (var failCondition in task.failConditions)
                 {
-                    messageLog.AddMessage($"Failed quest {quest.name}", "quest");
-                    return;
+                    if (failCondition.task == null)
+                    {
+                        continue;
+                    }
+                    if (failCondition.task.id == e.TaskId && failCondition.status.Contains("complete"))
+                    {
+                        //Eft_TaskFailed(sender, new GameWatcher.TaskEventArgs { TaskId = task.id });
+                        foreach (var taskStatus in progress.data.tasksProgress) { 
+                            if (taskStatus.id == failCondition.task.id)
+                            {
+                                taskStatus.failed = true;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            });
+        }
+
+        private async void Eft_TaskFailed(object? sender, GameWatcher.TaskEventArgs e)
+        {
+            var task = tarkovdevRepository.Tasks.Find(t => t.id == e.TaskId);
+            if (task == null)
+            {
+                return;
+            }
+
+            messageLog.AddMessage($"Failed task {task.name}", "quest", task.wikiLink);
+            if (!task.restartable)
+            {
+                try
+                {
+                    var response = await TarkovTracker.SetTaskFailed(task.id);
+                    //messageLog.AddMessage(response, "quest");
+                }
+                catch (Exception ex)
+                {
+                    messageLog.AddMessage($"Error updating Tarkov Tracker task progression: {ex.Message}", "exception");
+                }
+            }
+            foreach (var taskStatus in progress.data.tasksProgress)
+            {
+                if (taskStatus.id == e.TaskId)
+                {
+                    taskStatus.failed = true;
+                    TarkovTracker.SetTaskFailed(e.TaskId);
+                    break;
+                }
+            }
+        }
+
+        private void Eft_TaskStarted(object? sender, GameWatcher.TaskEventArgs e)
+        {
+            var task = tarkovdevRepository.Tasks.Find(t => t.id == e.TaskId);
+            if (task == null)
+            {
+                return;
+            }
+
+            messageLog.AddMessage($"Started task {task.name}", "quest", task.wikiLink);
+            foreach (var taskStatus in progress.data.tasksProgress)
+            {
+                if (taskStatus.id == e.TaskId)
+                {
+                    if (taskStatus.failed)
+                    {
+                        taskStatus.failed = false;
+                        TarkovTracker.SetTaskUncomplete(e.TaskId);
+                    }
+                    break;
                 }
             }
         }
@@ -189,7 +304,7 @@ namespace TarkovMonitor
                     received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {tarkovdevRepository.Items.Find(item => item.id == receivedId).name}");
                 }
                 var soldItemName = tarkovdevRepository.Items.Find(item => item.id == e.SoldItemId).name;
-                messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.soldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
+                messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
             }
         }
         private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
@@ -236,7 +351,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void PlaySoundFromResource(byte[] resource)
+        private static void PlaySoundFromResource(byte[] resource)
         {
             Stream stream = new MemoryStream(resource);
             var reader = new NAudio.Wave.Mp3FileReader(stream);
