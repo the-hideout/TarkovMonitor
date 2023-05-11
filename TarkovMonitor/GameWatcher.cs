@@ -29,6 +29,7 @@ namespace TarkovMonitor
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
         public event EventHandler GameStarted;
+        public event EventHandler MatchingStarted;
         public GameWatcher()
         {
             monitors = new();
@@ -148,6 +149,7 @@ namespace TarkovMonitor
                     if (e.NewMessage.Contains("RaidMode: Online"))
                     {
                         lastLoadedOnline = true;
+                        MatchingStarted?.Invoke(this, new EventArgs());
                     }
                 }
                 if (e.NewMessage.Contains("application|MatchingCompleted") && e.NewMessage.Contains("GamePrepare"))

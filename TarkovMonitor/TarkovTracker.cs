@@ -37,10 +37,10 @@ namespace TarkovMonitor
         {
             var request = GetRequest($"/progress/task/{questId}");
             request.Method = HttpMethod.Post;
-            var payload = @$"{{""status"":""completed""";
+            var payload = @$"{{""state"":""completed""}}";
             request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
-            Debug.WriteLine(await request.Content.ReadAsStringAsync());
-            Debug.WriteLine(request?.RequestUri?.ToString());
+            //Debug.WriteLine(await request.Content.ReadAsStringAsync());
+            //Debug.WriteLine(request?.RequestUri?.ToString());
             HttpResponseMessage response = await client.SendAsync(request);
             try
             {
@@ -52,6 +52,69 @@ namespace TarkovMonitor
                 var code = ((int)response.StatusCode).ToString();
                 throw new Exception($"Invalid response code ({code}): {ex.Message}");
             }
+        }
+
+        public static async Task<string> SetTaskFailed(string questId)
+        {
+            var request = GetRequest($"/progress/task/{questId}");
+            request.Method = HttpMethod.Post;
+            var payload = @$"{{""state"":""failed""}}";
+            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+            //Debug.WriteLine(await request.Content.ReadAsStringAsync());
+            //Debug.WriteLine(request?.RequestUri?.ToString());
+            HttpResponseMessage response = await client.SendAsync(request);
+            try
+            {
+                response.EnsureSuccessStatusCode();
+                return "success";
+            }
+            catch (Exception ex)
+            {
+                var code = ((int)response.StatusCode).ToString();
+                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+            }
+        }
+
+        public static async Task<string> SetTaskUncomplete(string questId)
+        {
+            var request = GetRequest($"/progress/task/{questId}");
+            request.Method = HttpMethod.Post;
+            var payload = @$"{{""state"":""uncompleted""}}";
+            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+            //Debug.WriteLine(await request.Content.ReadAsStringAsync());
+            //Debug.WriteLine(request?.RequestUri?.ToString());
+            HttpResponseMessage response = await client.SendAsync(request);
+            try
+            {
+                response.EnsureSuccessStatusCode();
+                return "success";
+            }
+            catch (Exception ex)
+            {
+                var code = ((int)response.StatusCode).ToString();
+                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+            }
+        }
+
+        public static async Task<ProgressResponse> GetProgress()
+        {
+            var request = GetRequest("/progress");
+            HttpResponseMessage response = client.Send(request);
+            try
+            {
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception ex)
+            {
+                var code = ((int)response.StatusCode).ToString();
+                if (code == "401")
+                {
+
+                }
+                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+            }
+            string responseBody = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<ProgressResponse>(responseBody);
         }
 
         public static async Task<TokenResponse> TestTokenAsync(string apiToken)
@@ -87,6 +150,41 @@ namespace TarkovMonitor
             public string[] permissions { get; set; }
             public string token { get; set; }
             //public int Calls { get; set; }
+        }
+
+        public class ProgressResponse
+        {
+            public ProgressResponseData data { get; set; }
+            public ProgressResponseMeta meta { get; set; }
+        }
+
+        public class ProgressResponseData
+        {
+            public ProgressResponseTask[] tasksProgress { get; set; }
+            public ProgressResponseHideoutPart[] hideoutModulesProgress { get; set; }
+            public string? displayName { get; set; }
+            public string userId { get; set; }
+            public int playerLevel { get; set; }
+            public int gameEdition { get; set; }
+            public string pmcFaction { get; set; }
+        }
+
+        public class ProgressResponseTask
+        {
+            public string id { get; set; }
+            public bool complete { get; set; }
+            public bool invalid { get; set; }
+            public bool failed { get; set; }
+        }
+        public class ProgressResponseHideoutPart    
+        {
+            public string id { get; set; }
+            public bool complete { get; set; }
+            public int count { get; set; }
+        }
+        public class ProgressResponseMeta
+        {
+            public string self { get; set; }
         }
     }
 }
