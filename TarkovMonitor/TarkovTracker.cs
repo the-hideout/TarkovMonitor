@@ -1,25 +1,22 @@
 ﻿using System.Text;
 using System.Diagnostics;
 using System.Text.Json;
+using MudBlazor;
+using TarkovMonitor.Blazor.Pages.Settings;
 
 namespace TarkovMonitor
 {
     internal class TarkovTracker
     {
-        static readonly string apiUrl = "https://tarkovtracker.io/api/v2";
-        static string token = "";
-        static readonly HttpClient client = new();
+        private static readonly string apiUrl = "https://tarkovtracker.io/api/v2";
+        private static readonly HttpClient client = new();
 
-        public static event EventHandler<EventArgs> Initialized;
+        public static ProgressResponse Progress { get; private set; }
+        public static bool ValidToken { get; private set; } = false;
 
-        public static async Task Init()
-        {
-            if (Properties.Settings.Default.tarkovTrackerToken.Length > 0)
-            {
-                token = Properties.Settings.Default.tarkovTrackerToken;
-            }
-            Initialized?.Invoke(typeof(TarkovTracker), new EventArgs());
-        }
+        public static event EventHandler<EventArgs> TokenValidated;
+        public static event EventHandler<EventArgs> TokenInvalid;
+        public static event EventHandler<EventArgs> ProgressRetrieved;
 
         private static HttpRequestMessage GetRequest(string path, string apiToken)
         {
@@ -30,11 +27,15 @@ namespace TarkovMonitor
 
         private static HttpRequestMessage GetRequest(string path)
         {
-            return GetRequest(path, token);
+            return GetRequest(path, Properties.Settings.Default.tarkovTrackerToken);
         }
 
         public static async Task<string> SetTaskComplete(string questId)
         {
+            if (!ValidToken)
+            {
+                return "invalid token";
+            }
             var request = GetRequest($"/progress/task/{questId}");
             request.Method = HttpMethod.Post;
             var payload = @$"{{""state"":""completed""}}";
@@ -45,17 +46,53 @@ namespace TarkovMonitor
             try
             {
                 response.EnsureSuccessStatusCode();
-                return "success";
             }
             catch (Exception ex)
             {
                 var code = ((int)response.StatusCode).ToString();
+                if (code == "401")
+                {
+                    InvalidTokenException();
+                }
                 throw new Exception($"Invalid response code ({code}): {ex.Message}");
             }
+            try
+            {
+                TarkovDevApi.Tasks.ForEach(async task => {
+                    foreach (var failCondition in task.failConditions)
+                    {
+                        if (failCondition.task == null)
+                        {
+                            continue;
+                        }
+                        if (failCondition.task.id == questId && failCondition.status.Contains("complete"))
+                        {
+                            foreach (var taskStatus in Progress.data.tasksProgress)
+                            {
+                                if (taskStatus.id == failCondition.task.id)
+                                {
+                                    taskStatus.failed = true;
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                });
+            } 
+            catch (Exception ex)
+            {
+                // do something?
+            }
+            return "success";
         }
 
         public static async Task<string> SetTaskFailed(string questId)
         {
+            if (!ValidToken)
+            {
+                return "invalid token";
+            }
             var request = GetRequest($"/progress/task/{questId}");
             request.Method = HttpMethod.Post;
             var payload = @$"{{""state"":""failed""}}";
@@ -66,17 +103,51 @@ namespace TarkovMonitor
             try
             {
                 response.EnsureSuccessStatusCode();
+                foreach (var taskStatus in Progress.data.tasksProgress)
+                {
+                    if (taskStatus.id == questId)
+                    {
+                        taskStatus.failed = true;
+                        break;
+                    }
+                }
                 return "success";
             }
             catch (Exception ex)
             {
                 var code = ((int)response.StatusCode).ToString();
+                if (code == "401")
+                {
+                    InvalidTokenException();
+                }
                 throw new Exception($"Invalid response code ({code}): {ex.Message}");
             }
         }
 
         public static async Task<string> SetTaskUncomplete(string questId)
         {
+            if (!ValidToken)
+            {
+                return "invalid token";
+            }
+
+            var updateNeeded = false;
+            foreach (var taskStatus in Progress.data.tasksProgress)
+            {
+                if (taskStatus.id == questId)
+                {
+                    if (taskStatus.failed)
+                    {
+                        taskStatus.failed = false;
+                        updateNeeded = true;
+                    }
+                    break;
+                }
+            }
+            if (!updateNeeded)
+            {
+                return "task not marked as failed";
+            }
             var request = GetRequest($"/progress/task/{questId}");
             request.Method = HttpMethod.Post;
             var payload = @$"{{""state"":""uncompleted""}}";
@@ -92,6 +163,10 @@ namespace TarkovMonitor
             catch (Exception ex)
             {
                 var code = ((int)response.StatusCode).ToString();
+                if (code == "401")
+                {
+                    InvalidTokenException();
+                }
                 throw new Exception($"Invalid response code ({code}): {ex.Message}");
             }
         }
@@ -109,12 +184,15 @@ namespace TarkovMonitor
                 var code = ((int)response.StatusCode).ToString();
                 if (code == "401")
                 {
-
+                    InvalidTokenException();
                 }
                 throw new Exception($"Invalid response code ({code}): {ex.Message}");
             }
             string responseBody = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<ProgressResponse>(responseBody);
+            Progress = JsonSerializer.Deserialize<ProgressResponse>(responseBody);
+            ValidToken = true;
+            ProgressRetrieved?.Invoke(null, new EventArgs());
+            return Progress;
         }
 
         public static async Task<TokenResponse> TestTokenAsync(string apiToken)
@@ -131,17 +209,33 @@ namespace TarkovMonitor
                 var code = ((int)response.StatusCode).ToString();
                 if (code == "401")
                 {
-
+                    InvalidTokenException();
                 }
                 throw new Exception($"Invalid response code ({code}): {ex.Message}");
             }
             string responseBody = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<TokenResponse>(responseBody);
+            var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(responseBody);
+            if (tokenResponse.permissions.Contains("WP"))
+            {
+                GetProgress();
+                ValidToken = true;
+                TokenValidated?.Invoke(null, new EventArgs());
+            }
+            else
+            {
+                Progress = new();
+                ValidToken = false;
+                TokenInvalid?.Invoke(null, new EventArgs());
+            }
+            return tokenResponse;
         }
 
-        public static void SetToken(string apiToken)
+        private static async void InvalidTokenException()
         {
-            token = apiToken;
+            Progress = new();
+            ValidToken = false;
+            TokenInvalid?.Invoke(null, new EventArgs());
+            throw new Exception("Tarkov Tracker token is invalid");
         }
 
         public class TokenResponse
