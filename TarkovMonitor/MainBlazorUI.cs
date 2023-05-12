@@ -6,6 +6,8 @@ using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Text.Json;
+using MudBlazor;
+using TarkovMonitor.Blazor.Pages.Settings;
 
 namespace TarkovMonitor
 {
@@ -57,7 +59,7 @@ namespace TarkovMonitor
             UpdateMaps();
             TarkovDevApi.StartAutoUpdates();
 
-            UpdateProgress();
+            InitializeProgress();
 
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
             var services = new ServiceCollection();
@@ -166,7 +168,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task UpdateProgress()
+        private async Task InitializeProgress()
         {
             if (Properties.Settings.Default.tarkovTrackerToken == "")
             {
@@ -174,7 +176,12 @@ namespace TarkovMonitor
             }
             try
             {
-                await TarkovTracker.GetProgress();
+                var tokenResponse = await TarkovTracker.TestToken(Properties.Settings.Default.tarkovTrackerToken);
+                if (!tokenResponse.permissions.Contains("WP"))
+                {
+                    messageLog.AddMessage("Your Tarkov Tracker token is missing the required write permissions");
+                    return;
+                }
             }
             catch (Exception ex)
             {

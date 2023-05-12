@@ -177,7 +177,7 @@
         } else {
             try
             {
-                var tokenResponse = await TarkovTracker.TestTokenAsync(TarkovTrackerToken);
+                var tokenResponse = await TarkovTracker.TestToken(TarkovTrackerToken);
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     diagParameters.Add("ContentText", "You do not have write permissions with this token.");

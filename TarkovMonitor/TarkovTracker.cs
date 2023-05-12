@@ -195,7 +195,7 @@ namespace TarkovMonitor
             return Progress;
         }
 
-        public static async Task<TokenResponse> TestTokenAsync(string apiToken)
+        public static async Task<TokenResponse> TestToken(string apiToken)
         {
             var path = "/token";
             var request = GetRequest(path, apiToken);
