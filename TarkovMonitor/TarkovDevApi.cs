@@ -6,8 +6,17 @@ namespace TarkovMonitor
 {
     internal class TarkovDevApi
     {
-        static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
-        static readonly HttpClient httpClient = new();
+        private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
+        private static readonly HttpClient httpClient = new();
+        private static readonly System.Timers.Timer updateTimer = new() {
+            AutoReset = true,
+            Enabled = false, 
+            Interval = TimeSpan.FromMinutes(20).TotalMilliseconds
+        };
+
+        public static List<Task> Tasks { get; private set; } = new();
+        public static List<Map> Maps { get; private set; } = new();
+        public static List<Item> Items { get; private set; } = new();
 
         public async static Task<List<Task>> GetTasks()
         {
@@ -32,7 +41,8 @@ namespace TarkovMonitor
                 "
             };
             var response = await client.SendQueryAsync<TasksResponse>(request);
-            return response.Data.tasks;
+            Tasks = response.Data.tasks;
+            return Tasks;
         }
 
         public async static Task<List<Map>> GetMaps()
@@ -50,7 +60,8 @@ namespace TarkovMonitor
                 "
             };
             var response = await client.SendQueryAsync<MapsResponse>(request);
-            return response.Data.maps;
+            Maps = response.Data.maps;
+            return Maps;
         }
         public async static Task<List<Item>> GetItems()
         {
@@ -68,7 +79,8 @@ namespace TarkovMonitor
                 "
             };
             var response = await client.SendQueryAsync<ItemsResponse>(request);
-            return response.Data.items;
+            Items = response.Data.items;
+            return Items;
         }
 
         public async static Task<string> PostQueueTime(string mapNameId, int queueTime, string type)
@@ -91,7 +103,19 @@ namespace TarkovMonitor
             {
                 throw new Exception($"{ex.Message}: {content}");
             }
-            
+        }
+
+        public static void StartAutoUpdates()
+        {
+            updateTimer.Enabled = true;
+            updateTimer.Elapsed += UpdateTimer_Elapsed;
+        }
+
+        private static void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            GetTasks();
+            GetMaps();
+            GetItems();
         }
 
         public class TasksResponse

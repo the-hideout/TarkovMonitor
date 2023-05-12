@@ -146,7 +146,6 @@
         set
         {
             Properties.Settings.Default.tarkovTrackerToken = value;
-            TarkovTracker.SetToken(value);
             Properties.Settings.Default.Save();
         }
     }
@@ -175,7 +174,7 @@
             diagParameters.Add("ContentText", "You must first set a valid TarkovTracker token.");
             DialogService.Show<TokenTestDialog>("Token Test", diagParameters, diagOptions);
             return;
-        }else{
+        } else {
             try
             {
                 var tokenResponse = await TarkovTracker.TestTokenAsync(TarkovTrackerToken);
