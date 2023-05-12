@@ -6,8 +6,6 @@ using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Text.Json;
-using MudBlazor;
-using TarkovMonitor.Blazor.Pages.Settings;
 
 namespace TarkovMonitor
 {
