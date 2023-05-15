@@ -125,7 +125,7 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("application|MatchingCompleted"))
                     {
-                        // When matching is found, you have been locked to a server with other players
+                        // When matching is complete, you have been locked to a server with other players
                         MatchFound?.Invoke(this, new MatchFoundEventArgs { });
                     }
                     if (eventLine.Contains("application|GameStarting"))
