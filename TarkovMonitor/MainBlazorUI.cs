@@ -22,8 +22,22 @@ namespace TarkovMonitor
             eft = new GameWatcher();
             eft.Start();
 
+            // Singleton message log used to record and display messages for TarkovMonitor
+            messageLog = new MessageLog();
+            messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()}");
+
+            // Singleton log repository to record, display, and analyze logs for TarkovMonitor
+            logRepository = new LogRepository();
+
+            // Singleton Group tracker
+            groupManager = new GroupManager();
+
+            // Singleton tarkov.dev repository (to DI the results of the queries)
+            //tarkovdevRepository = new TarkovDevRepository();
+
             // Add event watchers
             eft.FleaSold += Eft_FleaSold;
+            eft.FleaOfferExpired += Eft_FleaOfferExpired;
             eft.DebugMessage += Eft_DebugMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
             eft.RaidLoaded += Eft_RaidLoaded;
@@ -38,18 +52,6 @@ namespace TarkovMonitor
             eft.MatchFound += Eft_MatchFound;
             eft.MatchingStarted += Eft_MatchingStarted;
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
-
-            // Singleton message log used to record and display messages for TarkovMonitor
-            messageLog = new MessageLog();
-
-            // Singleton log repository to record, display, and analyze logs for TarkovMonitor
-            logRepository = new LogRepository();
-
-            // Singleton Group tracker
-            groupManager = new GroupManager();
-
-            // Singleton tarkov.dev repository (to DI the results of the queries)
-            //tarkovdevRepository = new TarkovDevRepository();
 
             // Update tarkov.dev Repository data
             UpdateItems();
@@ -87,33 +89,35 @@ namespace TarkovMonitor
                 var failedTasks = new List<TarkovDevApi.Task>();
                 foreach (var taskStatus in TarkovTracker.Progress.data.tasksProgress)
                 {
-                    Debug.WriteLine(JsonSerializer.Serialize(taskStatus));
-                    if (taskStatus.failed)
+                    if (!taskStatus.failed)
                     {
-                        var task = TarkovDevApi.Tasks.Find(match: t => t.id == taskStatus.id);
-                        if (task == null)
-                        {
-                            continue;
-                        }
-                        if (task.restartable)
-                        {
-                            failedTasks.Add(task);
-                        }
+                        continue;
+                    }
+                    var task = TarkovDevApi.Tasks.Find(match: t => t.id == taskStatus.id);
+                    if (task == null)
+                    {
+                        continue;
+                    }
+                    if (task.restartable)
+                    {
+                        failedTasks.Add(task);
                     }
                 }
-                if (failedTasks.Count > 0)
+                if (failedTasks.Count == 0)
                 {
-                    if (Properties.Settings.Default.restartTaskAlert) PlaySoundFromResource(Properties.Resources.restart_failed_tasks);
-                    foreach (var task in failedTasks)
-                    {
-                        messageLog.AddMessage($"Failed task {task.name} should be restarted", "quest", task.wikiLink);
-                    }
+                    return;
+                }
+                if (Properties.Settings.Default.restartTaskAlert) { 
+                    PlaySoundFromResource(Properties.Resources.restart_failed_tasks);
+                }
+                foreach (var task in failedTasks)
+                {
+                    messageLog.AddMessage($"Failed task {task.name} should be restarted", "quest", task.wikiLink);
                 }
             }
             catch (Exception ex)
             {
                 messageLog.AddMessage($"Error on matching started: {ex.Message}");
-                Debug.WriteLine(ex.ToString());
             }
         }
 
@@ -178,7 +182,6 @@ namespace TarkovMonitor
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     messageLog.AddMessage("Your Tarkov Tracker token is missing the required write permissions");
-                    return;
                 }
             }
             catch (Exception ex)
@@ -240,17 +243,14 @@ namespace TarkovMonitor
             }
 
             messageLog.AddMessage($"Failed task {task.name}", "quest", task.wikiLink);
-            if (!task.restartable)
+            try
             {
-                try
-                {
-                    await TarkovTracker.SetTaskFailed(task.id);
-                    //messageLog.AddMessage(response, "quest");
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error updating Tarkov Tracker task progression: {ex.Message}", "exception");
-                }
+                await TarkovTracker.SetTaskFailed(task.id);
+                //messageLog.AddMessage(response, "quest");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error updating Tarkov Tracker task progression: {ex.Message}", "exception");
             }
         }
 
@@ -279,17 +279,33 @@ namespace TarkovMonitor
 
         private void Eft_FleaSold(object? sender, GameWatcher.FleaSoldEventArgs e)
         {
-            if (TarkovDevApi.Items != null)
+            if (TarkovDevApi.Items == null)
             {
-                List<string> received = new();
-                foreach (var receivedId in e.ReceivedItems.Keys)
-                {
-                    received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {TarkovDevApi.Items.Find(item => item.id == receivedId).name}");
-                }
-                var soldItemName = TarkovDevApi.Items.Find(item => item.id == e.SoldItemId).name;
-                messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
+                return;
             }
+            List<string> received = new();
+            foreach (var receivedId in e.ReceivedItems.Keys)
+            {
+                received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {TarkovDevApi.Items.Find(item => item.id == receivedId).name}");
+            }
+            var soldItemName = TarkovDevApi.Items.Find(item => item.id == e.SoldItemId).name;
+            messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
         }
+
+        private void Eft_FleaOfferExpired(object? sender, GameWatcher.FleaOfferExpiredEventArgs e)
+        {
+            if (TarkovDevApi.Items == null)
+            {
+                return;
+            }
+            var unsoldItem = TarkovDevApi.Items.Find(item => item.id == e.ItemId);
+            if (unsoldItem == null)
+            {
+                return;
+            }
+            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.ItemCount}) expired", "flea");
+        }
+
         private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
         {
             messageLog.AddMessage(e.Message, "debug");
@@ -307,10 +323,13 @@ namespace TarkovMonitor
             var map = TarkovDevApi.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
             messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType} after matching for {e.QueueTime} seconds");
-            if (!Properties.Settings.Default.submitQueueTime) return;
+            if (!Properties.Settings.Default.submitQueueTime) 
+            { 
+                return;
+            }
             try
             {
-                var response = await TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType);
+                await TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType);
             }
             catch (Exception ex)
             {

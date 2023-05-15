@@ -1,8 +1,6 @@
 ﻿using System.Text;
-using System.Diagnostics;
 using System.Text.Json;
 using MudBlazor;
-using TarkovMonitor.Blazor.Pages.Settings;
 
 namespace TarkovMonitor
 {
