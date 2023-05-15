@@ -45,7 +45,7 @@ namespace TarkovMonitor
             eft.TaskStarted += Eft_TaskStarted;
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
-            eft.NewLogMessage += Eft_NewLogMessage;
+            eft.NewLogData += Eft_NewLogData;
             eft.GroupInvite += Eft_GroupInvite;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
@@ -195,9 +195,9 @@ namespace TarkovMonitor
             if (Properties.Settings.Default.matchFoundAlert) PlaySoundFromResource(Properties.Resources.match_found);
         }
 
-        private void Eft_NewLogMessage(object? sender, LogMonitor.NewLogEventArgs e)
+        private void Eft_NewLogData(object? sender, LogMonitor.NewLogDataEventArgs e)
         {
-            logRepository.AddLog(e.NewMessage, e.Type.ToString());
+            logRepository.AddLog(e.Data, e.Type.ToString());
         }
 
         private void Eft_GroupInvite(object? sender, GameWatcher.GroupInviteEventArgs e)

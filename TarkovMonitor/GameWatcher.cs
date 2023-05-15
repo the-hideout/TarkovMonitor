@@ -14,22 +14,22 @@ namespace TarkovMonitor
         private string lastLoadedMap = "";
         private bool lastLoadedOnline = false;
         private float lastQueueTime = 0;
-        public event EventHandler<LogMonitor.NewLogEventArgs> NewLogMessage;
+        public event EventHandler<LogMonitor.NewLogDataEventArgs> NewLogData;
+        public event EventHandler<ExceptionEventArgs> ExceptionThrown;
+        public event EventHandler<DebugEventArgs> DebugMessage;
+        public event EventHandler GameStarted;
+        public event EventHandler<GroupInviteEventArgs> GroupInvite;
+        public event EventHandler MatchingStarted;
+        public event EventHandler<MatchFoundEventArgs> MatchFound;
+        public event EventHandler MatchingAborted;
+        public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
         public event EventHandler<TaskModifiedEventArgs> TaskModified;
         public event EventHandler<TaskEventArgs> TaskStarted;
         public event EventHandler<TaskEventArgs> TaskFailed;
         public event EventHandler<TaskEventArgs> TaskFinished;
-        public event EventHandler<GroupInviteEventArgs> GroupInvite;
-        public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
-        public event EventHandler<MatchFoundEventArgs> MatchFound;
-        public event EventHandler MatchingAborted;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public event EventHandler<FleaOfferExpiredEventArgs> FleaOfferExpired;
-        public event EventHandler<ExceptionEventArgs> ExceptionThrown;
-        public event EventHandler<DebugEventArgs> DebugMessage;
-        public event EventHandler GameStarted;
-        public event EventHandler MatchingStarted;
         public GameWatcher()
         {
             monitors = new();
@@ -66,14 +66,14 @@ namespace TarkovMonitor
             }
         }
 
-        private void GameWatcher_NewLog(object? sender, LogMonitor.NewLogEventArgs e)
+        private void GameWatcher_NewLogData(object? sender, LogMonitor.NewLogDataEventArgs e)
         {
             try
             {
                 //DebugMessage?.Invoke(this, new DebugEventArgs(e.NewMessage));
-                NewLogMessage?.Invoke(this, e);
+                NewLogData?.Invoke(this, e);
                 var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})*";
-                var logMessages = Regex.Matches(e.NewMessage, logPattern, RegexOptions.Multiline);
+                var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
                 /*Debug.WriteLine("===log chunk start===");
                 Debug.WriteLine(e.NewMessage);
                 Debug.WriteLine("===log chunk end===");*/
@@ -94,33 +94,15 @@ namespace TarkovMonitor
                     {
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
                     }
-                    if (jsonString.Contains("quest started") || jsonString.Contains("quest finished") || jsonString.Contains("quest failed"))
-                    {
-                        var args = new TaskModifiedEventArgs(jsonNode);
-
-                        TaskModified?.Invoke(this,  args);
-                        if (args.Status == TaskStatus.Started)
-                        {
-                            TaskStarted?.Invoke(this, new TaskEventArgs { TaskId = args.TaskId });
-                        }
-                        if (args.Status == TaskStatus.Failed)
-                        {
-                            TaskFailed?.Invoke(this, new TaskEventArgs { TaskId = args.TaskId });
-                        }
-                        if (args.Status == TaskStatus.Finished)
-                        {
-                            TaskFinished?.Invoke(this, new TaskEventArgs { TaskId = args.TaskId });
-                        }
-                    }
-                    if (eventLine.Contains("GroupMatchInviteAccept"))
+                    if (eventLine.Contains("Got notification | GroupMatchInviteAccept"))
                     {
                         GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
                     }
-                    if (eventLine.Contains("GroupMatchInviteSend"))
+                    if (eventLine.Contains("Got notification | GroupMatchInviteSend"))
                     {
                         GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
                     }
-                    if (eventLine.Contains("GroupMatchRaidReady"))
+                    if (eventLine.Contains("Got notification | GroupMatchRaidReady"))
                     {
                         GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
                     }
@@ -172,14 +154,40 @@ namespace TarkovMonitor
                         lastLoadedMap = "";
                         lastQueueTime = 0;
                     }
-                    if (eventLine.Contains("Got notification | ChatMessageReceived") && jsonNode["message"]["templateId"].ToString() == "5bdabfb886f7743e152e867e 0")
+                    if (eventLine.Contains("Got notification | ChatMessageReceived"))
                     {
-                        FleaSold?.Invoke(this, new FleaSoldEventArgs(jsonNode));
+                        var templateId = jsonNode["message"]["templateId"].ToString();
+                        var messageText = jsonNode["message"]["text"].ToString();
+                        if (templateId == "5bdabfb886f7743e152e867e 0")
+                        {
+                            FleaSold?.Invoke(this, new FleaSoldEventArgs(jsonNode));
+                            continue;
+                        }
+                        if (templateId == "5bdabfe486f7743e1665df6e 0")
+                        {
+                            FleaOfferExpired?.Invoke(this, new FleaOfferExpiredEventArgs(jsonNode));
+                            continue;
+                        }
+                        if (messageText == "quest started" || messageText == "quest finished" || messageText == "quest failed")
+                        {
+                            var args = new TaskModifiedEventArgs(jsonNode);
+
+                            TaskModified?.Invoke(this, args);
+                            if (args.Status == TaskStatus.Started)
+                            {
+                                TaskStarted?.Invoke(this, new TaskEventArgs { TaskId = args.TaskId });
+                            }
+                            if (args.Status == TaskStatus.Failed)
+                            {
+                                TaskFailed?.Invoke(this, new TaskEventArgs { TaskId = args.TaskId });
+                            }
+                            if (args.Status == TaskStatus.Finished)
+                            {
+                                TaskFinished?.Invoke(this, new TaskEventArgs { TaskId = args.TaskId });
+                            }
+                        }
                     }
-                    if (eventLine.Contains("Got notification | ChatMessageReceived") && jsonNode["message"]["templateId"].ToString() == "5bdabfe486f7743e1665df6e 0")
-                    {
-                        FleaOfferExpired?.Invoke(this, new FleaOfferExpiredEventArgs(jsonNode));
-                    }
+                    
                 }
             }
             catch (Exception ex)
@@ -271,7 +279,7 @@ namespace TarkovMonitor
                     monitors[(LogType)newType].Stop();
                 }
                 var newMon = new LogMonitor(path, (LogType)newType);
-                newMon.NewLog += GameWatcher_NewLog;
+                newMon.NewLogData += GameWatcher_NewLogData;
                 newMon.Start();
                 monitors[(LogType)newType] = newMon;
             }
