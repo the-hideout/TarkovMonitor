@@ -107,7 +107,8 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                if (Properties.Settings.Default.restartTaskAlert) { 
+                if (Properties.Settings.Default.restartTaskAlert)
+                {
                     PlaySoundFromResource(Properties.Resources.restart_failed_tasks);
                 }
                 foreach (var task in failedTasks)
@@ -323,8 +324,8 @@ namespace TarkovMonitor
             var map = TarkovDevApi.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
             messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType} after matching for {e.QueueTime} seconds");
-            if (!Properties.Settings.Default.submitQueueTime) 
-            { 
+            if (!Properties.Settings.Default.submitQueueTime)
+            {
                 return;
             }
             try
