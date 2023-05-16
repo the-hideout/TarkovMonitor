@@ -197,7 +197,7 @@ namespace TarkovMonitor
             { 
                 PlaySoundFromResource(Properties.Resources.match_found);
             }
-            messageLog.AddMessage($"Matching complete after {e.QueueTime} seconds");
+            messageLog.AddMessage($"Matching complete on {e.Map} after {e.QueueTime} seconds");
         }
 
         private void Eft_NewLogData(object? sender, LogMonitor.NewLogDataEventArgs e)

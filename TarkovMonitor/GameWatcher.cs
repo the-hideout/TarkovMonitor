@@ -11,9 +11,7 @@ namespace TarkovMonitor
         private readonly FileSystemWatcher watcher;
         //private event EventHandler<NewLogEventArgs> NewLog;
         private readonly Dictionary<LogType, LogMonitor> monitors;
-        private string lastLoadedMap = "";
-        private bool lastLoadedOnline = false;
-        private float lastQueueTime = 0;
+        private RaidInfo raidInfo;
         public event EventHandler<LogMonitor.NewLogDataEventArgs> NewLogData;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
@@ -33,6 +31,7 @@ namespace TarkovMonitor
         public GameWatcher()
         {
             monitors = new();
+            raidInfo = new RaidInfo();
             processTimer = new System.Timers.Timer(30000)
             {
                 AutoReset = true,
@@ -106,49 +105,53 @@ namespace TarkovMonitor
                     {
                         GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
                     }
-                    if (eventLine.Contains("application|MatchingCompleted") && e.Type == LogType.Application)
+                    if (eventLine.Contains("application|LocationLoaded") && e.Type == LogType.Application)
                     {
-                        // When matching is complete, you have been locked to a server with other players
-                        var queueTimeMatch = Regex.Match(eventLine, @"MatchingCompleted:[0-9.]+ real:(?<queueTime>[0-9.]+)");
-                        lastQueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
-                        MatchFound?.Invoke(this, new MatchFoundEventArgs { QueueTime = lastQueueTime });
+                        // The map has been loaded and the game is searching for a match
+                        raidInfo.MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.]+ real:(?<loadTime>[0-9.]+)").Groups["loadTime"].Value);
+                        MatchingStarted?.Invoke(this, new());
+                    }
+                    if (eventLine.Contains("application|GamePrepared") && e.Type == LogType.Application)
+                    {
+                        // Matching is complete and we are locked to a server with other players
+                        // Get the map queue time and wait for further information to fire an event
+                        var queueTimeMatch = Regex.Match(eventLine, @"GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
+                        raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
                     }
                     if (eventLine.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
                     {
-                        // Confirm we are starting to queue for an online raid and get the map
-                        lastLoadedOnline = false;
-                        lastLoadedMap = new Regex("Location: (?<map>[^,]+)").Match(eventLine).Groups["map"].Value;
-                        if (eventLine.Contains("RaidMode: Online"))
+                        // After matching is complete
+                        // Get the raid information and fire the event
+                        raidInfo.Map = new Regex("Location: (?<map>[^,]+)").Match(eventLine).Groups["map"].Value;
+                        raidInfo.Online = eventLine.Contains("RaidMode: Online");
+                        raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
+                        if (raidInfo.Online)
                         {
-                            lastLoadedOnline = true;
-                            MatchingStarted?.Invoke(this, new EventArgs());
+                            MatchFound?.Invoke(this, new MatchFoundEventArgs { Map = raidInfo.Map, RaidId = raidInfo.RaidId, QueueTime = raidInfo.QueueTime });
                         }
                     }
                     if (eventLine.Contains("application|GameStarting"))
                     {
                         // When the raid start countdown begins. Only happens for PMCs.
-                        if (lastLoadedOnline)
+                        if (raidInfo.Online)
                         {
-                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = "pmc" });
+                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = "pmc" });
                         }
-                        lastLoadedMap = "";
-                        lastQueueTime = 0;
+                        raidInfo = new();
                     }
                     else if (eventLine.Contains("application|GameStarted") && e.Type == LogType.Application)
                     {
                         // Raid begins, either at the end of the countdown for PMC (no event raised), or immediately as a scav
-                        if (lastLoadedOnline && lastQueueTime > 0)
+                        if (raidInfo.Online && raidInfo.QueueTime > 0)
                         {
-                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = lastLoadedMap, QueueTime = lastQueueTime, RaidType = "scav" });
+                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = "scav" });
                         }
-                        lastLoadedMap = "";
-                        lastQueueTime = 0;
+                        raidInfo = new();
                     }
-                    if (eventLine.Contains("Network game matching aborted"))
+                    if (eventLine.Contains("Network game matching aborted") || eventLine.Contains("Network game matching cancelled"))
                     {
                         MatchingAborted?.Invoke(this, new EventArgs());
-                        lastLoadedMap = "";
-                        lastQueueTime = 0;
+                        raidInfo = new();
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))
                     {
@@ -207,6 +210,7 @@ namespace TarkovMonitor
                 //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
                 process = null;
             }
+            raidInfo = new();
             var processes = Process.GetProcessesByName("EscapeFromTarkov");
             if (processes.Length == 0) {
                 //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
@@ -351,6 +355,8 @@ namespace TarkovMonitor
         }
 
         public class MatchFoundEventArgs : EventArgs {
+            public string Map { get; set; }
+            public string RaidId { get; set; }
             public float QueueTime { get; set; }
         }
         public class RaidLoadedEventArgs : EventArgs
@@ -405,6 +411,23 @@ namespace TarkovMonitor
             public DebugEventArgs(string message)
             {
                 this.Message = message;
+            }
+        }
+
+        public class RaidInfo
+        {
+            public string Map { get; set; }
+            public string RaidId { get; set; }
+            public bool Online { get; set; }
+            public float MapLoadTime { get; set; }
+            public float QueueTime { get; set; }
+            public RaidInfo()
+            {
+                Map = "";
+                Online = false;
+                RaidId = "";
+                MapLoadTime = 0;
+                QueueTime = 0;
             }
         }
     }
