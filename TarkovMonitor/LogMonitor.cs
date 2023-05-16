@@ -10,7 +10,7 @@ namespace TarkovMonitor
     {
         public string Path { get; set; }
         public GameWatcher.LogType Type { get; set; }
-        public event EventHandler<NewLogEventArgs> NewLog;
+        public event EventHandler<NewLogDataEventArgs> NewLogData;
         private bool cancel;
 
         public LogMonitor(string path, GameWatcher.LogType logType)
@@ -55,7 +55,7 @@ namespace TarkovMonitor
                                 }
                                 if (initialRead)
                                 {
-                                    NewLog?.Invoke(this, new NewLogEventArgs { Type = this.Type, NewMessage = String.Join("", lines.ToArray()) });
+                                    NewLogData?.Invoke(this, new NewLogDataEventArgs { Type = this.Type, Data = String.Join("", lines.ToArray()) });
                                 }
                                 initialRead = true;
                             }
@@ -72,10 +72,10 @@ namespace TarkovMonitor
             cancel = true;
         }
 
-        public class NewLogEventArgs : EventArgs
+        public class NewLogDataEventArgs : EventArgs
         {
             public GameWatcher.LogType Type { get; set; }
-            public string NewMessage { get; set; }
+            public string Data { get; set; }
         }
     }
 }
