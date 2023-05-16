@@ -114,14 +114,14 @@ namespace TarkovMonitor
                     if (eventLine.Contains("application|GamePrepared") && e.Type == LogType.Application)
                     {
                         // Matching is complete and we are locked to a server with other players
-                        // Get the map queue time and wait for further information to fire an event
+                        // Get the map queue time and wait for further information to fire MatchFound event
                         var queueTimeMatch = Regex.Match(eventLine, @"GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
                         raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
                     }
                     if (eventLine.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
                     {
-                        // After matching is complete
-                        // Get the raid information and fire the event
+                        // Immediately after matching is complete
+                        // Get the raid information and fire the MatchFound event
                         raidInfo.Map = new Regex("Location: (?<map>[^,]+)").Match(eventLine).Groups["map"].Value;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
@@ -132,7 +132,7 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("application|GameStarting"))
                     {
-                        // When the raid start countdown begins. Only happens for PMCs.
+                        // The raid start countdown begins. Only happens for PMCs.
                         if (raidInfo.Online)
                         {
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = "pmc" });
@@ -141,7 +141,8 @@ namespace TarkovMonitor
                     }
                     else if (eventLine.Contains("application|GameStarted") && e.Type == LogType.Application)
                     {
-                        // Raid begins, either at the end of the countdown for PMC (no event raised), or immediately as a scav
+                        // Raid begins, either at the end of the countdown for PMC, or immediately as a scav
+                        // Since we raise the RaidLoaded event when the countdown starts for PMC, we don't raise it here
                         if (raidInfo.Online && raidInfo.QueueTime > 0)
                         {
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = "scav" });
