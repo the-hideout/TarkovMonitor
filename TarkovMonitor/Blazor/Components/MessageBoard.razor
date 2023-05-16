@@ -7,7 +7,7 @@
     {
         <MudAlert Severity="Severity.Info">There aren't any messages yet.</MudAlert>
     }else{
-        @foreach (MonitorMessage message in messageLog.Messages)
+        @foreach (MonitorMessage message in messageLog.Messages.ToList())
         {
             <div class="">
                 <div class="d-block">

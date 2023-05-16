@@ -5,7 +5,6 @@ using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
-using System.Text.Json;
 
 namespace TarkovMonitor
 {
@@ -82,10 +81,11 @@ namespace TarkovMonitor
             messageLog.AddMessage($"Retrieved level {TarkovTracker.Progress.data.playerLevel} progress from Tarkov Tracker", "update");
         }
 
-        private void Eft_MatchingStarted(object? sender, EventArgs e)
+        private async void Eft_MatchingStarted(object? sender, EventArgs e)
         {
             try
             {
+                //await AllDataLoaded();
                 var failedTasks = new List<TarkovDevApi.Task>();
                 foreach (var taskStatus in TarkovTracker.Progress.data.tasksProgress)
                 {
@@ -193,7 +193,11 @@ namespace TarkovMonitor
 
         private void Eft_MatchFound(object? sender, GameWatcher.MatchFoundEventArgs e)
         {
-            if (Properties.Settings.Default.matchFoundAlert) PlaySoundFromResource(Properties.Resources.match_found);
+            if (Properties.Settings.Default.matchFoundAlert) 
+            { 
+                PlaySoundFromResource(Properties.Resources.match_found);
+            }
+            messageLog.AddMessage($"Matching complete after {e.QueueTime} seconds");
         }
 
         private void Eft_NewLogData(object? sender, LogMonitor.NewLogDataEventArgs e)
@@ -209,6 +213,7 @@ namespace TarkovMonitor
 
         private async void Eft_TaskFinished(object? sender, GameWatcher.TaskEventArgs e)
         {
+            //await AllDataLoaded();
             if (!TarkovTracker.ValidToken)
             {
                 return;
@@ -216,6 +221,7 @@ namespace TarkovMonitor
             var task = TarkovDevApi.Tasks.Find(t => t.id == e.TaskId);
             if (task == null)
             {
+                //Debug.WriteLine($"Task with id {e.TaskId} not found");
                 return;
             }
 
@@ -278,13 +284,14 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_FleaSold(object? sender, GameWatcher.FleaSoldEventArgs e)
+        private async void Eft_FleaSold(object? sender, GameWatcher.FleaSoldEventArgs e)
         {
             if (TarkovDevApi.Items == null)
             {
                 return;
             }
             List<string> received = new();
+            //await AllDataLoaded();
             foreach (var receivedId in e.ReceivedItems.Keys)
             {
                 received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {TarkovDevApi.Items.Find(item => item.id == receivedId).name}");
@@ -323,7 +330,7 @@ namespace TarkovMonitor
             var mapName = e.Map;
             var map = TarkovDevApi.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType} after matching for {e.QueueTime} seconds");
+            messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType}");
             if (!Properties.Settings.Default.submitQueueTime)
             {
                 return;
@@ -361,6 +368,15 @@ namespace TarkovMonitor
             var waveOut = new WaveOut();
             waveOut.Init(reader);
             waveOut.Play();
+        }
+
+        private async Task<bool> AllDataLoaded()
+        {
+            while (TarkovDevApi.Items.Count == 0 || TarkovDevApi.Maps.Count == 0 || TarkovDevApi.Tasks.Count == 0 || TarkovTracker.Progress == null)
+            {
+                Thread.Sleep(500);
+            }
+            return true;
         }
     }
 }

@@ -106,11 +106,12 @@ namespace TarkovMonitor
                     {
                         GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
                     }
-                    if (eventLine.Contains("GamePrepared") && e.Type == LogType.Application)
+                    if (eventLine.Contains("application|MatchingCompleted") && e.Type == LogType.Application)
                     {
-                        var rx = new Regex("GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
-                        var match = rx.Match(eventLine);
-                        lastQueueTime = float.Parse(match.Groups["queueTime"].Value);
+                        // When matching is complete, you have been locked to a server with other players
+                        var queueTimeMatch = Regex.Match(eventLine, @"MatchingCompleted:[0-9.]+ real:(?<queueTime>[0-9.]+)");
+                        lastQueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
+                        MatchFound?.Invoke(this, new MatchFoundEventArgs { QueueTime = lastQueueTime });
                     }
                     if (eventLine.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
                     {
@@ -122,11 +123,6 @@ namespace TarkovMonitor
                             lastLoadedOnline = true;
                             MatchingStarted?.Invoke(this, new EventArgs());
                         }
-                    }
-                    if (eventLine.Contains("application|MatchingCompleted"))
-                    {
-                        // When matching is complete, you have been locked to a server with other players
-                        MatchFound?.Invoke(this, new MatchFoundEventArgs { });
                     }
                     if (eventLine.Contains("application|GameStarting"))
                     {
@@ -171,7 +167,6 @@ namespace TarkovMonitor
                         if (messageText == "quest started" || messageText == "quest finished" || messageText == "quest failed")
                         {
                             var args = new TaskModifiedEventArgs(jsonNode);
-
                             TaskModified?.Invoke(this, args);
                             if (args.Status == TaskStatus.Started)
                             {
@@ -313,7 +308,7 @@ namespace TarkovMonitor
             public TaskStatus Status { get; set; }
             public TaskModifiedEventArgs(JsonNode node)
             {
-                TaskId = node["message"]["templateId"].ToString();
+                TaskId = node["message"]["templateId"].ToString().Split(' ')[0];
                 Status = (TaskStatus)node["message"]["type"].GetValue<int>();
             }
         }
@@ -355,7 +350,9 @@ namespace TarkovMonitor
             }
         }
 
-        public class MatchFoundEventArgs : EventArgs { }
+        public class MatchFoundEventArgs : EventArgs {
+            public float QueueTime { get; set; }
+        }
         public class RaidLoadedEventArgs : EventArgs
         {
             public string Map { get; set; }
