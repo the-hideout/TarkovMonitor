@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Resources\TarkovDev.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,7 @@
     <Content Include="Blazor\AppLayout.razor.css" />
     <Content Include="Blazor\MainLayout.razor.css" />
     <Content Include="Blazor\Pages\Dashboard\Dashboard.razor.css" />
+    <Content Include="Resources\TarkovDev.ico" />
   </ItemGroup>
 
   <ItemGroup>
