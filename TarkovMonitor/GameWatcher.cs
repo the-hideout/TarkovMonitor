@@ -32,7 +32,7 @@ namespace TarkovMonitor
         {
             monitors = new();
             raidInfo = new RaidInfo();
-            processTimer = new System.Timers.Timer(30000)
+            processTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30).TotalMilliseconds)
             {
                 AutoReset = true,
                 Enabled = false
