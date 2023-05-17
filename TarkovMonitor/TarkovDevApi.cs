@@ -74,6 +74,8 @@ namespace TarkovMonitor
                             name
                             width
                             height
+                            link
+                            iconLink
                         }
                     }
                 "
@@ -164,6 +166,8 @@ namespace TarkovMonitor
             public string name { get; set; }
             public int width { get; set; }
             public int height { get; set; }
+			public string link { get; set; }
+			public string iconLink { get; set; }
         }
     }
 }
