@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
+using System.Globalization;
 
 namespace TarkovMonitor
 {
@@ -293,11 +294,35 @@ namespace TarkovMonitor
             List<string> received = new();
             //await AllDataLoaded();
             foreach (var receivedId in e.ReceivedItems.Keys)
-            {
-                received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {TarkovDevApi.Items.Find(item => item.id == receivedId).name}");
+			{
+				if (receivedId == "5449016a4bdc2d6f028b456f")
+				{
+					received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("ru-RU")));
+                    continue;
+				}
+                else if (receivedId == "5696686a4bdc2da3298b456a")
+                {
+					received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("en-US")));
+                    continue;
+				}
+				else if (receivedId == "569668774bdc2da2298b4568")
+				{
+					received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("de-DE")));
+					continue;
+				}
+				var receivedItem = TarkovDevApi.Items.Find(item => item.id == receivedId);
+                if (receivedItem == null)
+                {
+                    continue;
+                }
+				received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {receivedItem.name}");
             }
-            var soldItemName = TarkovDevApi.Items.Find(item => item.id == e.SoldItemId).name;
-            messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItemName} for {String.Join(", ", received.ToArray())}", "flea");
+            var soldItem = TarkovDevApi.Items.Find(item => item.id == e.SoldItemId);
+            if (soldItem == null)
+            {
+                return;
+            }
+            messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItem.name} for {String.Join(", ", received.ToArray())}", "flea", soldItem.link);
         }
 
         private void Eft_FleaOfferExpired(object? sender, GameWatcher.FleaOfferExpiredEventArgs e)
@@ -311,7 +336,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.ItemCount}) expired", "flea");
+            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.ItemCount}) expired", "flea", unsoldItem.link);
         }
 
         private void Eft_DebugMessage(object? sender, GameWatcher.DebugEventArgs e)
