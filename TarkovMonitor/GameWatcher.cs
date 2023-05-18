@@ -135,7 +135,7 @@ namespace TarkovMonitor
                     if (eventLine.Contains("application|GameStarting"))
                     {
                         // The raid start countdown begins. Only happens for PMCs.
-                        raidInfo.RaidType = "PMC";
+                        raidInfo.RaidType = RaidType.PMC;
                         if (raidInfo.Online)
                         {
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
@@ -146,11 +146,11 @@ namespace TarkovMonitor
                         // Raid begins, either at the end of the countdown for PMC, or immediately as a scav
                         // Since we raise the RaidLoaded event when the countdown starts for PMC, we don't raise it here
                         // Except we do raise it if matching was not done because we are re-entering a raid
-                        if (raidInfo.RaidType == "Unknown" && raidInfo.QueueTime > 0)
+                        if (raidInfo.RaidType == RaidType.Unknown && raidInfo.QueueTime > 0)
                         {
-                            raidInfo.RaidType = "Scav";
+                            raidInfo.RaidType = RaidType.Scav;
                         }
-                        if (raidInfo.Online && raidInfo.RaidType != "PMC")
+                        if (raidInfo.Online && raidInfo.RaidType != RaidType.PMC)
                         {
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
                         }
@@ -309,6 +309,12 @@ namespace TarkovMonitor
             Accepted,
             Sent
         }
+        public enum RaidType
+        {
+            Unknown,
+            PMC,
+            Scav
+        }
         public class RaidExitedEventArgs : EventArgs
         {
             public string Map { get; set; }   
@@ -371,7 +377,7 @@ namespace TarkovMonitor
         {
             public string Map { get; set; }
             public float QueueTime { get; set; }
-            public string RaidType { get; set; }
+            public RaidType RaidType { get; set; }
         }
         public class FleaSoldEventArgs : EventArgs
         {
@@ -429,7 +435,7 @@ namespace TarkovMonitor
             public bool Online { get; set; }
             public float MapLoadTime { get; set; }
             public float QueueTime { get; set; }
-            public string RaidType { get; set; }
+            public RaidType RaidType { get; set; }
             public RaidInfo()
             {
                 Map = "";
@@ -437,7 +443,7 @@ namespace TarkovMonitor
                 RaidId = "";
                 MapLoadTime = 0;
                 QueueTime = 0;
-                RaidType = "Unknown";
+                RaidType = RaidType.Unknown;
             }
         }
     }

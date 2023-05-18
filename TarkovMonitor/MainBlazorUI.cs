@@ -355,7 +355,7 @@ namespace TarkovMonitor
             var mapName = e.Map;
             var map = TarkovDevApi.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            if (e.RaidType != "Unknown")
+            if (e.RaidType != GameWatcher.RaidType.Unknown)
 			{
 				messageLog.AddMessage($"Starting {e.RaidType} raid on {mapName}");
 			} else
@@ -366,13 +366,13 @@ namespace TarkovMonitor
             {
                 return;
             }
-            if (e.QueueTime == 0 || e.RaidType == "Unknown")
+            if (e.QueueTime == 0 || e.RaidType == GameWatcher.RaidType.Unknown)
             {
                 return;
             }
             try
             {
-                await TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType.ToLower());
+                await TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType.ToString().ToLower());
             }
             catch (Exception ex)
             {
