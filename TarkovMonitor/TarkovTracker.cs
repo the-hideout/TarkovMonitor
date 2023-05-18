@@ -56,7 +56,7 @@ namespace TarkovMonitor
             }
             try
             {
-                TarkovDevApi.Tasks.ForEach(async task => {
+                TarkovDev.Tasks.ForEach(async task => {
                     foreach (var failCondition in task.failConditions)
                     {
                         if (failCondition.task == null)

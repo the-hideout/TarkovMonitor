@@ -10,16 +10,16 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher watcher;
         //private event EventHandler<NewLogEventArgs> NewLog;
-        private readonly Dictionary<LogType, LogMonitor> monitors;
+        private readonly Dictionary<GameLogType, LogMonitor> monitors;
         private RaidInfo raidInfo;
-        public event EventHandler<LogMonitor.NewLogDataEventArgs> NewLogData;
+        public event EventHandler<NewLogDataEventArgs> NewLogData;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
         public event EventHandler GameStarted;
         public event EventHandler<GroupInviteEventArgs> GroupInvite;
-        public event EventHandler MatchingStarted;
+        public event EventHandler<MatchingStartedEventArgs> MatchingStarted;
         public event EventHandler<MatchFoundEventArgs> MatchFound;
-        public event EventHandler MatchingAborted;
+        public event EventHandler<MatchingCancelledEventArgs> MatchingAborted;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
         public event EventHandler<TaskModifiedEventArgs> TaskModified;
@@ -65,7 +65,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void GameWatcher_NewLogData(object? sender, LogMonitor.NewLogDataEventArgs e)
+        private void GameWatcher_NewLogData(object? sender, NewLogDataEventArgs e)
         {
             try
             {
@@ -105,30 +105,34 @@ namespace TarkovMonitor
                     {
                         GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
                     }
-                    if (eventLine.Contains("application|LocationLoaded") && e.Type == LogType.Application)
+                    if (eventLine.Contains("application|LocationLoaded") && e.Type == GameLogType.Application)
                     {
-                        // The map has been loaded and the game is searching for a match
-                        raidInfo = new();
-                        raidInfo.MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.]+ real:(?<loadTime>[0-9.]+)").Groups["loadTime"].Value);
-                        MatchingStarted?.Invoke(this, new());
+						// The map has been loaded and the game is searching for a match
+						raidInfo = new()
+						{
+							MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.]+ real:(?<loadTime>[0-9.]+)").Groups["loadTime"].Value)
+						};
+						MatchingStarted?.Invoke(this, new MatchingStartedEventArgs { MapLoadTime = raidInfo.MapLoadTime });
 					}
-					if (eventLine.Contains("application|MatchingCompleted") && e.Type == LogType.Application)
+					if (eventLine.Contains("application|MatchingCompleted") && e.Type == GameLogType.Application)
 					{
 						// Matching is complete and we are locked to a server with other players
-						// Get the map queue time and wait for further information to raise MatchFound event
-						// Only happens on initial raid load and not on subsequent reconnects
+						// Just the queue time is available so far
+						// Occurs on initial raid load and when the user cancels matching
+                        // Does not occur when the user re-connects to a raid in progress
 						var queueTimeMatch = Regex.Match(eventLine, @"MatchingCompleted:[0-9.]+ real:(?<queueTime>[0-9.]+)");
 						raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
 					}
-                    if (eventLine.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
+                    if (eventLine.Contains("NetworkGameCreate profileStatus") && e.Type == GameLogType.Application)
                     {
                         // Immediately after matching is complete
-                        // Get the raid information and raise the MatchFound event
+                        // Sufficient information is available to raise the MatchFound event
                         raidInfo.Map = new Regex("Location: (?<map>[^,]+)").Match(eventLine).Groups["map"].Value;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
                         if (raidInfo.Online && raidInfo.QueueTime > 0)
                         {
+                            // Raise the MatchFound event only if we queued; not if we are re-loading back into a raid
                             MatchFound?.Invoke(this, new MatchFoundEventArgs { Map = raidInfo.Map, RaidId = raidInfo.RaidId, QueueTime = raidInfo.QueueTime });
                         }
                     }
@@ -141,24 +145,25 @@ namespace TarkovMonitor
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
                         }
                     }
-                    else if (eventLine.Contains("application|GameStarted") && e.Type == LogType.Application)
+                    else if (eventLine.Contains("application|GameStarted") && e.Type == GameLogType.Application)
                     {
                         // Raid begins, either at the end of the countdown for PMC, or immediately as a scav
-                        // Since we raise the RaidLoaded event when the countdown starts for PMC, we don't raise it here
-                        // Except we do raise it if matching was not done because we are re-entering a raid
                         if (raidInfo.RaidType == RaidType.Unknown && raidInfo.QueueTime > 0)
                         {
+                            // RaidType was not set previously for PMC, and we spent time matching, so we must be a scav
                             raidInfo.RaidType = RaidType.Scav;
                         }
                         if (raidInfo.Online && raidInfo.RaidType != RaidType.PMC)
                         {
+                            // We already raised the RaidLoaded event for PMC, so only raise here if not PMC
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
                         }
                         raidInfo = new();
                     }
                     if (eventLine.Contains("Network game matching aborted") || eventLine.Contains("Network game matching cancelled"))
                     {
-                        MatchingAborted?.Invoke(this, new EventArgs());
+                        // User cancelled matching
+                        MatchingAborted?.Invoke(this, new MatchingCancelledEventArgs { MapLoadTime = raidInfo.MapLoadTime, QueueTime = raidInfo.QueueTime });
                         raidInfo = new();
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))
@@ -265,169 +270,32 @@ namespace TarkovMonitor
 
         private void StartNewMonitor(string path)
         {
-            LogType? newType = null;
+            GameLogType? newType = null;
             if (path.Contains("application.log"))
             {
-                newType = LogType.Application;
+                newType = GameLogType.Application;
             }
             if (path.Contains("notifications.log"))
             {
-                newType = LogType.Notifications;
+                newType = GameLogType.Notifications;
             }
             if (path.Contains("traces.log"))
             {
-                newType = LogType.Traces;
+                newType = GameLogType.Traces;
             }
             if (newType != null)
             {
                 //Debug.WriteLine($"Starting new {newType} monitor at {path}");
-                if (monitors.ContainsKey((LogType)newType))
+                if (monitors.ContainsKey((GameLogType)newType))
                 {
-                    monitors[(LogType)newType].Stop();
+                    monitors[(GameLogType)newType].Stop();
                 }
-                var newMon = new LogMonitor(path, (LogType)newType);
+                var newMon = new LogMonitor(path, (GameLogType)newType);
                 newMon.NewLogData += GameWatcher_NewLogData;
                 newMon.Start();
-                monitors[(LogType)newType] = newMon;
+                monitors[(GameLogType)newType] = newMon;
             }
         }
-
-        public enum LogType
-        {
-            Application,
-            Notifications,
-            Traces
-        }
-        public enum TaskStatus
-        {
-            Started = 10,
-            Failed = 11,
-            Finished = 12
-        }
-        public enum GroupInviteType
-        {
-            Accepted,
-            Sent
-        }
-        public enum RaidType
-        {
-            Unknown,
-            PMC,
-            Scav
-        }
-        public class RaidExitedEventArgs : EventArgs
-        {
-            public string Map { get; set; }   
-            public string RaidId { get; set; }
-        }
-        public class TaskModifiedEventArgs : EventArgs
-        {
-            public string TaskId { get; set; }
-            public TaskStatus Status { get; set; }
-            public TaskModifiedEventArgs(JsonNode node)
-            {
-                TaskId = node["message"]["templateId"].ToString().Split(' ')[0];
-                Status = (TaskStatus)node["message"]["type"].GetValue<int>();
-            }
-        }
-        public class TaskEventArgs : EventArgs
-        {
-            public string TaskId { get; set; }
-        }
-        public class GroupInviteEventArgs : EventArgs
-        {
-            public GroupInviteType GroupInviteType { get; set; }
-            public PlayerInfo PlayerInfo { get; set; }
-            public PlayerLoadout PlayerLoadout { get; set; }
-            public GroupInviteEventArgs(GroupMatchInviteAccept inviteAccept)
-            {
-                this.GroupInviteType = GroupInviteType.Accepted;
-                this.PlayerInfo = inviteAccept.Info;
-                this.PlayerLoadout = inviteAccept.PlayerVisualRepresentation;
-            }
-            public GroupInviteEventArgs(GroupMatchInviteSend inviteSend)
-            {
-                this.GroupInviteType = GroupInviteType.Sent;
-                this.PlayerInfo = inviteSend.fromProfile.Info;
-                this.PlayerLoadout = inviteSend.fromProfile.PlayerVisualRepresentation;
-            }
-            public GroupInviteEventArgs(JsonNode node)
-            {
-                this.GroupInviteType = GroupInviteType.Accepted;
-                if (node["fromProfile"] != null)
-                {
-                    this.GroupInviteType = GroupInviteType.Sent;
-                    node = node["fromProfile"];
-                }
-                this.PlayerInfo = new PlayerInfo(node["Info"]);
-                this.PlayerLoadout = new PlayerLoadout(node["PlayerVisualRepresentation"]);
-            }
-            public override string ToString()
-            {
-                return $"{this.PlayerInfo.Nickname} ({this.PlayerLoadout.Info.Side}, {this.PlayerLoadout.Info.Level})";
-            }
-        }
-
-        public class MatchFoundEventArgs : EventArgs {
-            public string Map { get; set; }
-            public string RaidId { get; set; }
-            public float QueueTime { get; set; }
-        }
-        public class RaidLoadedEventArgs : EventArgs
-        {
-            public string Map { get; set; }
-            public float QueueTime { get; set; }
-            public RaidType RaidType { get; set; }
-        }
-        public class FleaSoldEventArgs : EventArgs
-        {
-            public string Buyer { get; set; }
-            public string SoldItemId { get; set; }
-            public int SoldItemCount { get; set; }
-            public Dictionary<string, int> ReceivedItems { get; set; }
-            public FleaSoldEventArgs(JsonNode node)
-            {
-                Buyer = node["message"]["systemData"]["buyerNickname"].ToString();
-                SoldItemId = node["message"]["systemData"]["soldItem"].ToString();
-                SoldItemCount = node["message"]["systemData"]["itemCount"].GetValue<int>();
-                ReceivedItems = new Dictionary<string, int>();
-                if (node["message"]["hasRewards"] != null && node["message"]["hasRewards"].GetValue<bool>())
-                {
-                    foreach (var item in node["message"]["items"]["data"].AsArray())
-                    {
-                        ReceivedItems.Add(item["_tpl"].ToString(), item["upd"]["StackObjectsCount"].GetValue<int>());
-                    }
-                }
-            }
-        }
-        public class FleaOfferExpiredEventArgs : EventArgs
-        {
-            public string ItemId { get; set; }
-            public int ItemCount { get; set; }
-            public FleaOfferExpiredEventArgs(JsonNode node)
-            {
-                var item = node["message"]["items"]["data"].AsArray()[0];
-                ItemId = item["_tpl"].ToString();
-                ItemCount = item["upd"]["StackObjectsCount"].GetValue<int>();
-            }
-        }
-        public class ExceptionEventArgs : EventArgs
-        {
-            public Exception Exception { get; set; }
-            public ExceptionEventArgs(Exception ex)
-            {
-                this.Exception = ex;
-            }
-        }
-        public class DebugEventArgs : EventArgs
-        {
-            public string Message { get; set; }
-            public DebugEventArgs(string message)
-            {
-                this.Message = message;
-            }
-        }
-
         public class RaidInfo
         {
             public string Map { get; set; }
@@ -446,5 +314,149 @@ namespace TarkovMonitor
                 RaidType = RaidType.Unknown;
             }
         }
+	}
+	public enum GameLogType
+	{
+		Application,
+		Notifications,
+		Traces
+	}
+	public enum TaskStatus
+	{
+		Started = 10,
+		Failed = 11,
+		Finished = 12
+	}
+	public enum RaidType
+	{
+		Unknown,
+		PMC,
+		Scav
+	}
+	public enum GroupInviteType
+	{
+		Accepted,
+		Sent
+	}
+	public class RaidExitedEventArgs : EventArgs
+	{
+		public string Map { get; set; }
+		public string RaidId { get; set; }
+	}
+	public class TaskModifiedEventArgs : EventArgs
+	{
+		public string TaskId { get; set; }
+		public TaskStatus Status { get; set; }
+		public TaskModifiedEventArgs(JsonNode node)
+		{
+			TaskId = node["message"]["templateId"].ToString().Split(' ')[0];
+			Status = (TaskStatus)node["message"]["type"].GetValue<int>();
+		}
+	}
+	public class TaskEventArgs : EventArgs
+	{
+		public string TaskId { get; set; }
+	}
+	public class GroupInviteEventArgs : EventArgs
+	{
+		public GroupInviteType GroupInviteType { get; set; }
+		public PlayerInfo PlayerInfo { get; set; }
+		public PlayerLoadout PlayerLoadout { get; set; }
+		public GroupInviteEventArgs(GroupMatchInviteAccept inviteAccept)
+		{
+			this.GroupInviteType = GroupInviteType.Accepted;
+			this.PlayerInfo = inviteAccept.Info;
+			this.PlayerLoadout = inviteAccept.PlayerVisualRepresentation;
+		}
+		public GroupInviteEventArgs(GroupMatchInviteSend inviteSend)
+		{
+			this.GroupInviteType = GroupInviteType.Sent;
+			this.PlayerInfo = inviteSend.fromProfile.Info;
+			this.PlayerLoadout = inviteSend.fromProfile.PlayerVisualRepresentation;
+		}
+		public GroupInviteEventArgs(JsonNode node)
+		{
+			this.GroupInviteType = GroupInviteType.Accepted;
+			if (node["fromProfile"] != null)
+			{
+				this.GroupInviteType = GroupInviteType.Sent;
+				node = node["fromProfile"];
+			}
+			this.PlayerInfo = new PlayerInfo(node["Info"]);
+			this.PlayerLoadout = new PlayerLoadout(node["PlayerVisualRepresentation"]);
+		}
+		public override string ToString()
+		{
+			return $"{this.PlayerInfo.Nickname} ({this.PlayerLoadout.Info.Side}, {this.PlayerLoadout.Info.Level})";
+		}
+	}
+    public class MatchingStartedEventArgs : EventArgs
+    {
+        public float MapLoadTime { get; set; }
     }
+    public class MatchingCancelledEventArgs : EventArgs
+    {
+        public float MapLoadTime { get; set; }
+        public float QueueTime { get; set; }
+    }
+	public class MatchFoundEventArgs : EventArgs
+	{
+		public string Map { get; set; }
+		public string RaidId { get; set; }
+		public float QueueTime { get; set; }
+	}
+	public class RaidLoadedEventArgs : EventArgs
+	{
+		public string Map { get; set; }
+		public float QueueTime { get; set; }
+		public RaidType RaidType { get; set; }
+	}
+	public class FleaSoldEventArgs : EventArgs
+	{
+		public string Buyer { get; set; }
+		public string SoldItemId { get; set; }
+		public int SoldItemCount { get; set; }
+		public Dictionary<string, int> ReceivedItems { get; set; }
+		public FleaSoldEventArgs(JsonNode node)
+		{
+			Buyer = node["message"]["systemData"]["buyerNickname"].ToString();
+			SoldItemId = node["message"]["systemData"]["soldItem"].ToString();
+			SoldItemCount = node["message"]["systemData"]["itemCount"].GetValue<int>();
+			ReceivedItems = new Dictionary<string, int>();
+			if (node["message"]["hasRewards"] != null && node["message"]["hasRewards"].GetValue<bool>())
+			{
+				foreach (var item in node["message"]["items"]["data"].AsArray())
+				{
+					ReceivedItems.Add(item["_tpl"].ToString(), item["upd"]["StackObjectsCount"].GetValue<int>());
+				}
+			}
+		}
+	}
+	public class FleaOfferExpiredEventArgs : EventArgs
+	{
+		public string ItemId { get; set; }
+		public int ItemCount { get; set; }
+		public FleaOfferExpiredEventArgs(JsonNode node)
+		{
+			var item = node["message"]["items"]["data"].AsArray()[0];
+			ItemId = item["_tpl"].ToString();
+			ItemCount = item["upd"]["StackObjectsCount"].GetValue<int>();
+		}
+	}
+	public class ExceptionEventArgs : EventArgs
+	{
+		public Exception Exception { get; set; }
+		public ExceptionEventArgs(Exception ex)
+		{
+			this.Exception = ex;
+		}
+	}
+	public class DebugEventArgs : EventArgs
+	{
+		public string Message { get; set; }
+		public DebugEventArgs(string message)
+		{
+			this.Message = message;
+		}
+	}
 }

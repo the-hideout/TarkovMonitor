@@ -8,7 +8,7 @@
     [Parameter]
     public LoadoutItem Item { get; set; }
 
-    private TarkovDevApi.Item? devItem => devRepository.Items.Where(i => i.id == Item._tpl).FirstOrDefault();
+    private TarkovDev.Item? devItem => devRepository.Items.Where(i => i.id == Item._tpl).FirstOrDefault();
 
     private int imgWidth => devItem != null ? devItem.width * 32 : 96;
     private int imgHeight => devItem != null ? devItem.height * 32 : 96;

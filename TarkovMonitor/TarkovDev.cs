@@ -4,7 +4,7 @@ using GraphQL.Client.Serializer.SystemTextJson;
 
 namespace TarkovMonitor
 {
-    internal class TarkovDevApi
+    internal class TarkovDev
     {
         private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
         private static readonly HttpClient httpClient = new();

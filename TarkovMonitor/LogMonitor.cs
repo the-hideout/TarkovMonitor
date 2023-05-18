@@ -9,11 +9,11 @@ namespace TarkovMonitor
     internal class LogMonitor
     {
         public string Path { get; set; }
-        public GameWatcher.LogType Type { get; set; }
+        public GameLogType Type { get; set; }
         public event EventHandler<NewLogDataEventArgs> NewLogData;
         private bool cancel;
 
-        public LogMonitor(string path, GameWatcher.LogType logType)
+        public LogMonitor(string path, GameLogType logType)
         {
             Path = path;
             Type = logType;
@@ -71,11 +71,10 @@ namespace TarkovMonitor
         {
             cancel = true;
         }
-
-        public class NewLogDataEventArgs : EventArgs
-        {
-            public GameWatcher.LogType Type { get; set; }
-            public string Data { get; set; }
-        }
-    }
+	}
+	public class NewLogDataEventArgs : EventArgs
+	{
+		public GameLogType Type { get; set; }
+		public string Data { get; set; }
+	}
 }
