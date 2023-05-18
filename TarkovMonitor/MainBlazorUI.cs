@@ -357,7 +357,7 @@ namespace TarkovMonitor
             if (map != null) mapName = map.name;
             if (e.RaidType != "Unknown")
 			{
-				messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType}");
+				messageLog.AddMessage($"Starting {e.RaidType} raid on {mapName}");
 			} else
             {
 				messageLog.AddMessage($"Re-entering raid on {mapName}");
@@ -366,7 +366,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            if (e.QueueTime == 0)
+            if (e.QueueTime == 0 || e.RaidType == "Unknown")
             {
                 return;
             }
