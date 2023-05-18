@@ -108,24 +108,26 @@ namespace TarkovMonitor
                     if (eventLine.Contains("application|LocationLoaded") && e.Type == LogType.Application)
                     {
                         // The map has been loaded and the game is searching for a match
+                        raidInfo = new();
                         raidInfo.MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.]+ real:(?<loadTime>[0-9.]+)").Groups["loadTime"].Value);
                         MatchingStarted?.Invoke(this, new());
-                    }
-                    if (eventLine.Contains("application|GamePrepared") && e.Type == LogType.Application)
-                    {
-                        // Matching is complete and we are locked to a server with other players
-                        // Get the map queue time and wait for further information to fire MatchFound event
-                        var queueTimeMatch = Regex.Match(eventLine, @"GamePrepared:[0-9.]+ real:(?<queueTime>[0-9.]+)");
-                        raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
-                    }
+					}
+					if (eventLine.Contains("application|MatchingCompleted") && e.Type == LogType.Application)
+					{
+						// Matching is complete and we are locked to a server with other players
+						// Get the map queue time and wait for further information to raise MatchFound event
+						// Only happens on initial raid load and not on subsequent reconnects
+						var queueTimeMatch = Regex.Match(eventLine, @"MatchingCompleted:[0-9.]+ real:(?<queueTime>[0-9.]+)");
+						raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
+					}
                     if (eventLine.Contains("NetworkGameCreate profileStatus") && e.Type == LogType.Application)
                     {
                         // Immediately after matching is complete
-                        // Get the raid information and fire the MatchFound event
+                        // Get the raid information and raise the MatchFound event
                         raidInfo.Map = new Regex("Location: (?<map>[^,]+)").Match(eventLine).Groups["map"].Value;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
-                        if (raidInfo.Online)
+                        if (raidInfo.Online && raidInfo.QueueTime > 0)
                         {
                             MatchFound?.Invoke(this, new MatchFoundEventArgs { Map = raidInfo.Map, RaidId = raidInfo.RaidId, QueueTime = raidInfo.QueueTime });
                         }
@@ -133,19 +135,24 @@ namespace TarkovMonitor
                     if (eventLine.Contains("application|GameStarting"))
                     {
                         // The raid start countdown begins. Only happens for PMCs.
+                        raidInfo.RaidType = "PMC";
                         if (raidInfo.Online)
                         {
-                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = "pmc" });
+                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
                         }
-                        raidInfo = new();
                     }
                     else if (eventLine.Contains("application|GameStarted") && e.Type == LogType.Application)
                     {
                         // Raid begins, either at the end of the countdown for PMC, or immediately as a scav
                         // Since we raise the RaidLoaded event when the countdown starts for PMC, we don't raise it here
-                        if (raidInfo.Online && raidInfo.QueueTime > 0)
+                        // Except we do raise it if matching was not done because we are re-entering a raid
+                        if (raidInfo.RaidType == "Unknown" && raidInfo.QueueTime > 0)
                         {
-                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = "scav" });
+                            raidInfo.RaidType = "Scav";
+                        }
+                        if (raidInfo.Online && raidInfo.RaidType != "PMC")
+                        {
+                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
                         }
                         raidInfo = new();
                     }
@@ -422,6 +429,7 @@ namespace TarkovMonitor
             public bool Online { get; set; }
             public float MapLoadTime { get; set; }
             public float QueueTime { get; set; }
+            public string RaidType { get; set; }
             public RaidInfo()
             {
                 Map = "";
@@ -429,6 +437,7 @@ namespace TarkovMonitor
                 RaidId = "";
                 MapLoadTime = 0;
                 QueueTime = 0;
+                RaidType = "Unknown";
             }
         }
     }

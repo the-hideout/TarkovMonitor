@@ -355,14 +355,24 @@ namespace TarkovMonitor
             var mapName = e.Map;
             var map = TarkovDevApi.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType}");
+            if (e.RaidType != "Unknown")
+			{
+				messageLog.AddMessage($"Starting raid on {mapName} as {e.RaidType}");
+			} else
+            {
+				messageLog.AddMessage($"Re-entering raid on {mapName}");
+			}
             if (!Properties.Settings.Default.submitQueueTime)
+            {
+                return;
+            }
+            if (e.QueueTime == 0)
             {
                 return;
             }
             try
             {
-                await TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType);
+                await TarkovDevApi.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType.ToLower());
             }
             catch (Exception ex)
             {
