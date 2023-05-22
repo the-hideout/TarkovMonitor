@@ -79,7 +79,7 @@ namespace TarkovMonitor
 
         private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
         {
-            messageLog.AddMessage($"Retrieved level {TarkovTracker.Progress.data.playerLevel} progress from Tarkov Tracker", "update");
+            messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update");
         }
 
         private async void Eft_MatchingStarted(object? sender, MatchingStartedEventArgs e)
