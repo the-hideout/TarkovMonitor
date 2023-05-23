@@ -117,7 +117,7 @@ namespace TarkovMonitor
                         // Occurs for each other member of the group when ready
                         GroupReady?.Invoke(this, new GroupReadyEventArgs(jsonNode));
                     }
-                    if (eventLine.Contains("application|LocationLoaded") && e.Type == GameLogType.Application)
+                    if (eventLine.Contains("application|LocationLoaded"))
                     {
 						// The map has been loaded and the game is searching for a match
 						raidInfo = new()
@@ -126,7 +126,7 @@ namespace TarkovMonitor
 						};
 						MatchingStarted?.Invoke(this, new MatchingStartedEventArgs { MapLoadTime = raidInfo.MapLoadTime });
 					}
-					if (eventLine.Contains("application|MatchingCompleted") && e.Type == GameLogType.Application)
+					if (eventLine.Contains("application|MatchingCompleted"))
 					{
 						// Matching is complete and we are locked to a server with other players
 						// Just the queue time is available so far
@@ -135,7 +135,7 @@ namespace TarkovMonitor
 						var queueTimeMatch = Regex.Match(eventLine, @"MatchingCompleted:[0-9.]+ real:(?<queueTime>[0-9.]+)");
 						raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value);
 					}
-                    if (eventLine.Contains("NetworkGameCreate profileStatus") && e.Type == GameLogType.Application)
+                    if (eventLine.Contains("application|TRACE-NetworkGameCreate profileStatus"))
                     {
                         // Immediately after matching is complete
                         // Sufficient information is available to raise the MatchFound event
@@ -157,7 +157,7 @@ namespace TarkovMonitor
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
                         }
                     }
-                    else if (eventLine.Contains("application|GameStarted") && e.Type == GameLogType.Application)
+                    else if (eventLine.Contains("application|GameStarted"))
                     {
                         // Raid begins, either at the end of the countdown for PMC, or immediately as a scav
                         if (raidInfo.RaidType == RaidType.Unknown && raidInfo.QueueTime > 0)
@@ -172,7 +172,7 @@ namespace TarkovMonitor
                         }
                         raidInfo = new();
                     }
-                    if (eventLine.Contains("Network game matching aborted") || eventLine.Contains("Network game matching cancelled"))
+                    if (eventLine.Contains("application|Network game matching aborted") || eventLine.Contains("application|Network game matching cancelled"))
                     {
                         // User cancelled matching
                         MatchingAborted?.Invoke(this, new MatchingCancelledEventArgs { MapLoadTime = raidInfo.MapLoadTime, QueueTime = raidInfo.QueueTime });
