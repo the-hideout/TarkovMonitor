@@ -64,8 +64,8 @@
     public LoadoutItem[] parentItems(LoadoutItem[] loadout)
     {
         LoadoutItem defaultInventory = loadout.Where(i => i._tpl == "55d7217a4bdc2d86028b456d").First();
-        LoadoutItem pocketInventory = loadout.Where(i => i._tpl == "627a4e6b255f7527fb05a0f6").First();
-        return loadout.Where(i => (i.parentId == defaultInventory._id || i.parentId == pocketInventory._id) && i._id != pocketInventory._id).ToArray();
+        LoadoutItem pocketInventory = loadout.Where(i => i._tpl == "627a4e6b255f7527fb05a0f6" || i._tpl == "557ffd194bdc2d28148b457f").FirstOrDefault();
+        return loadout.Where(i => (i.parentId == defaultInventory._id || i.parentId == pocketInventory?._id) && i._id != pocketInventory?._id).ToArray();
     }
 
     // React to GroupManager update events

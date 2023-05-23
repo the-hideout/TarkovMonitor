@@ -82,6 +82,11 @@ namespace TarkovMonitor
             if (node["upd"] != null)
                 this.upd = new LoadoutItemProperties(node["upd"]);
         }
+        LoadoutItem()
+        {
+            _id = "";
+            _tpl = "";
+        }
         public override string ToString()
         {
             var displayName = this._tpl;
