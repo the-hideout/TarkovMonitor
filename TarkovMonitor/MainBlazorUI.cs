@@ -46,7 +46,8 @@ namespace TarkovMonitor
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogData += Eft_NewLogData;
-            eft.GroupInvite += Eft_GroupInvite;
+            eft.GroupReady += Eft_GroupReady;
+			eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.MatchFound += Eft_MatchFound;
@@ -77,7 +78,12 @@ namespace TarkovMonitor
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
         }
 
-        private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
+		private void Eft_GroupDisbanded(object? sender, EventArgs e)
+		{
+            groupManager.ClearGroup();
+		}
+
+		private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
         {
             messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update");
         }
@@ -206,7 +212,7 @@ namespace TarkovMonitor
             logRepository.AddLog(e.Data, e.Type.ToString());
         }
 
-        private void Eft_GroupInvite(object? sender, GroupInviteEventArgs e)
+        private void Eft_GroupReady(object? sender, GroupReadyEventArgs e)
         {
             groupManager.UpdateGroupMember(e.PlayerInfo.Nickname, new GroupMember(e.PlayerInfo.Nickname, e.PlayerLoadout));
             messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.", "group");

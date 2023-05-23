@@ -16,7 +16,8 @@ namespace TarkovMonitor
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
         public event EventHandler GameStarted;
-        public event EventHandler<GroupInviteEventArgs> GroupInvite;
+        public event EventHandler<GroupReadyEventArgs> GroupReady;
+        public event EventHandler GroupDisbanded;
         public event EventHandler<MatchingStartedEventArgs> MatchingStarted;
         public event EventHandler<MatchFoundEventArgs> MatchFound;
         public event EventHandler<MatchingCancelledEventArgs> MatchingAborted;
@@ -93,17 +94,13 @@ namespace TarkovMonitor
                     {
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
                     }
-                    if (eventLine.Contains("Got notification | GroupMatchInviteAccept"))
+					if (eventLine.Contains("Got notification | GroupMatchWasRemoved"))
                     {
-                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
+                        GroupDisbanded?.Invoke(this, new());
                     }
-                    if (eventLine.Contains("Got notification | GroupMatchInviteSend"))
+					if (eventLine.Contains("Got notification | GroupMatchRaidReady"))
                     {
-                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
-                    }
-                    if (eventLine.Contains("Got notification | GroupMatchRaidReady"))
-                    {
-                        GroupInvite?.Invoke(this, new GroupInviteEventArgs(jsonNode));
+                        GroupReady?.Invoke(this, new GroupReadyEventArgs(jsonNode));
                     }
                     if (eventLine.Contains("application|LocationLoaded") && e.Type == GameLogType.Application)
                     {
@@ -168,19 +165,24 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))
                     {
-                        var templateId = jsonNode["message"]["templateId"].ToString();
                         var messageText = jsonNode["message"]["text"].ToString();
-                        if (templateId == "5bdabfb886f7743e152e867e 0")
-                        {
-                            FleaSold?.Invoke(this, new FleaSoldEventArgs(jsonNode));
-                            continue;
-                        }
-                        if (templateId == "5bdabfe486f7743e1665df6e 0")
-                        {
-                            FleaOfferExpired?.Invoke(this, new FleaOfferExpiredEventArgs(jsonNode));
-                            continue;
-                        }
-                        if (messageText == "quest started" || messageText == "quest finished" || messageText == "quest failed")
+                        var messageType = jsonNode["message"]["type"].GetValue<int>();
+
+                        if (messageType == 4)
+						{
+							var templateId = jsonNode["message"]["templateId"].ToString();
+							if (templateId == "5bdabfb886f7743e152e867e 0")
+							{
+								FleaSold?.Invoke(this, new FleaSoldEventArgs(jsonNode));
+								continue;
+							}
+							if (templateId == "5bdabfe486f7743e1665df6e 0")
+							{
+								FleaOfferExpired?.Invoke(this, new FleaOfferExpiredEventArgs(jsonNode));
+								continue;
+							}
+						}
+                        if (Enum.IsDefined(typeof(TaskStatus), messageType))
                         {
                             var args = new TaskModifiedEventArgs(jsonNode);
                             TaskModified?.Invoke(this, args);
@@ -321,6 +323,13 @@ namespace TarkovMonitor
 		Notifications,
 		Traces
 	}
+    public enum MessageType
+	{
+		PlayerMessage = 1,
+		Started = 10,
+		Failed = 11,
+		Finished = 12
+	}
 	public enum TaskStatus
 	{
 		Started = 10,
@@ -357,33 +366,30 @@ namespace TarkovMonitor
 	{
 		public string TaskId { get; set; }
 	}
-	public class GroupInviteEventArgs : EventArgs
+	public class GroupReadyEventArgs : EventArgs
 	{
-		public GroupInviteType GroupInviteType { get; set; }
 		public PlayerInfo PlayerInfo { get; set; }
 		public PlayerLoadout PlayerLoadout { get; set; }
-		public GroupInviteEventArgs(GroupMatchInviteAccept inviteAccept)
+		public GroupReadyEventArgs(GroupMatchInviteAccept inviteAccept)
 		{
-			this.GroupInviteType = GroupInviteType.Accepted;
 			this.PlayerInfo = inviteAccept.Info;
 			this.PlayerLoadout = inviteAccept.PlayerVisualRepresentation;
 		}
-		public GroupInviteEventArgs(GroupMatchInviteSend inviteSend)
+		public GroupReadyEventArgs(GroupMatchInviteSend inviteSend)
 		{
-			this.GroupInviteType = GroupInviteType.Sent;
 			this.PlayerInfo = inviteSend.fromProfile.Info;
 			this.PlayerLoadout = inviteSend.fromProfile.PlayerVisualRepresentation;
 		}
-		public GroupInviteEventArgs(JsonNode node)
+		public GroupReadyEventArgs(JsonNode node)
 		{
-			this.GroupInviteType = GroupInviteType.Accepted;
+			/*this.GroupInviteType = GroupInviteType.Accepted;
 			if (node["fromProfile"] != null)
 			{
 				this.GroupInviteType = GroupInviteType.Sent;
 				node = node["fromProfile"];
-			}
-			this.PlayerInfo = new PlayerInfo(node["Info"]);
-			this.PlayerLoadout = new PlayerLoadout(node["PlayerVisualRepresentation"]);
+			}*/
+			this.PlayerInfo = new PlayerInfo(node["extendedProfile"]["Info"]);
+			this.PlayerLoadout = new PlayerLoadout(node["extendedProfile"]["PlayerVisualRepresentation"]);
 		}
 		public override string ToString()
 		{
