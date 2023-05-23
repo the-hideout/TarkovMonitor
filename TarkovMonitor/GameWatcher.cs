@@ -16,6 +16,7 @@ namespace TarkovMonitor
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
         public event EventHandler GameStarted;
+        public event EventHandler<GroupInviteEventArgs> GroupMatchInvite;
         public event EventHandler<GroupReadyEventArgs> GroupReady;
         public event EventHandler GroupDisbanded;
         public event EventHandler<MatchingStartedEventArgs> MatchingStarted;
@@ -93,6 +94,10 @@ namespace TarkovMonitor
                     if (eventLine.Contains("Got notification | UserMatchOver"))
                     {
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
+                    }
+                    if (eventLine.Contains("Got notification | GroupMatchInviteAccept") || eventLine.Contains("Got notification | GroupMatchInviteSend"))
+                    {
+                        GroupMatchInvite?.Invoke(this, new(jsonNode));
                     }
 					if (eventLine.Contains("Got notification | GroupMatchWasRemoved"))
                     {
@@ -366,6 +371,22 @@ namespace TarkovMonitor
 	{
 		public string TaskId { get; set; }
 	}
+    public class GroupInviteEventArgs : EventArgs
+    {
+        public PlayerInfo PlayerInfo { get; set; }
+        public GroupInviteType InviteType { get; set; }
+        public GroupInviteEventArgs(JsonNode node)
+        {
+            if (node["type"].ToString() == "groupMatchInviteAccept")
+            {
+                InviteType = GroupInviteType.Accepted;
+            } else
+            {
+                InviteType = GroupInviteType.Sent;
+            }
+            PlayerInfo = new PlayerInfo(node["Info"]);
+        }
+    }
 	public class GroupReadyEventArgs : EventArgs
 	{
 		public PlayerInfo PlayerInfo { get; set; }

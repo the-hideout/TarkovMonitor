@@ -46,6 +46,7 @@ namespace TarkovMonitor
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogData += Eft_NewLogData;
+            eft.GroupMatchInvite += Eft_GroupMatchInvite;
             eft.GroupReady += Eft_GroupReady;
 			eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
@@ -78,7 +79,16 @@ namespace TarkovMonitor
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
         }
 
-		private void Eft_GroupDisbanded(object? sender, EventArgs e)
+        private void Eft_GroupMatchInvite(object? sender, GroupInviteEventArgs e)
+        {
+            var verb = "accepted";
+            if (e.InviteType == GroupInviteType.Sent) {
+                verb = "sent";
+            }
+            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerInfo.Side.ToUpper()} {e.PlayerInfo.Level}) {verb} group invite.", "group");
+        }
+
+        private void Eft_GroupDisbanded(object? sender, EventArgs e)
 		{
             groupManager.ClearGroup();
 		}
@@ -215,7 +225,7 @@ namespace TarkovMonitor
         private void Eft_GroupReady(object? sender, GroupReadyEventArgs e)
         {
             groupManager.UpdateGroupMember(e.PlayerInfo.Nickname, new GroupMember(e.PlayerInfo.Nickname, e.PlayerLoadout));
-            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) accepted group invite.", "group");
+            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) ready.", "group");
         }
 
         private async void Eft_TaskFinished(object? sender, TaskEventArgs e)
