@@ -157,7 +157,7 @@ namespace TarkovMonitor
                             RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
                         }
                     }
-                    else if (eventLine.Contains("application|GameStarted"))
+                    if (eventLine.Contains("application|GameStarted"))
                     {
                         // Raid begins, either at the end of the countdown for PMC, or immediately as a scav
                         if (raidInfo.RaidType == RaidType.Unknown && raidInfo.QueueTime > 0)
