@@ -1,5 +1,4 @@
-﻿@inject TarkovDevRepository devRepository
-<MudImage Src="@itemIconURL" Width="@imgWidth" Height="@imgHeight" Class="ma-2"/>
+﻿<MudImage Src="@itemIconURL" Width="@imgWidth" Height="@imgHeight" Class="ma-2"/>
 
 @code {
     [Parameter]
@@ -8,10 +7,10 @@
     [Parameter]
     public LoadoutItem Item { get; set; }
 
-    private TarkovDev.Item? devItem => devRepository.Items.Where(i => i.id == Item._tpl).FirstOrDefault();
+    private TarkovDev.Item? devItem => TarkovDev.Items.Where(i => i.id == Item._tpl).FirstOrDefault();
 
-    private int imgWidth => devItem != null ? devItem.width * 32 : 96;
-    private int imgHeight => devItem != null ? devItem.height * 32 : 96;
+    private int imgWidth => devItem != null ? (devItem.width * 31) + 1 : 96;
+    private int imgHeight => devItem != null ? (devItem.height * 31) * 1 : 96;
 
-    private string itemIconURL => $"https://assets.tarkov.dev/{Item._tpl}-grid-image.jpg";
+    private string itemIconURL => devItem.gridImageLink;
 }

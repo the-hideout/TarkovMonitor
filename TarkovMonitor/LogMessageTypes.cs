@@ -134,8 +134,8 @@ namespace TarkovMonitor
         public float MaxDurability { get; set; }
         public float Durability { get; set; }
         public LoadoutItemPropertiesDurability(JsonNode node) {
-            this.MaxDurability = node["MaxDurability"].GetValue<float>();
             this.Durability = node["Durability"].GetValue<float>();
+            this.MaxDurability = node["MaxDurability"] != null ? node["MaxDurability"].GetValue<float>() : this.Durability;
         }
     }
     public class LoadoutItemPropertiesMeds
