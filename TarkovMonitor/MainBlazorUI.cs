@@ -47,6 +47,7 @@ namespace TarkovMonitor
             eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogData += Eft_NewLogData;
             eft.GroupMatchInvite += Eft_GroupMatchInvite;
+            eft.GroupUserLeave += Eft_GroupUserLeave;
             eft.GroupReady += Eft_GroupReady;
 			eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
@@ -77,6 +78,12 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+        }
+
+        private void Eft_GroupUserLeave(object? sender, GroupUserLeaveEventArgs e)
+        {
+            groupManager.RemoveGroupMember(e.Nickname);
+            messageLog.AddMessage($"{e.Nickname} left the group.", "group");
         }
 
         private void Eft_GroupMatchInvite(object? sender, GroupInviteEventArgs e)

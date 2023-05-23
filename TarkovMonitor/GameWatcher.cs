@@ -19,6 +19,7 @@ namespace TarkovMonitor
         public event EventHandler<GroupInviteEventArgs> GroupMatchInvite;
         public event EventHandler<GroupReadyEventArgs> GroupReady;
         public event EventHandler GroupDisbanded;
+        public event EventHandler<GroupUserLeaveEventArgs> GroupUserLeave;
         public event EventHandler<MatchingStartedEventArgs> MatchingStarted;
         public event EventHandler<MatchFoundEventArgs> MatchFound;
         public event EventHandler<MatchingCancelledEventArgs> MatchingAborted;
@@ -97,14 +98,23 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("Got notification | GroupMatchInviteAccept") || eventLine.Contains("Got notification | GroupMatchInviteSend"))
                     {
+                        // GroupMatchInviteAccept occurs when someone you send an invite accepts
+                        // GroupMatchInviteSend occurs when you receive an invite and either accept or decline
                         GroupMatchInvite?.Invoke(this, new(jsonNode));
+                    }
+                    if (eventLine.Contains("Got notification | GroupMatchUserLeave"))
+                    {
+                        // User left the group
+                        GroupUserLeave?.Invoke(this, new(jsonNode));
                     }
 					if (eventLine.Contains("Got notification | GroupMatchWasRemoved"))
                     {
+                        // When the group is disbanded
                         GroupDisbanded?.Invoke(this, new());
                     }
 					if (eventLine.Contains("Got notification | GroupMatchRaidReady"))
                     {
+                        // Occurs for each other member of the group when ready
                         GroupReady?.Invoke(this, new GroupReadyEventArgs(jsonNode));
                     }
                     if (eventLine.Contains("application|LocationLoaded") && e.Type == GameLogType.Application)
@@ -387,28 +397,20 @@ namespace TarkovMonitor
             PlayerInfo = new PlayerInfo(node["Info"]);
         }
     }
+    public class GroupUserLeaveEventArgs : EventArgs
+    {
+        public string Nickname { get; set; }
+        public GroupUserLeaveEventArgs(JsonNode node)
+        {
+            Nickname = node["Nickname"].ToString();
+        }
+    }
 	public class GroupReadyEventArgs : EventArgs
 	{
 		public PlayerInfo PlayerInfo { get; set; }
 		public PlayerLoadout PlayerLoadout { get; set; }
-		public GroupReadyEventArgs(GroupMatchInviteAccept inviteAccept)
-		{
-			this.PlayerInfo = inviteAccept.Info;
-			this.PlayerLoadout = inviteAccept.PlayerVisualRepresentation;
-		}
-		public GroupReadyEventArgs(GroupMatchInviteSend inviteSend)
-		{
-			this.PlayerInfo = inviteSend.fromProfile.Info;
-			this.PlayerLoadout = inviteSend.fromProfile.PlayerVisualRepresentation;
-		}
 		public GroupReadyEventArgs(JsonNode node)
 		{
-			/*this.GroupInviteType = GroupInviteType.Accepted;
-			if (node["fromProfile"] != null)
-			{
-				this.GroupInviteType = GroupInviteType.Sent;
-				node = node["fromProfile"];
-			}*/
 			this.PlayerInfo = new PlayerInfo(node["extendedProfile"]["Info"]);
 			this.PlayerLoadout = new PlayerLoadout(node["extendedProfile"]["PlayerVisualRepresentation"]);
 		}
