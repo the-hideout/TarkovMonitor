@@ -48,8 +48,8 @@ namespace TarkovMonitor
 
                                     if (bytesRead == 0)
                                         break;
-
-                                    var text = ASCIIEncoding.ASCII.GetString(buffer, 0, bytesRead);
+                                    
+                                    var text = UTF8Encoding.UTF8.GetString(buffer, 0, bytesRead); //ASCIIEncoding.ASCII.GetString(buffer, 0, bytesRead);
 
                                     lines.Add(text);
                                 }
