@@ -139,7 +139,7 @@ namespace TarkovMonitor
                     {
                         // Immediately after matching is complete
                         // Sufficient information is available to raise the MatchFound event
-                        raidInfo.Map = new Regex("Location: (?<map>[^,]+)").Match(eventLine).Groups["map"].Value;
+                        raidInfo.Map = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
                         if (raidInfo.Online && raidInfo.QueueTime > 0)
@@ -259,7 +259,7 @@ namespace TarkovMonitor
             var latestLogFolder = logFolders.Last();
             foreach (var logFolder in logFolders)
             {
-                var dateTimeString = new Regex(@"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Match(logFolder).Groups["timestamp"].Value;
+                var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
                 var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
                 if (logDate > latestDate)
                 {
