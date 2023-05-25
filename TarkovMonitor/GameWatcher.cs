@@ -124,7 +124,7 @@ namespace TarkovMonitor
 						{
 							MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.]+ real:(?<loadTime>[0-9.]+)").Groups["loadTime"].Value)
 						};
-						MatchingStarted?.Invoke(this, new MatchingStartedEventArgs { MapLoadTime = raidInfo.MapLoadTime });
+						MatchingStarted?.Invoke(this, new(raidInfo));
 					}
 					if (eventLine.Contains("application|MatchingCompleted"))
 					{
@@ -145,7 +145,7 @@ namespace TarkovMonitor
                         if (raidInfo.Online && raidInfo.QueueTime > 0)
                         {
                             // Raise the MatchFound event only if we queued; not if we are re-loading back into a raid
-                            MatchFound?.Invoke(this, new MatchFoundEventArgs { Map = raidInfo.Map, RaidId = raidInfo.RaidId, QueueTime = raidInfo.QueueTime });
+                            MatchFound?.Invoke(this, new(raidInfo));
                         }
                     }
                     if (eventLine.Contains("application|GameStarting"))
@@ -154,7 +154,7 @@ namespace TarkovMonitor
                         raidInfo.RaidType = RaidType.PMC;
                         if (raidInfo.Online)
                         {
-                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
+                            RaidLoaded?.Invoke(this, new(raidInfo));
                         }
                     }
                     if (eventLine.Contains("application|GameStarted"))
@@ -168,14 +168,14 @@ namespace TarkovMonitor
                         if (raidInfo.Online && raidInfo.RaidType != RaidType.PMC)
                         {
                             // We already raised the RaidLoaded event for PMC, so only raise here if not PMC
-                            RaidLoaded?.Invoke(this, new RaidLoadedEventArgs { Map = raidInfo.Map, QueueTime = raidInfo.QueueTime, RaidType = raidInfo.RaidType });
+                            RaidLoaded?.Invoke(this, new(raidInfo));
                         }
                         raidInfo = new();
                     }
                     if (eventLine.Contains("application|Network game matching aborted") || eventLine.Contains("application|Network game matching cancelled"))
                     {
                         // User cancelled matching
-                        MatchingAborted?.Invoke(this, new MatchingCancelledEventArgs { MapLoadTime = raidInfo.MapLoadTime, QueueTime = raidInfo.QueueTime });
+                        MatchingAborted?.Invoke(this, new(raidInfo));
                         raidInfo = new();
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))
@@ -313,24 +313,6 @@ namespace TarkovMonitor
                 monitors[(GameLogType)newType] = newMon;
             }
         }
-        public class RaidInfo
-        {
-            public string Map { get; set; }
-            public string RaidId { get; set; }
-            public bool Online { get; set; }
-            public float MapLoadTime { get; set; }
-            public float QueueTime { get; set; }
-            public RaidType RaidType { get; set; }
-            public RaidInfo()
-            {
-                Map = "";
-                Online = false;
-                RaidId = "";
-                MapLoadTime = 0;
-                QueueTime = 0;
-                RaidType = RaidType.Unknown;
-            }
-        }
 	}
 	public enum GameLogType
 	{
@@ -361,8 +343,26 @@ namespace TarkovMonitor
 	{
 		Accepted,
 		Sent
-	}
-	public class RaidExitedEventArgs : EventArgs
+    }
+    public class RaidInfo
+    {
+        public string Map { get; set; }
+        public string RaidId { get; set; }
+        public bool Online { get; set; }
+        public float MapLoadTime { get; set; }
+        public float QueueTime { get; set; }
+        public RaidType RaidType { get; set; }
+        public RaidInfo()
+        {
+            Map = "";
+            Online = false;
+            RaidId = "";
+            MapLoadTime = 0;
+            QueueTime = 0;
+            RaidType = RaidType.Unknown;
+        }
+    }
+    public class RaidExitedEventArgs : EventArgs
 	{
 		public string Map { get; set; }
 		public string RaidId { get; set; }
@@ -422,23 +422,38 @@ namespace TarkovMonitor
     public class MatchingStartedEventArgs : EventArgs
     {
         public float MapLoadTime { get; set; }
+        public MatchingStartedEventArgs(RaidInfo raidInfo)
+        {
+            MapLoadTime = raidInfo.MapLoadTime;
+        }
     }
-    public class MatchingCancelledEventArgs : EventArgs
+    public class MatchingCancelledEventArgs : MatchingStartedEventArgs
     {
-        public float MapLoadTime { get; set; }
         public float QueueTime { get; set; }
+        public MatchingCancelledEventArgs(RaidInfo raidInfo) : base(raidInfo)
+        {
+            QueueTime = raidInfo.QueueTime;
+        }
     }
-	public class MatchFoundEventArgs : EventArgs
-	{
+	public class MatchFoundEventArgs : MatchingStartedEventArgs
+    {
 		public string Map { get; set; }
 		public string RaidId { get; set; }
 		public float QueueTime { get; set; }
-	}
-	public class RaidLoadedEventArgs : EventArgs
-	{
-		public string Map { get; set; }
-		public float QueueTime { get; set; }
+        public MatchFoundEventArgs(RaidInfo raidInfo) : base(raidInfo)
+        {
+            Map = raidInfo.Map;
+            RaidId = raidInfo.RaidId;
+            QueueTime = raidInfo.QueueTime;
+        }
+    }
+	public class RaidLoadedEventArgs : MatchFoundEventArgs
+    {
 		public RaidType RaidType { get; set; }
+        public RaidLoadedEventArgs(RaidInfo raidInfo) : base(raidInfo)
+        {
+            RaidType = raidInfo.RaidType;
+        }
 	}
 	public class FleaSoldEventArgs : EventArgs
 	{
