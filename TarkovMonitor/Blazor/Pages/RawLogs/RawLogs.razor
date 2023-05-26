@@ -1,14 +1,27 @@
 ﻿@page "/raw"
 @using System.Diagnostics
 @inject GameWatcher eft
+@inject IDialogService DialogService
 @layout AppLayout
 @implements IDisposable
 
-<MudGrid Class="pa-0" Spacing="0">
+
+<MudGrid Class="pa-0" Spacing="0" Style="position:relative;">
 	<MudItem xs="12">
         <LogBoard>
         </LogBoard>
 	</MudItem>
+    <div class="ma-2" style="position:fixed; bottom: 0px; right: 0px;">
+        <MudMenu AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+            <ActivatorContent>
+                <MudFab Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" />
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem @onclick="OpenCustomDialog">Custom Log Data</MudMenuItem>
+                <MudMenuItem @onclick="OpenForceReadDialog">Force Read Logs</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </div>
 </MudGrid>
 
 @code {
@@ -16,6 +29,18 @@
     public AppLayout AppLayout { get; set; }
     
     private int messageCount = 0;
+
+    private void OpenCustomDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
+        DialogService.Show<CustomLogDialog>("Process Custom Log Data", options);
+    }
+
+private void OpenForceReadDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
+        DialogService.Show<ForceReadDialog>("Force Read Log Files", options);
+    }
 
     protected override void OnInitialized()
     {

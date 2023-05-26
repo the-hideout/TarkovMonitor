@@ -49,13 +49,13 @@ namespace TarkovMonitor
                                     if (bytesRead == 0)
                                         break;
 
-                                    var text = ASCIIEncoding.ASCII.GetString(buffer, 0, bytesRead);
+                                    var text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
                                     lines.Add(text);
                                 }
                                 if (initialRead)
                                 {
-                                    NewLogData?.Invoke(this, new NewLogDataEventArgs { Type = this.Type, Data = String.Join("", lines.ToArray()) });
+                                    NewLogData?.Invoke(this, new NewLogDataEventArgs { Type = this.Type, Data = string.Join("", lines.ToArray()) });
                                 }
                                 initialRead = true;
                             }

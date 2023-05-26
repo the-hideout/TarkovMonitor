@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using System.Text;
 
 namespace TarkovMonitor
 {
@@ -10,7 +11,7 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher watcher;
         //private event EventHandler<NewLogEventArgs> NewLog;
-        private readonly Dictionary<GameLogType, LogMonitor> monitors;
+        internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
         public event EventHandler<NewLogDataEventArgs> NewLogData;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
@@ -31,9 +32,11 @@ namespace TarkovMonitor
         public event EventHandler<TaskEventArgs> TaskFinished;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public event EventHandler<FleaOfferExpiredEventArgs> FleaOfferExpired;
+        public string LogsPath { get; set; } = "";
+
         public GameWatcher()
         {
-            monitors = new();
+            Monitors = new();
             raidInfo = new RaidInfo();
             processTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30).TotalMilliseconds)
             {
@@ -68,7 +71,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void GameWatcher_NewLogData(object? sender, NewLogDataEventArgs e)
+        internal void GameWatcher_NewLogData(object? sender, NewLogDataEventArgs e)
         {
             try
             {
@@ -229,6 +232,67 @@ namespace TarkovMonitor
             UpdateProcess();
         }
 
+        public Dictionary<DateTime, string> GetLogFolders()
+        {
+            // Find all of the log folders in the Logs directory
+            if (LogsPath != "")
+            {
+                Dictionary<DateTime, string> folderDictionary = new();
+                var logFolders = Directory.GetDirectories(LogsPath);
+                // For each log folder, get the timestamp from the folder name
+                foreach (string folderName in logFolders)
+                {
+                    var dateTimeString = new Regex(@"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Match(folderName).Groups["timestamp"].Value;
+                    DateTime folderDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
+                    folderDictionary.Add(folderDate, folderName);
+                }
+                // Return the dictionary sorted by the timestamp
+                return folderDictionary.OrderByDescending(key => key.Key).ToDictionary(x => x.Key, x => x.Value);
+            } else
+            {
+                return new Dictionary<DateTime, string>();
+            }
+            
+        }
+
+        // Process the log files in the specified folder
+        public void ProcessLogs(string folderPath)
+        {
+            var logFiles = Directory.GetFiles(folderPath);
+            // TODO: This could be improved by processing lines in the order they were created
+            // rather than a full file at a time, this could be valuable for future features
+            foreach (string logFile in logFiles)
+            {
+                bool validType = false;
+                GameLogType logType = new();
+                // Check which type of log file this is by the filename
+                if (logFile.Contains("application.log"))
+                {
+                    logType = GameLogType.Application;
+                    validType = true;
+                } else if (logFile.Contains("notifications.log"))
+                {
+                    logType = GameLogType.Notifications;
+                    validType = true;
+                } else if (logFile.Contains("traces.log"))
+                {
+                    logType = GameLogType.Traces;
+                    validType = false;
+                    // Traces are not currently used, so skip them
+                    continue;
+                } else
+                {
+                    // We're not a known log type, so skip this file
+                    continue;
+                }
+
+                // Read the file into memory using UTF-8 encoding
+                var fileContents = File.ReadAllText(logFile, Encoding.UTF8);
+
+                GameWatcher_NewLogData(this, new NewLogDataEventArgs { Type = logType, Data = fileContents });
+            }
+        }
+
         private void UpdateProcess()
         {
             if (process != null)
@@ -251,10 +315,10 @@ namespace TarkovMonitor
             process = processes.First();
             var exePath = GetProcessFilename.GetFilename(process);
             var path = exePath[..exePath.LastIndexOf(Path.DirectorySeparatorChar)];
-            var logsPath = System.IO.Path.Combine(path, "Logs");
-            watcher.Path = logsPath;
+            LogsPath = System.IO.Path.Combine(path, "Logs");
+            watcher.Path = LogsPath;
             watcher.EnableRaisingEvents = true;
-            var logFolders = System.IO.Directory.GetDirectories(logsPath);
+            var logFolders = System.IO.Directory.GetDirectories(LogsPath);
             var latestDate = new DateTime(0);
             var latestLogFolder = logFolders.Last();
             foreach (var logFolder in logFolders)
@@ -303,14 +367,14 @@ namespace TarkovMonitor
             if (newType != null)
             {
                 //Debug.WriteLine($"Starting new {newType} monitor at {path}");
-                if (monitors.ContainsKey((GameLogType)newType))
+                if (Monitors.ContainsKey((GameLogType)newType))
                 {
-                    monitors[(GameLogType)newType].Stop();
+                    Monitors[(GameLogType)newType].Stop();
                 }
                 var newMon = new LogMonitor(path, (GameLogType)newType);
                 newMon.NewLogData += GameWatcher_NewLogData;
                 newMon.Start();
-                monitors[(GameLogType)newType] = newMon;
+                Monitors[(GameLogType)newType] = newMon;
             }
         }
         public class RaidInfo

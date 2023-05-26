@@ -1,0 +1,33 @@
+﻿@inject GameWatcher eft
+
+<MudDialog>
+    <DialogContent>
+        <MudSelect @bind-Value="gameLogType" Label="Log type" HelperText="This changes the GameWatcher monitor used to process the log" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
+            @foreach (GameLogType item in Enum.GetValues(typeof(GameLogType)))
+            {
+                <MudSelectItem Value="@item">@item</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField Immediate="true" @bind-Value="@sampleText" T="string" Label="Log Data" Variant="Variant.Outlined" Lines="5" Class="mt-4"/>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Submit</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    void Cancel() => MudDialog.Cancel();
+
+    string sampleText = "";
+
+    // Grab list of watchers from GameWatcher and populate the dropdown
+    private GameLogType gameLogType = GameLogType.Application;
+
+    public void Submit()
+    {
+        eft.GameWatcher_NewLogData(this, new NewLogDataEventArgs { Type = gameLogType, Data = sampleText });
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}
