@@ -99,7 +99,7 @@ namespace TarkovMonitor
                     {
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
                     }
-                    if (eventLine.Contains("Got notification | GroupMatchInviteAccept") || eventLine.Contains("Got notification | GroupMatchInviteSend"))
+                    if (eventLine.Contains("Got notification | GroupMatchInviteAccept"))
                     {
                         // GroupMatchInviteAccept occurs when someone you send an invite accepts
                         // GroupMatchInviteSend occurs when you receive an invite and either accept or decline
