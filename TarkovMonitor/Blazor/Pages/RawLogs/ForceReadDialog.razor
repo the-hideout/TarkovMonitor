@@ -1,0 +1,49 @@
+﻿@using Humanizer
+@inject GameWatcher eft
+
+<MudDialog>
+    <DialogContent>
+        @if (eft.LogsPath != "")
+        {
+        <MudSelect @bind-Value="selectedPath" Label="Open existing logs" HelperText="Choose which set of logs should be read from" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
+            @foreach (DateTime folderDate in logFolders.Keys)
+            {
+                    <MudSelectItem Value="@logFolders[folderDate]">@folderDate.ToLongDateString() - @folderDate.Humanize()</MudSelectItem>
+            }
+        </MudSelect>
+        }
+        else
+        {
+            <span>Could not find the Escape From Tarkov process to locate log folders, or no logs exist.</span>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        logFolders = eft.GetLogFolders();
+    }
+
+    string selectedPath = "";
+
+    Dictionary<DateTime, string> logFolders = new Dictionary<DateTime, string>();
+
+    void Cancel() => MudDialog.Cancel();
+
+public void Submit()
+    {
+        // Check if a path was selected, and if so, load the logs from that path
+        if (selectedPath != "")
+        {
+            eft.ProcessLogs(selectedPath);
+        }
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -4,7 +4,7 @@ using GraphQL.Client.Serializer.SystemTextJson;
 
 namespace TarkovMonitor
 {
-    internal class TarkovDevApi
+    internal class TarkovDev
     {
         private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
         private static readonly HttpClient httpClient = new();
@@ -76,12 +76,37 @@ namespace TarkovMonitor
                             height
                             link
                             iconLink
+                            gridImageLink
+                            types
+                            properties {
+                                ...on ItemPropertiesWeapon {
+                                    defaultPreset { 
+                                        iconLink 
+                                        gridImageLink
+                                        width
+                                        height
+                                    }
+                                }
+                            }
                         }
                     }
                 "
-            };
+			};
             var response = await client.SendQueryAsync<ItemsResponse>(request);
             Items = response.Data.items;
+            foreach (var item in Items)
+            {
+                if (item.types.Contains("gun"))
+                {
+                    if (item.properties?.defaultPreset != null)
+                    {
+                        item.width = item.properties.defaultPreset.width;
+                        item.height = item.properties.defaultPreset.height;
+                        item.iconLink = item.properties.defaultPreset.iconLink;
+                        item.gridImageLink = item.properties.defaultPreset.gridImageLink;
+                    }
+                }
+            }
             return Items;
         }
 
@@ -168,6 +193,20 @@ namespace TarkovMonitor
             public int height { get; set; }
 			public string link { get; set; }
 			public string iconLink { get; set; }
+            public string gridImageLink { get; set; }
+            public List<string> types { get; set; }
+            public ItemProperties? properties { get; set; }
+        }
+        public class ItemProperties
+        {
+            public ItemPropertiesDefaultPreset? defaultPreset { get; set; }
+        }
+        public class ItemPropertiesDefaultPreset
+        {
+            public string iconLink { get; set; }
+            public string gridImageLink { get; set; }
+            public int width { get; set; }
+            public int height { get; set; }
         }
     }
 }

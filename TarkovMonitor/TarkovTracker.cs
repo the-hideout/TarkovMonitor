@@ -32,8 +32,8 @@ namespace TarkovMonitor
         {
             if (!ValidToken)
             {
-                return "invalid token";
-            }
+				throw new Exception("Invalid token");
+			}
             var request = GetRequest($"/progress/task/{questId}");
             request.Method = HttpMethod.Post;
             var payload = @$"{{""state"":""completed""}}";
@@ -56,7 +56,7 @@ namespace TarkovMonitor
             }
             try
             {
-                TarkovDevApi.Tasks.ForEach(async task => {
+                TarkovDev.Tasks.ForEach(async task => {
                     foreach (var failCondition in task.failConditions)
                     {
                         if (failCondition.task == null)
@@ -89,8 +89,8 @@ namespace TarkovMonitor
         {
             if (!ValidToken)
             {
-                return "invalid token";
-            }
+				throw new Exception("Invalid token");
+			}
             var request = GetRequest($"/progress/task/{questId}");
             request.Method = HttpMethod.Post;
             var payload = @$"{{""state"":""failed""}}";
@@ -126,7 +126,7 @@ namespace TarkovMonitor
         {
             if (!ValidToken)
             {
-                return "invalid token";
+                throw new Exception("Invalid token");
             }
 
             var updateNeeded = false;
@@ -170,8 +170,12 @@ namespace TarkovMonitor
         }
 
         public static async Task<ProgressResponse> GetProgress()
-        {
-            var request = GetRequest("/progress");
+		{
+			if (!ValidToken)
+			{
+				throw new Exception("Invalid token");
+			}
+			var request = GetRequest("/progress");
             HttpResponseMessage response = client.Send(request);
             try
             {
@@ -188,7 +192,6 @@ namespace TarkovMonitor
             }
             string responseBody = await response.Content.ReadAsStringAsync();
             Progress = JsonSerializer.Deserialize<ProgressResponse>(responseBody);
-            ValidToken = true;
             ProgressRetrieved?.Invoke(null, new EventArgs());
             return Progress;
         }
@@ -214,9 +217,9 @@ namespace TarkovMonitor
             string responseBody = await response.Content.ReadAsStringAsync();
             var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(responseBody);
             if (tokenResponse.permissions.Contains("WP"))
-            {
-                GetProgress();
-                ValidToken = true;
+			{
+				ValidToken = true;
+				GetProgress();
                 TokenValidated?.Invoke(null, new EventArgs());
             }
             else

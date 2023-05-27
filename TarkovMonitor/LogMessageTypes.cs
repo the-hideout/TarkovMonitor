@@ -82,6 +82,11 @@ namespace TarkovMonitor
             if (node["upd"] != null)
                 this.upd = new LoadoutItemProperties(node["upd"]);
         }
+        LoadoutItem()
+        {
+            _id = "";
+            _tpl = "";
+        }
         public override string ToString()
         {
             var displayName = this._tpl;
@@ -109,6 +114,8 @@ namespace TarkovMonitor
         public LoadoutItemPropertiesScope? Sight { get; set; }
         public LoadoutItemPropertiesResource? Resource { get; set; }
         public LoadoutItemPropertiesDogtag? Dogtag { get; set; }
+        public LoadoutItemPropertiesTag? Tag { get; set; }
+        public LoadoutItemPropertiesKey? Key { get; set; }
         public LoadoutItemProperties(JsonNode node)
         {
             this.StackObjectsCount = node["StackObjectsCount"]?.GetValue<int>();
@@ -127,6 +134,10 @@ namespace TarkovMonitor
                 this.Resource = new LoadoutItemPropertiesResource(node["Resource"]);
             if (node["Dogtag"] != null)
                 this.Dogtag = new LoadoutItemPropertiesDogtag(node["Dogtag"]);
+            if (node["Tag"] != null)
+                this.Tag = new LoadoutItemPropertiesTag(node["Tag"]);
+            if (node["Key"] != null)
+                this.Key = new LoadoutItemPropertiesKey(node["Key"]);
         }
     }
     public class LoadoutItemPropertiesDurability
@@ -134,8 +145,8 @@ namespace TarkovMonitor
         public float MaxDurability { get; set; }
         public float Durability { get; set; }
         public LoadoutItemPropertiesDurability(JsonNode node) {
-            this.MaxDurability = node["MaxDurability"].GetValue<float>();
             this.Durability = node["Durability"].GetValue<float>();
+            this.MaxDurability = node["MaxDurability"] != null ? node["MaxDurability"].GetValue<float>() : this.Durability;
         }
     }
     public class LoadoutItemPropertiesMeds
@@ -214,6 +225,22 @@ namespace TarkovMonitor
             this.KillerProfileId = node["KillerProfileId"].GetValue<string>();
             this.KillerName = node["KillerName"].GetValue<string>();
             this.WeaponName = node["WeaponName"].GetValue<string>();
+        }
+    }
+    public class LoadoutItemPropertiesTag
+    {
+        public string Name { get; set; }
+        public LoadoutItemPropertiesTag(JsonNode node)
+        {
+            Name = node["Name"].GetValue<string>();
+        }
+    }
+    public class LoadoutItemPropertiesKey
+    {
+        public int NumberOfUsages { get; set; }
+        public LoadoutItemPropertiesKey(JsonNode node)
+        {
+            NumberOfUsages = node["NumberOfUsages"].GetValue<int>();
         }
     }
     public class PlayerClothes
