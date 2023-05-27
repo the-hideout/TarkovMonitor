@@ -17,7 +17,8 @@ namespace TarkovMonitor
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
         public event EventHandler GameStarted;
-        public event EventHandler<GroupInviteEventArgs> GroupMatchInvite;
+        public event EventHandler<GroupInviteSendEventArgs> GroupInviteSend;
+        public event EventHandler<GroupInviteAcceptEventArgs> GroupInviteAccept;
         public event EventHandler<GroupReadyEventArgs> GroupReady;
         public event EventHandler GroupDisbanded;
         public event EventHandler<GroupUserLeaveEventArgs> GroupUserLeave;
@@ -99,11 +100,15 @@ namespace TarkovMonitor
                     {
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
                     }
+                    if (eventLine.Contains("Got notification | GroupMatchInviteSend"))
+                    {
+                        GroupInviteSend?.Invoke(this, new(jsonNode));
+                    }
                     if (eventLine.Contains("Got notification | GroupMatchInviteAccept"))
                     {
                         // GroupMatchInviteAccept occurs when someone you send an invite accepts
                         // GroupMatchInviteSend occurs when you receive an invite and either accept or decline
-                        GroupMatchInvite?.Invoke(this, new(jsonNode));
+                        GroupInviteAccept?.Invoke(this, new(jsonNode));
                     }
                     if (eventLine.Contains("Got notification | GroupMatchUserLeave"))
                     {
@@ -445,11 +450,23 @@ namespace TarkovMonitor
 	{
 		public string TaskId { get; set; }
 	}
-    public class GroupInviteEventArgs : EventArgs
+    public class GroupInviteSendEventArgs : EventArgs
+    {
+        public List<GroupMemberInfo> Members { get; set; }
+        public GroupInviteSendEventArgs(JsonNode node)
+        {
+            Members = new();
+            foreach (JsonNode member in node["members"].AsArray())
+            {
+                Members.Add(new GroupMemberInfo(member));
+            }
+        }
+    }
+    public class GroupInviteAcceptEventArgs : EventArgs
     {
         public PlayerInfo PlayerInfo { get; set; }
         public GroupInviteType InviteType { get; set; }
-        public GroupInviteEventArgs(JsonNode node)
+        public GroupInviteAcceptEventArgs(JsonNode node)
         {
             if (node["type"].ToString() == "groupMatchInviteAccept")
             {

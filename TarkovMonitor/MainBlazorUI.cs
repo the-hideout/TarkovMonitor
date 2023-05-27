@@ -46,7 +46,8 @@ namespace TarkovMonitor
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogData += Eft_NewLogData;
-            eft.GroupMatchInvite += Eft_GroupMatchInvite;
+            eft.GroupInviteSend += Eft_GroupInviteSend;
+            eft.GroupInviteAccept += Eft_GroupInviteAccept;
             eft.GroupUserLeave += Eft_GroupUserLeave;
             eft.GroupReady += Eft_GroupReady;
 			eft.GroupDisbanded += Eft_GroupDisbanded;
@@ -80,13 +81,23 @@ namespace TarkovMonitor
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
         }
 
+        private void Eft_GroupInviteSend(object? sender, GroupInviteSendEventArgs e)
+        {
+            List<string> memberNames = new();
+            foreach (var member in e.Members)
+            {
+                memberNames.Add($"{member.PlayerInfo.Nickname} ({member.PlayerInfo.Level} {member.PlayerInfo.Side.ToUpper()})");
+            }
+            messageLog.AddMessage($"Group invite: {String.Join(", ", memberNames.ToArray())}", "group");
+        }
+
         private void Eft_GroupUserLeave(object? sender, GroupUserLeaveEventArgs e)
         {
             groupManager.RemoveGroupMember(e.Nickname);
             messageLog.AddMessage($"{e.Nickname} left the group.", "group");
         }
 
-        private void Eft_GroupMatchInvite(object? sender, GroupInviteEventArgs e)
+        private void Eft_GroupInviteAccept(object? sender, GroupInviteAcceptEventArgs e)
         {
             var verb = "accepted";
             if (e.InviteType == GroupInviteType.Sent) {
