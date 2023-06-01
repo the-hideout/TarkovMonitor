@@ -23,6 +23,16 @@ namespace TarkovMonitor
 
         public GroupMatchInviteSendProfile fromProfile { get; set; }
     }
+    public class GroupMemberInfo
+    {
+        public PlayerInfo PlayerInfo { get; set; }
+        public bool isLeader { get; set; }
+        public GroupMemberInfo(JsonNode node)
+        {
+            this.PlayerInfo = new(node["Info"]);
+            this.isLeader = node["isLeader"].GetValue<bool>();
+        }
+    }
     public class PlayerInfo
     {
         public string Side { get; set; }
