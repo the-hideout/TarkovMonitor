@@ -232,7 +232,10 @@ namespace TarkovMonitor
             { 
                 PlaySoundFromResource(Properties.Resources.match_found);
             }
-            messageLog.AddMessage($"Matching complete on {e.Map} after {e.QueueTime} seconds");
+            var mapName = e.Map;
+            var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
+            if (map != null) mapName = map.name;
+            messageLog.AddMessage($"Matching complete on {mapName} after {e.QueueTime} seconds");
         }
 
         private void Eft_NewLogData(object? sender, NewLogDataEventArgs e)
