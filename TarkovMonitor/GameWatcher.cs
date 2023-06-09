@@ -22,6 +22,7 @@ namespace TarkovMonitor
         public event EventHandler<GroupReadyEventArgs> GroupReady;
         public event EventHandler GroupDisbanded;
         public event EventHandler<GroupUserLeaveEventArgs> GroupUserLeave;
+        public event EventHandler MapLoading;
         public event EventHandler<MatchingStartedEventArgs> MatchingStarted;
         public event EventHandler<MatchFoundEventArgs> MatchFound;
         public event EventHandler<MatchingCancelledEventArgs> MatchingAborted;
@@ -124,6 +125,10 @@ namespace TarkovMonitor
                     {
                         // Occurs for each other member of the group when ready
                         GroupReady?.Invoke(this, new GroupReadyEventArgs(jsonNode));
+                    }
+                    if (eventLine.Contains("application|Matching with group id"))
+                    {
+                        MapLoading?.Invoke(this, new());
                     }
                     if (eventLine.Contains("application|LocationLoaded"))
                     {

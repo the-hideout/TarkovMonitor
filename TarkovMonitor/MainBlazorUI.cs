@@ -53,8 +53,8 @@ namespace TarkovMonitor
 			eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
+            eft.MapLoading += Eft_MapLoading;
             eft.MatchFound += Eft_MatchFound;
-            eft.MatchingStarted += Eft_MatchingStarted;
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
 
             // Update tarkov.dev Repository data
@@ -81,42 +81,7 @@ namespace TarkovMonitor
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
         }
 
-        private void Eft_GroupInviteSend(object? sender, GroupInviteSendEventArgs e)
-        {
-            List<string> memberNames = new();
-            foreach (var member in e.Members)
-            {
-                memberNames.Add($"{member.PlayerInfo.Nickname} ({member.PlayerInfo.Level} {member.PlayerInfo.Side.ToUpper()})");
-            }
-            messageLog.AddMessage($"Group invite: {String.Join(", ", memberNames.ToArray())}", "group");
-        }
-
-        private void Eft_GroupUserLeave(object? sender, GroupUserLeaveEventArgs e)
-        {
-            groupManager.RemoveGroupMember(e.Nickname);
-            messageLog.AddMessage($"{e.Nickname} left the group.", "group");
-        }
-
-        private void Eft_GroupInviteAccept(object? sender, GroupInviteAcceptEventArgs e)
-        {
-            var verb = "accepted";
-            if (e.InviteType == GroupInviteType.Sent) {
-                verb = "sent";
-            }
-            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerInfo.Side.ToUpper()} {e.PlayerInfo.Level}) {verb} group invite.", "group");
-        }
-
-        private void Eft_GroupDisbanded(object? sender, EventArgs e)
-		{
-            groupManager.ClearGroup();
-		}
-
-		private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
-        {
-            messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update");
-        }
-
-        private async void Eft_MatchingStarted(object? sender, MatchingStartedEventArgs e)
+        private void Eft_MapLoading(object? sender, EventArgs e)
         {
             try
             {
@@ -155,6 +120,41 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Error on matching started: {ex.Message}");
             }
+        }
+
+        private void Eft_GroupInviteSend(object? sender, GroupInviteSendEventArgs e)
+        {
+            List<string> memberNames = new();
+            foreach (var member in e.Members)
+            {
+                memberNames.Add($"{member.PlayerInfo.Nickname} ({member.PlayerInfo.Level} {member.PlayerInfo.Side.ToUpper()})");
+            }
+            messageLog.AddMessage($"Group invite: {String.Join(", ", memberNames.ToArray())}", "group");
+        }
+
+        private void Eft_GroupUserLeave(object? sender, GroupUserLeaveEventArgs e)
+        {
+            groupManager.RemoveGroupMember(e.Nickname);
+            messageLog.AddMessage($"{e.Nickname} left the group.", "group");
+        }
+
+        private void Eft_GroupInviteAccept(object? sender, GroupInviteAcceptEventArgs e)
+        {
+            var verb = "accepted";
+            if (e.InviteType == GroupInviteType.Sent) {
+                verb = "sent";
+            }
+            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerInfo.Side.ToUpper()} {e.PlayerInfo.Level}) {verb} group invite.", "group");
+        }
+
+        private void Eft_GroupDisbanded(object? sender, EventArgs e)
+		{
+            groupManager.ClearGroup();
+		}
+
+		private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
+        {
+            messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update");
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
@@ -310,7 +310,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-
+            
             messageLog.AddMessage($"Started task {task.name}", "quest", task.wikiLink);
             try
             {
