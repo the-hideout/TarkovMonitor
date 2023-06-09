@@ -263,7 +263,7 @@ namespace TarkovMonitor
                 return;
             }
 
-            messageLog.AddMessage($"Completed task {task.name}", "quest");
+            messageLog.AddMessage($"Completed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
             try
             {
                 await TarkovTracker.SetTaskComplete(task.id);
@@ -287,7 +287,7 @@ namespace TarkovMonitor
                 return;
             }
 
-            messageLog.AddMessage($"Failed task {task.name}", "quest", task.wikiLink);
+            messageLog.AddMessage($"Failed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
             try
             {
                 await TarkovTracker.SetTaskFailed(task.id);
@@ -311,7 +311,7 @@ namespace TarkovMonitor
                 return;
             }
             
-            messageLog.AddMessage($"Started task {task.name}", "quest", task.wikiLink);
+            messageLog.AddMessage($"Started task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
             try
             {
                 await TarkovTracker.SetTaskUncomplete(e.TaskId);

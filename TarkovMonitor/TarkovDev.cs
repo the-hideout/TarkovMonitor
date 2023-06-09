@@ -26,6 +26,7 @@ namespace TarkovMonitor
                         tasks {
                             id
                             name
+                            normalizedName
                             wikiLink
                             restartable
                             failConditions {
@@ -154,6 +155,7 @@ namespace TarkovMonitor
         {
             public string id { get; set; }
             public string name { get; set; }
+            public string normalizedName { get; set; }
             public string? wikiLink { get; set; }
             public bool restartable { get; set; }
             public List<TaskFailCondition> failConditions { get; set; }
