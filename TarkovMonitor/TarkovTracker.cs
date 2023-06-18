@@ -231,7 +231,7 @@ namespace TarkovMonitor
             return tokenResponse;
         }
 
-        private static async void InvalidTokenException()
+        private static void InvalidTokenException()
         {
             Progress = new();
             ValidToken = false;

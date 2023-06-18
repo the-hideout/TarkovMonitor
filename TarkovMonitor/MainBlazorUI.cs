@@ -210,6 +210,7 @@ namespace TarkovMonitor
         {
             if (Properties.Settings.Default.tarkovTrackerToken == "")
             {
+                messageLog.AddMessage("To automatically track task progress, set your Tarkov Tracker token in Settings");
                 return;
             }
             try
