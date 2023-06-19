@@ -1,5 +1,5 @@
 # TarkovMonitor
-![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/2c91c8e6-8e5e-497d-a496-40037eb9f1ac)
+![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/4ad45574-4316-4145-870f-d8d9a5e6b067)
 
 TarkovMonitor is an Escape from Tarkov companion application that provides useful audio hints (only in the menu) and can automatically update your task progress on Tarkov Tracker.
 ![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/b180c48b-a76a-4db1-bf60-6e865201565b)
