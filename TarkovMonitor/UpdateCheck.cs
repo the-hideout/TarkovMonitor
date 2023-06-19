@@ -15,10 +15,10 @@ namespace TarkovMonitor
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases");
+                var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");
                 var response = await client.SendAsync(request);
                 response.EnsureSuccessStatusCode();
-                JsonNode latestRelease = JsonNode.Parse(await response.Content.ReadAsStringAsync()).AsArray().First();
+                JsonNode latestRelease = JsonNode.Parse(await response.Content.ReadAsStringAsync());
 
                 Version remoteVersion = new Version(latestRelease["tag_name"].ToString());
                 Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
