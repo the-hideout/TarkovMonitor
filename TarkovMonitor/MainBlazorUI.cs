@@ -55,7 +55,11 @@ namespace TarkovMonitor
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.MapLoading += Eft_MapLoading;
             eft.MatchFound += Eft_MatchFound;
+
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
+
+            UpdateCheck.NewVersion += UpdateCheck_NewVersion;
+            UpdateCheck.Error += UpdateCheck_Error;
 
             // Update tarkov.dev Repository data
             UpdateItems();
@@ -64,6 +68,7 @@ namespace TarkovMonitor
             TarkovDev.StartAutoUpdates();
 
             InitializeProgress();
+            UpdateCheck.CheckForNewVersion();
 
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
             var services = new ServiceCollection();
@@ -79,6 +84,16 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+        }
+
+        private void UpdateCheck_Error(object? sender, UpdateCheckErrorEventArgs e)
+        {
+            messageLog.AddMessage($"Error checking for new version: {e.Exception.Message}");
+        }
+
+        private void UpdateCheck_NewVersion(object? sender, NewVersionEventArgs e)
+        {
+            messageLog.AddMessage($"New TarkovMonitor version available ({e.Version})!", null, e.Uri.ToString());
         }
 
         private void Eft_MapLoading(object? sender, EventArgs e)
