@@ -19,6 +19,12 @@ namespace TarkovMonitor
         public MainBlazorUI()
         {
             InitializeComponent();
+            if (Properties.Settings.Default.upgradeRequired)
+            {
+                Properties.Settings.Default.Upgrade();
+                Properties.Settings.Default.upgradeRequired = false;
+                Properties.Settings.Default.Save();
+            }
             eft = new GameWatcher();
             eft.Start();
 
