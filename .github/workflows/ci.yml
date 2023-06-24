@@ -17,7 +17,6 @@ jobs:
       Solution_Path: TarkovMonitor.sln
       Wpf_Project_Path: TarkovMonitor\TarkovMonitor.csproj
       Wap_Project_Directory: TarkovMonitor.Package
-      Actions_Allow_Unsecure_Commands: true # Allows AddPAth and SetEnv commands
 
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # pin@v3
