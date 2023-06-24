@@ -58,7 +58,7 @@ jobs:
           AppxBundle: Never
           BuildMode: SideloadOnly
           Configuration: Debug
-          TargetPlatform: x64
+          TargetPlatform: Any CPU
 
       - name: remove pfx
         run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
