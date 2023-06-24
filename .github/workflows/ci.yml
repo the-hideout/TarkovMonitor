@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-latest
     env:
       App_Packages_Directory: AppPackages
-      SigningCertificate: TarkovMonitor.cer
+      SigningCertificate: TarkovMonitor.pfx
       Solution_Path: TarkovMonitor.sln
       Wpf_Project_Path: TarkovMonitor\TarkovMonitor.csproj
       Wap_Project_Directory: TarkovMonitor.Package
@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: "6.0.x"
-          cache: true
+          # cache: true
 
       - name: setup MSBuild.exe
         uses: microsoft/setup-msbuild@v1.3.1
