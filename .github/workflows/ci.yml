@@ -1,4 +1,4 @@
-name:  ci
+name: ci
 
 on:
   push:
@@ -9,67 +9,63 @@ on:
       - master
 
 jobs:
-  build:
+  ci:
     runs-on: windows-latest
     env:
       App_Packages_Directory: AppPackages
-      SigningCertificate: GitHubActionsDemo.pfx
+      SigningCertificate: TarkovMonitor.cer
       Solution_Path: TarkovMonitor.sln
       Wpf_Project_Path: TarkovMonitor\TarkovMonitor.csproj
-      Wap_Project_Directory: MyWpfApp.Package
+      Wap_Project_Directory: TarkovMonitor.Package
       Actions_Allow_Unsecure_Commands: true # Allows AddPAth and SetEnv commands
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
 
-    # Use Nerdbank.GitVersioning to set version variables: https://github.com/AArnott/nbgv
-    - name: Use Nerdbank.GitVersioning to set version variables
-      uses: dotnet/nbgv@master
-      id: nbgv
+      # Use Nerdbank.GitVersioning to set version variables: https://github.com/AArnott/nbgv
+      - name: nbgv setup
+        uses: dotnet/nbgv@master
+        id: nbgv
 
-    # Install the .NET Core workload
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '6.0.x'
+      - name: install .NET core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "6.0.x"
+          cache: true
 
-    # Add  MsBuild to the PATH: https://github.com/microsoft/setup-msbuild
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v1.1
+      - name: setup MSBuild.exe
+        uses: microsoft/setup-msbuild@v1.3.1
 
-    # Restore the application
-    - name:  Restore the Wpf application to populate the obj folder
-      run: msbuild $env:Solution_Path /t:Restore /p:Configuration=$env:Configuration /p:RuntimeIdentifier=$env:RuntimeIdentifier
-      env:
-        Configuration: Debug
-        RuntimeIdentifier: win-x64
+      - name: install dependencies
+        run: msbuild $env:Solution_Path /t:Restore /p:Configuration=$env:Configuration /p:RuntimeIdentifier=$env:RuntimeIdentifier
+        env:
+          Configuration: Debug
+          RuntimeIdentifier: win-x64
 
-    # Decode the Base64 encoded Pfx
-    - name: Decode the Pfx
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.Base64_Encoded_Pfx }}")
-        $currentDirectory = Get-Location
-        $certificatePath = Join-Path -Path $currentDirectory -ChildPath $env:Wap_Project_Directory -AdditionalChildPath $env:SigningCertificate
-        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+      - name: setup pfx
+        run: |
+          $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.base64_encoded_pfx }}")
+          $currentDirectory = Get-Location
+          $certificatePath = Join-Path -Path $currentDirectory -ChildPath $env:Wap_Project_Directory -AdditionalChildPath $env:SigningCertificate
+          [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
 
-    # Build the Windows Application Packaging project
-    - name: Build the Windows Application Packaging Project (wapproj)
-      run: msbuild $env:Solution_Path /p:Platform=$env:TargetPlatform /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:BuildMode /p:AppxBundle=$env:AppxBundle /p:PackageCertificateKeyFile=$env:SigningCertificate /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
-      env:
-        AppxBundle: Never
-        BuildMode: SideloadOnly
-        Configuration: Debug
-        TargetPlatform: x64
+      # Build the Windows Application Packaging project
+      - name: build
+        run: msbuild $env:Solution_Path /p:Platform=$env:TargetPlatform /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:BuildMode /p:AppxBundle=$env:AppxBundle /p:PackageCertificateKeyFile=$env:SigningCertificate
+        env:
+          AppxBundle: Never
+          BuildMode: SideloadOnly
+          Configuration: Debug
+          TargetPlatform: x64
 
-    # Remove the .pfx
-    - name: Remove the .pfx
-      run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
+      - name: remove pfx
+        run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
 
-    # Upload the MSIX package: https://github.com/marketplace/actions/upload-artifact
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: MSIX Package
-        path: ${{ env.Wap_Project_Directory }}\${{ env.App_Packages_Directory }}
+      # Upload the MSIX package: https://github.com/marketplace/actions/upload-artifact
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: MSIX Package
+          path: ${{ env.Wap_Project_Directory }}\${{ env.App_Packages_Directory }}
