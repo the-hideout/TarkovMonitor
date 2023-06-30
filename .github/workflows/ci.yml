@@ -62,6 +62,9 @@ jobs:
       - name: remove pfx
         run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
 
+      - name: List files in working directory
+        run: ls -R
+
       # Upload the MSIX package: https://github.com/marketplace/actions/upload-artifact
       - name: Upload build artifacts
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # pin@v3.1.2
