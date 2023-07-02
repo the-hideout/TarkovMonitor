@@ -50,6 +50,9 @@ jobs:
           $certificatePath = Join-Path -Path $currentDirectory -ChildPath $env:Wap_Project_Directory -AdditionalChildPath $env:SigningCertificate
           [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
 
+      - name: List files before build
+        run: ls -R
+
       # Build the Windows Application Packaging project
       - name: build
         run: msbuild $env:Solution_Path /p:Platform=$env:TargetPlatform /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:BuildMode /p:AppxBundle=$env:AppxBundle /p:PackageCertificateKeyFile=$env:SigningCertificate
@@ -58,6 +61,9 @@ jobs:
           BuildMode: SideloadOnly
           Configuration: Debug
           TargetPlatform: Any CPU
+
+      - name: List files after build
+        run: ls -R
 
       - name: remove pfx
         run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
