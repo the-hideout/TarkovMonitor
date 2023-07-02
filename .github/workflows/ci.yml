@@ -59,8 +59,8 @@ jobs:
         env:
           AppxBundle: Never
           BuildMode: SideloadOnly
-          Configuration: Debug
-          TargetPlatform: Any CPU
+          Configuration: Release
+          TargetPlatform: x64
 
       - name: List files after build
         run: ls -R
