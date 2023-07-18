@@ -6,6 +6,10 @@ using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Globalization;
+using System.Net.WebSockets;
+using Websocket.Client;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace TarkovMonitor
 {
@@ -15,6 +19,7 @@ namespace TarkovMonitor
         private readonly MessageLog messageLog;
         private readonly LogRepository logRepository;
         private readonly GroupManager groupManager;
+        private WebsocketClient socket;
 
         public MainBlazorUI()
         {
@@ -61,6 +66,7 @@ namespace TarkovMonitor
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.MapLoading += Eft_MapLoading;
             eft.MatchFound += Eft_MatchFound;
+            eft.PlayerPosition += Eft_PlayerPosition;
 
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
 
@@ -90,6 +96,81 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+
+            Properties.Settings.Default.PropertyChanged += SettingChanged;
+            SettingChanged(null, new("remoteId"));
+        }
+
+        private void SettingChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != "remoteId")
+            {
+                return;
+            }
+            if (socket != null && socket.IsRunning)
+            {
+                socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+            }
+            var remoteId = Properties.Settings.Default.remoteId;
+            if (remoteId == null || remoteId == "") {
+                return;
+            }
+            var source = new CancellationTokenSource();
+            source.CancelAfter(5000);
+            socket = new(new Uri("wss://socket.tarkov.dev"));
+            socket.MessageReceived.Subscribe(msg => {
+                var message = JsonNode.Parse(msg.Text);
+                if (message["type"].ToString() == "ping")
+                {
+                    socket.Send(new JsonObject {
+                        ["type"] = "pong" 
+                    }.ToJsonString());
+                }
+            });
+            Task.Run(async () => {
+                await socket.Start();
+                socket.Send(new JsonObject
+                {
+                    ["sessionID"] = remoteId,
+                    ["type"] = "connect"
+                }.ToJsonString());
+            });
+        }
+
+        private void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
+        {
+            messageLog.AddMessage($"Player position: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
+            var remoteid = Properties.Settings.Default.remoteId;
+            if (remoteid == null || remoteid == "")
+            {
+                return;
+            }
+            if (socket == null || !socket.IsRunning)
+            {
+                return;
+            }
+            var map = TarkovDev.Maps.Find(m => m.nameId == e.Map)?.normalizedName;
+            if (map == null && e.Map != null)
+            {
+                return;
+            }
+            var payload = new JsonObject
+            {
+                ["sessionID"] = remoteid,
+                ["type"] = "command",
+                ["data"] = new JsonObject
+                {
+                    ["type"] = "playerPosition",
+                    ["map"] = map,
+                    ["position"] = new JsonObject
+                    {
+                        ["x"] = e.Position.X,
+                        ["y"] = e.Position.Y,
+                        ["z"] = e.Position.Z
+                    }
+                }
+            };
+            socket.Send(payload.ToJsonString());
         }
 
         private void UpdateCheck_Error(object? sender, UpdateCheckErrorEventArgs e)

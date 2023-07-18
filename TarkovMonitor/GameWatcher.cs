@@ -10,9 +10,12 @@ namespace TarkovMonitor
         private Process? process;
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher watcher;
+        private readonly FileSystemWatcher screenshotWatcher;
+        private string screenshotPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + Path.DirectorySeparatorChar + "Escape From Tarkov" + Path.DirectorySeparatorChar + "Screenshots";
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
+        private string lastKnownMap;
         public event EventHandler<NewLogDataEventArgs> NewLogData;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
@@ -34,6 +37,7 @@ namespace TarkovMonitor
         public event EventHandler<TaskEventArgs> TaskFinished;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public event EventHandler<FleaOfferExpiredEventArgs> FleaOfferExpired;
+        public event EventHandler<PlayerPositionEventArgs> PlayerPosition;
         public string LogsPath { get; set; } = "";
 
         public GameWatcher()
@@ -53,6 +57,54 @@ namespace TarkovMonitor
             };
             watcher.Created += Watcher_Created;
             UpdateProcess();
+            screenshotWatcher = new FileSystemWatcher();
+            SetupScreenshotWatcher();
+        }
+
+        public void SetupScreenshotWatcher()
+        {
+            bool screensPathExists = Directory.Exists(screenshotPath);
+            string watchPath = screensPathExists ? screenshotPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            screenshotWatcher.Path = watchPath;
+            screenshotWatcher.IncludeSubdirectories = !screensPathExists;
+            screenshotWatcher.Created -= ScreenshotWatcher_Created;
+            screenshotWatcher.Created -= ScreenshotWatcher_FolderCreated;
+            if (screensPathExists)
+            {
+                screenshotWatcher.Filter = "*.png";
+                screenshotWatcher.Created += ScreenshotWatcher_Created;
+            }
+            else
+            {
+                screenshotWatcher.Created += ScreenshotWatcher_FolderCreated;
+            }
+            screenshotWatcher.EnableRaisingEvents = true;
+        }
+
+        private void ScreenshotWatcher_FolderCreated(object sender, FileSystemEventArgs e)
+        {
+            if (e.FullPath == screenshotPath)
+            {
+                SetupScreenshotWatcher();
+            }
+        }
+        private void ScreenshotWatcher_Created(object sender, FileSystemEventArgs e)
+        {
+            var match = Regex.Match(e.Name, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_(?<position>.+) \(\d\)\.png");
+            if (!match.Success)
+            {
+                return;
+            }
+            var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d.]+), (?<y>-?[\d.]+), (?<z>-?[\d.]+)_.*");
+            if (!position.Success)
+            {
+                return;
+            }
+            if (lastKnownMap == null)
+            {
+                //return;
+            }
+            PlayerPosition?.Invoke(this, new(lastKnownMap, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value)));
         }
 
         public void Start()
@@ -153,6 +205,7 @@ namespace TarkovMonitor
                         // Immediately after matching is complete
                         // Sufficient information is available to raise the MatchFound event
                         raidInfo.Map = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
+                        lastKnownMap = raidInfo.Map;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
                         if (raidInfo.Online && raidInfo.QueueTime > 0)
@@ -436,6 +489,24 @@ namespace TarkovMonitor
             RaidType = RaidType.Unknown;
         }
     }
+    public class Position
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+        public Position(float x, float y, float z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+        public Position(string x, string y, string z)
+        {
+            X = float.Parse(x);
+            Y = float.Parse(y);
+            Z = float.Parse(z);
+        }
+    }
     public class RaidExitedEventArgs : EventArgs
 	{
 		public string Map { get; set; }
@@ -589,4 +660,14 @@ namespace TarkovMonitor
 			this.Message = message;
 		}
 	}
+    public class PlayerPositionEventArgs : EventArgs
+    {
+        public Position Position { get; set; }
+        public string? Map { get; set; }
+        public PlayerPositionEventArgs(string map, Position position)
+        {
+            this.Map = map;
+            this.Position = position;
+        }
+    }
 }

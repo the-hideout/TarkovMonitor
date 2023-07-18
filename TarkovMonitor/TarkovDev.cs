@@ -56,6 +56,7 @@ namespace TarkovMonitor
                             id
                             name
                             nameId
+                            normalizedName
                         }
                     }
                 "
@@ -182,6 +183,7 @@ namespace TarkovMonitor
             public string id { get; set; }
             public string name { get; set; }
             public string nameId { get; set; }
+            public string normalizedName { get; set; }
         }
         public class ItemsResponse
         {
