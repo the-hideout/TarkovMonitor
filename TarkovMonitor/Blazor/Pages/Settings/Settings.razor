@@ -40,8 +40,11 @@
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsRemote" Class="mr-2" />Website Remote</MudText>
-            <MudTextField @bind-Value="@RemoteID" Label="Remote ID" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsRemote" Class="mr-2" /><MudButton @onclick="VisitWebsite" Variant="Variant.Text">Website Remote</MudButton></MudText>
+            <MudTextField @bind-Value="@RemoteID" Label="Remote ID" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasteIcon" OnAdornmentClick="PasteRemoteClick"></MudTextField>
+            <div>
+                <MudSwitch @bind-Checked="@NavigateMapSwitch" Label="Switch to Tarkov.dev map on raid load" Color="Color.Info" />
+            </div>
         </MudPaper>
     </MudItem>
 </MudGrid>
@@ -210,14 +213,14 @@
     }
 
     private void OpenURL(string url)
-	{
-		var psi = new ProcessStartInfo
+    {
+        var psi = new ProcessStartInfo
 		{
 			FileName = url,
 			UseShellExecute = true,
 		};
-		Process.Start(psi);
-	}
+        Process.Start(psi);
+    }
 
     private void PlaySoundFromResource(byte[] resource)
     {
@@ -228,6 +231,15 @@
         waveOut.Play();
     }
 
+    string PasteIcon = Icons.Material.Filled.ContentPaste;
+    void VisitWebsite()
+    {
+        OpenURL("https://tarkov.dev");
+    }
+    void PasteRemoteClick()
+    {
+        RemoteID = Clipboard.GetText();
+    }
     public string RemoteID
     {
         get
@@ -237,6 +249,18 @@
         set
         {
             Properties.Settings.Default.remoteId = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+    public bool NavigateMapSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.autoNavigateMap;
+        }
+        set
+        {
+            Properties.Settings.Default.autoNavigateMap = value;
             Properties.Settings.Default.Save();
         }
     }

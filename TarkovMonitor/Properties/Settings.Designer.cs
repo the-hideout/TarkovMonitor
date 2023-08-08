@@ -106,5 +106,17 @@ namespace TarkovMonitor.Properties {
                 this["remoteId"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool autoNavigateMap {
+            get {
+                return ((bool)(this["autoNavigateMap"]));
+            }
+            set {
+                this["autoNavigateMap"] = value;
+            }
+        }
     }
 }

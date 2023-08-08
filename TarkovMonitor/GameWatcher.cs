@@ -27,7 +27,8 @@ namespace TarkovMonitor
         public event EventHandler<GroupUserLeaveEventArgs> GroupUserLeave;
         public event EventHandler MapLoading;
         public event EventHandler<MatchingStartedEventArgs> MatchingStarted;
-        public event EventHandler<MatchFoundEventArgs> MatchFound;
+        public event EventHandler<MatchFoundEventArgs> MatchFound; // only fires on initial load into a raid
+        public event EventHandler<MatchFoundEventArgs> MapLoaded; // fires on initial and subsequent loads into a raid
         public event EventHandler<MatchingCancelledEventArgs> MatchingAborted;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
@@ -213,6 +214,7 @@ namespace TarkovMonitor
                             // Raise the MatchFound event only if we queued; not if we are re-loading back into a raid
                             MatchFound?.Invoke(this, new(raidInfo));
                         }
+                        MapLoaded?.Invoke(this, new(raidInfo));
                     }
                     if (eventLine.Contains("application|GameStarting"))
                     {
