@@ -68,6 +68,12 @@ jobs:
       - name: List current directory
         run: echo $PWD
 
+      - name: Echo configuration
+        run: echo $env:Configuration
+
+      - name: Echo target platform
+        run: echo $env:TargetPlatform
+
       - name: remove pfx
         run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
 
