@@ -65,6 +65,9 @@ jobs:
       - name: List files after build
         run: ls -R
 
+      - name: List current directory
+        run: echo $PWD
+
       - name: remove pfx
         run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
 
@@ -72,5 +75,5 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # pin@v3.1.2
         with:
-          name: MSIX Package
-          path: TarkovMonitor\bin\$env:Configuration\$env:TargetPlatform\
+          name: $env:Configuration Build
+          path: TarkovMonitor\bin\$env:Configuration\$env:TargetPlatform\*
