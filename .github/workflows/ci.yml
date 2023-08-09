@@ -31,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: published-app
-          path: ./
+          path: TarkovMonitor\bin\Release\net6.0-windows\win-x64\publish\*
