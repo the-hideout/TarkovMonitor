@@ -73,4 +73,4 @@ jobs:
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # pin@v3.1.2
         with:
           name: MSIX Package
-          path: ${{ env.Wap_Project_Directory }}\${{ env.App_Packages_Directory }}
+          path: $env:Wap_Project_Directory\bin\$env:Configuration\$env:TargetPlatform\
