@@ -2,10 +2,9 @@
 
 [![build-dev](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml/badge.svg)](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml)
 
-![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/4ad45574-4316-4145-870f-d8d9a5e6b067)
+![image](https://github.com/the-hideout/TarkovMonitor/assets/1557581/99602d29-98c8-4738-8757-0fa763d54e9a)
 
 TarkovMonitor is an Escape from Tarkov companion application that provides useful audio hints (only in the menu) and can automatically update your task progress on Tarkov Tracker.
-![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/b180c48b-a76a-4db1-bf60-6e865201565b)
 
 When you're queueing for a raid, TarkovMonitor can trigger an audio notification when a match has been found and also when the raid is starting.
 
