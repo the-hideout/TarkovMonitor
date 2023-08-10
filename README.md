@@ -1,6 +1,6 @@
 # TarkovMonitor
 
-[![ci](https://github.com/the-hideout/TarkovMonitor/actions/workflows/ci.yml/badge.svg)](https://github.com/the-hideout/TarkovMonitor/actions/workflows/ci.yml)
+[![build-dev](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml/badge.svg)](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml)
 
 ![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/4ad45574-4316-4145-870f-d8d9a5e6b067)
 
