@@ -26,7 +26,7 @@ jobs:
 
       - name: Creare Build Release Archive
         shell: pwsh
-        run: Compress-Archive -Destination $GITHUB_WORKSPACE/TarkovMonitor.zip -Path TarkovMonitor/bin/Release/net6.0-windows/win-x64/publish/**/*
+        run: Compress-Archive -Destination $Env:GITHUB_WORKSPACE/TarkovMonitor.zip -Path TarkovMonitor/bin/Release/net6.0-windows/win-x64/publish/**/*
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
