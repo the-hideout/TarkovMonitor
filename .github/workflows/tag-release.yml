@@ -22,7 +22,7 @@ jobs:
         run: dotnet restore
 
       - name: Build and publish
-        run: dotnet publish -c Release --self-contained --runtime win-x64 -p:PublishSingleFile=true /property:Version=${{ github.ref_name }}}
+        run: dotnet publish -c Release --self-contained --runtime win-x64 -p:PublishSingleFile=true /property:Version=${{ github.ref_name }}
 
       - name: Zip Release Directory
         run: |
