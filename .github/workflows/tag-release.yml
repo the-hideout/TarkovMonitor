@@ -24,11 +24,9 @@ jobs:
       - name: Build and publish
         run: dotnet publish -c Release --self-contained --runtime win-x64 -p:PublishSingleFile=true /property:Version=${{ github.ref_name }}
 
-      - name: Zip Release Directory
-        run: |
-          pushd TarkovMonitor/bin/Release/net6.0-windows/win-x64/publish
-          zip -r $GITHUB_WORKSPACE/TarkovMonitor.zip .
-          popd
+      - name: Creare Build Release Archive
+        shell: pwsh
+        run: Compress-Archive -Destination $GITHUB_WORKSPACE/TarkovMonitor.zip -Path TarkovMonitor/bin/Release/net6.0-windows/win-x64/publish/**/*
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
