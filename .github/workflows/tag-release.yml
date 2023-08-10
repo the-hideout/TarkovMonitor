@@ -1,0 +1,41 @@
+name: Create Release from tag
+
+on:
+  push:
+    tags:
+      - '\d+\.\d+\.\d+\.\d+'
+
+jobs:
+  upload:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: "6.x" # Change this to the desired .NET version
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build and publish
+        run: dotnet publish -c Release --self-contained --runtime win-x64 -p:PublishSingleFile=true
+
+      - name: Zip Release Directory
+        run: |
+          pushd TarkovMonitor/bin/Release/net6.0-windows/win-x64/publish
+          zip -r $GITHUB_WORKSPACE/TarkovMonitor.zip .
+          popd
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: TarkovMonitor.zip
+          prerelease: true
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
