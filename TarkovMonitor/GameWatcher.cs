@@ -288,7 +288,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex));
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "parsing log data"));
             }
         }
 
@@ -360,57 +360,65 @@ namespace TarkovMonitor
 
         private void UpdateProcess()
         {
-            if (process != null)
+            try
             {
-                if (!process.HasExited)
+                if (process != null)
                 {
+                    if (!process.HasExited)
+                    {
+                        return;
+                    }
+                    //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
+                    process = null;
+                }
+                raidInfo = new();
+                var processes = Process.GetProcessesByName("EscapeFromTarkov");
+                if (processes.Length == 0)
+                {
+                    //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
+                    process = null;
                     return;
                 }
-                //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
-                process = null;
-            }
-            raidInfo = new();
-            var processes = Process.GetProcessesByName("EscapeFromTarkov");
-            if (processes.Length == 0) {
-                //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
-                process = null;
-                return;
-            }
-            GameStarted?.Invoke(this, new EventArgs());
-            process = processes.First();
-            var exePath = GetProcessFilename.GetFilename(process);
-            var path = exePath[..exePath.LastIndexOf(Path.DirectorySeparatorChar)];
-            LogsPath = System.IO.Path.Combine(path, "Logs");
-            watcher.Path = LogsPath;
-            watcher.EnableRaisingEvents = true;
-            var logFolders = System.IO.Directory.GetDirectories(LogsPath);
-            var latestDate = new DateTime(0);
-            var latestLogFolder = logFolders.Last();
-            foreach (var logFolder in logFolders)
+                GameStarted?.Invoke(this, new EventArgs());
+                process = processes.First();
+                var exePath = GetProcessFilename.GetFilename(process);
+                var path = exePath[..exePath.LastIndexOf(Path.DirectorySeparatorChar)];
+                LogsPath = System.IO.Path.Combine(path, "Logs");
+                watcher.Path = LogsPath;
+                watcher.EnableRaisingEvents = true;
+                var logFolders = System.IO.Directory.GetDirectories(LogsPath);
+                var latestDate = new DateTime(0);
+                var latestLogFolder = logFolders.Last();
+                foreach (var logFolder in logFolders)
+                {
+                    var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
+                    var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
+                    if (logDate > latestDate)
+                    {
+                        latestDate = logDate;
+                        latestLogFolder = logFolder;
+                    }
+                }
+                var files = System.IO.Directory.GetFiles(latestLogFolder);
+                foreach (var file in files)
+                {
+                    if (file.Contains("notifications.log"))
+                    {
+                        StartNewMonitor(file);
+                    }
+                    if (file.Contains("application.log"))
+                    {
+                        StartNewMonitor(file);
+                    }
+                    /*if (file.Contains("traces.log"))
+                    {
+                        StartNewMonitor(file);
+                    }*/
+                }
+
+            } catch (Exception ex)
             {
-                var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
-                var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
-                if (logDate > latestDate)
-                {
-                    latestDate = logDate;
-                    latestLogFolder = logFolder;
-                }
-            }
-            var files = System.IO.Directory.GetFiles(latestLogFolder);
-            foreach (var file in files)
-            {
-                if (file.Contains("notifications.log"))
-                {
-                    StartNewMonitor(file);
-                }
-                if (file.Contains("application.log"))
-                {
-                    StartNewMonitor(file);
-                }
-                /*if (file.Contains("traces.log"))
-                {
-                    StartNewMonitor(file);
-                }*/
+                ExceptionThrown?.Invoke(this, new(ex, "watching for EFT process"));
             }
         }
 
@@ -649,9 +657,11 @@ namespace TarkovMonitor
 	public class ExceptionEventArgs : EventArgs
 	{
 		public Exception Exception { get; set; }
-		public ExceptionEventArgs(Exception ex)
+        public string Context { get; set; }
+		public ExceptionEventArgs(Exception ex, string context)
 		{
 			this.Exception = ex;
+            Context = context;
 		}
 	}
 	public class DebugEventArgs : EventArgs

@@ -427,7 +427,7 @@ namespace TarkovMonitor
 
         private void Eft_ExceptionThrown(object? sender, ExceptionEventArgs e)
         {
-            messageLog.AddMessage($"Error watching logs: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
+            messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
         private async void Eft_RaidLoaded(object? sender, RaidLoadedEventArgs e)
