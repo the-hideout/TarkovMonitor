@@ -64,22 +64,29 @@ namespace TarkovMonitor
 
         public void SetupScreenshotWatcher()
         {
-            bool screensPathExists = Directory.Exists(screenshotPath);
-            string watchPath = screensPathExists ? screenshotPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            screenshotWatcher.Path = watchPath;
-            screenshotWatcher.IncludeSubdirectories = !screensPathExists;
-            screenshotWatcher.Created -= ScreenshotWatcher_Created;
-            screenshotWatcher.Created -= ScreenshotWatcher_FolderCreated;
-            if (screensPathExists)
+            try
             {
-                screenshotWatcher.Filter = "*.png";
-                screenshotWatcher.Created += ScreenshotWatcher_Created;
+                bool screensPathExists = Directory.Exists(screenshotPath);
+                string watchPath = screensPathExists ? screenshotPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                screenshotWatcher.Path = watchPath;
+                screenshotWatcher.IncludeSubdirectories = !screensPathExists;
+                screenshotWatcher.Created -= ScreenshotWatcher_Created;
+                screenshotWatcher.Created -= ScreenshotWatcher_FolderCreated;
+                if (screensPathExists)
+                {
+                    screenshotWatcher.Filter = "*.png";
+                    screenshotWatcher.Created += ScreenshotWatcher_Created;
+                }
+                else
+                {
+                    screenshotWatcher.Created += ScreenshotWatcher_FolderCreated;
+                }
+                screenshotWatcher.EnableRaisingEvents = true;
             }
-            else
+            catch (Exception ex)
             {
-                screenshotWatcher.Created += ScreenshotWatcher_FolderCreated;
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "initialzing screenshot watcher"));
             }
-            screenshotWatcher.EnableRaisingEvents = true;
         }
 
         private void ScreenshotWatcher_FolderCreated(object sender, FileSystemEventArgs e)
