@@ -1,17 +1,22 @@
 # TarkovMonitor
 
-[![ci](https://github.com/the-hideout/TarkovMonitor/actions/workflows/ci.yml/badge.svg)](https://github.com/the-hideout/TarkovMonitor/actions/workflows/ci.yml)
+[![build-dev](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml/badge.svg)](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml)
 
-![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/4ad45574-4316-4145-870f-d8d9a5e6b067)
+![image](https://github.com/the-hideout/TarkovMonitor/assets/1557581/99602d29-98c8-4738-8757-0fa763d54e9a)
 
 TarkovMonitor is an Escape from Tarkov companion application that provides useful audio hints (only in the menu) and can automatically update your task progress on Tarkov Tracker.
-![image](https://github.com/the-hideout/TarkovMonitor/assets/35779878/b180c48b-a76a-4db1-bf60-6e865201565b)
 
 When you're queueing for a raid, TarkovMonitor can trigger an audio notification when a match has been found and also when the raid is starting.
 
 If you provide a Tarkov Tracker API token, TarkovMonitor can automatically update your task progress on Tarkov Tracker as you play. If you've failed restartable tasks but haven't restarted them, TarkovMonitor can also provide an audio reminder once you start queuing for another raid.
 
-The latest release can be downloaded on [GitHub](https://github.com/the-hideout/TarkovMonitor/releases/latest).
+## Installation
+
+Head on over to the [latest release](https://github.com/the-hideout/TarkovMonitor/releases/latest) page for this project. Once you are there, you'll see an `Assets` section and you'll want to download the `TarkovMonitor.zip` link:
+
+<img width="845" alt="Screenshot 2023-08-10 at 7 58 36 PM" src="https://github.com/the-hideout/TarkovMonitor/assets/23362539/86fbb000-25a3-4d71-bf39-45d622d61e8e">
+
+Once downloaded, extract the zip and run the `TarkovMonitor.exe` executable included within the bundle. Enjoy!
 
 ## FAQ
 
