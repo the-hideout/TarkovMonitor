@@ -10,9 +10,12 @@ namespace TarkovMonitor
         private Process? process;
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher watcher;
+        private readonly FileSystemWatcher screenshotWatcher;
+        private string screenshotPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + Path.DirectorySeparatorChar + "Escape From Tarkov" + Path.DirectorySeparatorChar + "Screenshots";
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
+        private string lastKnownMap;
         public event EventHandler<NewLogDataEventArgs> NewLogData;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
@@ -24,7 +27,8 @@ namespace TarkovMonitor
         public event EventHandler<GroupUserLeaveEventArgs> GroupUserLeave;
         public event EventHandler MapLoading;
         public event EventHandler<MatchingStartedEventArgs> MatchingStarted;
-        public event EventHandler<MatchFoundEventArgs> MatchFound;
+        public event EventHandler<MatchFoundEventArgs> MatchFound; // only fires on initial load into a raid
+        public event EventHandler<MatchFoundEventArgs> MapLoaded; // fires on initial and subsequent loads into a raid
         public event EventHandler<MatchingCancelledEventArgs> MatchingAborted;
         public event EventHandler<RaidLoadedEventArgs> RaidLoaded;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
@@ -34,6 +38,7 @@ namespace TarkovMonitor
         public event EventHandler<TaskEventArgs> TaskFinished;
         public event EventHandler<FleaSoldEventArgs> FleaSold;
         public event EventHandler<FleaOfferExpiredEventArgs> FleaOfferExpired;
+        public event EventHandler<PlayerPositionEventArgs> PlayerPosition;
         public string LogsPath { get; set; } = "";
 
         public GameWatcher()
@@ -53,6 +58,61 @@ namespace TarkovMonitor
             };
             watcher.Created += Watcher_Created;
             UpdateProcess();
+            screenshotWatcher = new FileSystemWatcher();
+            SetupScreenshotWatcher();
+        }
+
+        public void SetupScreenshotWatcher()
+        {
+            try
+            {
+                bool screensPathExists = Directory.Exists(screenshotPath);
+                string watchPath = screensPathExists ? screenshotPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                screenshotWatcher.Path = watchPath;
+                screenshotWatcher.IncludeSubdirectories = !screensPathExists;
+                screenshotWatcher.Created -= ScreenshotWatcher_Created;
+                screenshotWatcher.Created -= ScreenshotWatcher_FolderCreated;
+                if (screensPathExists)
+                {
+                    screenshotWatcher.Filter = "*.png";
+                    screenshotWatcher.Created += ScreenshotWatcher_Created;
+                }
+                else
+                {
+                    screenshotWatcher.Created += ScreenshotWatcher_FolderCreated;
+                }
+                screenshotWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "initialzing screenshot watcher"));
+            }
+        }
+
+        private void ScreenshotWatcher_FolderCreated(object sender, FileSystemEventArgs e)
+        {
+            if (e.FullPath == screenshotPath)
+            {
+                SetupScreenshotWatcher();
+            }
+        }
+        private void ScreenshotWatcher_Created(object sender, FileSystemEventArgs e)
+        {
+            var match = Regex.Match(e.Name, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_(?<position>.+) \(\d\)\.png");
+            if (!match.Success)
+            {
+                return;
+            }
+            var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d.]+), (?<y>-?[\d.]+), (?<z>-?[\d.]+)_.*");
+            if (!position.Success)
+            {
+                return;
+            }
+            if (lastKnownMap == null)
+            {
+                //return;
+            }
+            PlayerPosition?.Invoke(this, new(lastKnownMap, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value)));
         }
 
         public void Start()
@@ -153,6 +213,7 @@ namespace TarkovMonitor
                         // Immediately after matching is complete
                         // Sufficient information is available to raise the MatchFound event
                         raidInfo.Map = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
+                        lastKnownMap = raidInfo.Map;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
                         if (raidInfo.Online && raidInfo.QueueTime > 0)
@@ -160,6 +221,7 @@ namespace TarkovMonitor
                             // Raise the MatchFound event only if we queued; not if we are re-loading back into a raid
                             MatchFound?.Invoke(this, new(raidInfo));
                         }
+                        MapLoaded?.Invoke(this, new(raidInfo));
                     }
                     if (eventLine.Contains("application|GameStarting"))
                     {
@@ -233,7 +295,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex));
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "parsing log data"));
             }
         }
 
@@ -305,57 +367,65 @@ namespace TarkovMonitor
 
         private void UpdateProcess()
         {
-            if (process != null)
+            try
             {
-                if (!process.HasExited)
+                if (process != null)
                 {
+                    if (!process.HasExited)
+                    {
+                        return;
+                    }
+                    //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
+                    process = null;
+                }
+                raidInfo = new();
+                var processes = Process.GetProcessesByName("EscapeFromTarkov");
+                if (processes.Length == 0)
+                {
+                    //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
+                    process = null;
                     return;
                 }
-                //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
-                process = null;
-            }
-            raidInfo = new();
-            var processes = Process.GetProcessesByName("EscapeFromTarkov");
-            if (processes.Length == 0) {
-                //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
-                process = null;
-                return;
-            }
-            GameStarted?.Invoke(this, new EventArgs());
-            process = processes.First();
-            var exePath = GetProcessFilename.GetFilename(process);
-            var path = exePath[..exePath.LastIndexOf(Path.DirectorySeparatorChar)];
-            LogsPath = System.IO.Path.Combine(path, "Logs");
-            watcher.Path = LogsPath;
-            watcher.EnableRaisingEvents = true;
-            var logFolders = System.IO.Directory.GetDirectories(LogsPath);
-            var latestDate = new DateTime(0);
-            var latestLogFolder = logFolders.Last();
-            foreach (var logFolder in logFolders)
+                GameStarted?.Invoke(this, new EventArgs());
+                process = processes.First();
+                var exePath = GetProcessFilename.GetFilename(process);
+                var path = exePath[..exePath.LastIndexOf(Path.DirectorySeparatorChar)];
+                LogsPath = System.IO.Path.Combine(path, "Logs");
+                watcher.Path = LogsPath;
+                watcher.EnableRaisingEvents = true;
+                var logFolders = System.IO.Directory.GetDirectories(LogsPath);
+                var latestDate = new DateTime(0);
+                var latestLogFolder = logFolders.Last();
+                foreach (var logFolder in logFolders)
+                {
+                    var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
+                    var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
+                    if (logDate > latestDate)
+                    {
+                        latestDate = logDate;
+                        latestLogFolder = logFolder;
+                    }
+                }
+                var files = System.IO.Directory.GetFiles(latestLogFolder);
+                foreach (var file in files)
+                {
+                    if (file.Contains("notifications.log"))
+                    {
+                        StartNewMonitor(file);
+                    }
+                    if (file.Contains("application.log"))
+                    {
+                        StartNewMonitor(file);
+                    }
+                    /*if (file.Contains("traces.log"))
+                    {
+                        StartNewMonitor(file);
+                    }*/
+                }
+
+            } catch (Exception ex)
             {
-                var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
-                var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
-                if (logDate > latestDate)
-                {
-                    latestDate = logDate;
-                    latestLogFolder = logFolder;
-                }
-            }
-            var files = System.IO.Directory.GetFiles(latestLogFolder);
-            foreach (var file in files)
-            {
-                if (file.Contains("notifications.log"))
-                {
-                    StartNewMonitor(file);
-                }
-                if (file.Contains("application.log"))
-                {
-                    StartNewMonitor(file);
-                }
-                /*if (file.Contains("traces.log"))
-                {
-                    StartNewMonitor(file);
-                }*/
+                ExceptionThrown?.Invoke(this, new(ex, "watching for EFT process"));
             }
         }
 
@@ -434,6 +504,24 @@ namespace TarkovMonitor
             MapLoadTime = 0;
             QueueTime = 0;
             RaidType = RaidType.Unknown;
+        }
+    }
+    public class Position
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+        public Position(float x, float y, float z)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+        public Position(string x, string y, string z)
+        {
+            X = float.Parse(x);
+            Y = float.Parse(y);
+            Z = float.Parse(z);
         }
     }
     public class RaidExitedEventArgs : EventArgs
@@ -576,9 +664,11 @@ namespace TarkovMonitor
 	public class ExceptionEventArgs : EventArgs
 	{
 		public Exception Exception { get; set; }
-		public ExceptionEventArgs(Exception ex)
+        public string Context { get; set; }
+		public ExceptionEventArgs(Exception ex, string context)
 		{
 			this.Exception = ex;
+            Context = context;
 		}
 	}
 	public class DebugEventArgs : EventArgs
@@ -589,4 +679,14 @@ namespace TarkovMonitor
 			this.Message = message;
 		}
 	}
+    public class PlayerPositionEventArgs : EventArgs
+    {
+        public Position Position { get; set; }
+        public string? Map { get; set; }
+        public PlayerPositionEventArgs(string map, Position position)
+        {
+            this.Map = map;
+            this.Position = position;
+        }
+    }
 }

@@ -61,6 +61,8 @@ namespace TarkovMonitor
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.MapLoading += Eft_MapLoading;
             eft.MatchFound += Eft_MatchFound;
+            eft.MapLoaded += Eft_MapLoaded;
+            eft.PlayerPosition += Eft_PlayerPosition;
 
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
 
@@ -90,6 +92,26 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+        }
+
+        private void Eft_MapLoaded(object? sender, MatchFoundEventArgs e)
+        {
+            if (!Properties.Settings.Default.autoNavigateMap)
+            {
+                return;
+            }
+            var map = TarkovDev.Maps.Find(m => m.nameId == e.Map);
+            if (map == null)
+            {
+                return;
+            }
+            SocketClient.NavigateToMap(map);
+        }
+
+        private void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
+        {
+            messageLog.AddMessage($"Player position: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
+            SocketClient.UpdatePlayerPosition(e);
         }
 
         private void UpdateCheck_Error(object? sender, UpdateCheckErrorEventArgs e)
@@ -405,7 +427,7 @@ namespace TarkovMonitor
 
         private void Eft_ExceptionThrown(object? sender, ExceptionEventArgs e)
         {
-            messageLog.AddMessage($"Error watching logs: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
+            messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
         private async void Eft_RaidLoaded(object? sender, RaidLoadedEventArgs e)

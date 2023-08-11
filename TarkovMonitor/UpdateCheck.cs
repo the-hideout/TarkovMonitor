@@ -16,6 +16,7 @@ namespace TarkovMonitor
             try
             {
                 var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");
+                request.Headers.Add("user-agent", "tarkov-monitor");
                 var response = await client.SendAsync(request);
                 response.EnsureSuccessStatusCode();
                 JsonNode latestRelease = JsonNode.Parse(await response.Content.ReadAsStringAsync());
