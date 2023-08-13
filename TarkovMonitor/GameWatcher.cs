@@ -11,7 +11,7 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher watcher;
         private readonly FileSystemWatcher screenshotWatcher;
-        private string screenshotPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + Path.DirectorySeparatorChar + "Escape From Tarkov" + Path.DirectorySeparatorChar + "Screenshots";
+        private string screenshotPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"Escape From Tarkov", "Screenshots");
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
