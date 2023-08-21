@@ -1,5 +1,7 @@
 ﻿
+using SharpYaml.Tokens;
 using System.Text.Json.Nodes;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ToolTip;
 
 namespace TarkovMonitor
 {
@@ -23,6 +25,7 @@ namespace TarkovMonitor
 
                 Version remoteVersion = new Version(latestRelease["tag_name"].ToString());
                 Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                //System.Diagnostics.Debug.WriteLine(localVersion.ToString());
 
                 if (localVersion.CompareTo(remoteVersion) == -1)
                 {
@@ -41,8 +44,13 @@ namespace TarkovMonitor
         public Version Version { get; set; }
         public Uri Uri { get; set; }
     }
-    public class UpdateCheckErrorEventArgs : EventArgs 
-    { 
+    public class UpdateCheckErrorEventArgs : EventArgs
+    {
         public Exception Exception { get; set;} 
     }
 }
+
+// to release a new version:
+// Checkout main/master (assuming everything is merged already)
+// tag the current commit (eg. git tag 1.0.1.2)
+// push the tag to GitHub (git push origin 1.0.1.2)
