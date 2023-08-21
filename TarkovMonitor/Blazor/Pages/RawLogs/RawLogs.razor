@@ -28,7 +28,7 @@
     [CascadingParameter(Name="AppLayout")]
     public AppLayout AppLayout { get; set; }
     
-    private int messageCount = 0;
+    //private int messageCount = 0;
 
     private void OpenCustomDialog()
     {
@@ -36,7 +36,7 @@
         DialogService.Show<CustomLogDialog>("Process Custom Log Data", options);
     }
 
-private void OpenForceReadDialog()
+    private void OpenForceReadDialog()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
         DialogService.Show<ForceReadDialog>("Force Read Log Files", options);

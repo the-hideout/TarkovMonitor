@@ -126,6 +126,10 @@ namespace TarkovMonitor
 
         private void Eft_MapLoading(object? sender, EventArgs e)
         {
+            if (TarkovTracker.Progress == null)
+            {
+                return;
+            }
             try
             {
                 //await AllDataLoaded();
