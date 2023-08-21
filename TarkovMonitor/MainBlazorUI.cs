@@ -56,7 +56,7 @@ namespace TarkovMonitor
             eft.GroupInviteAccept += Eft_GroupInviteAccept;
             eft.GroupUserLeave += Eft_GroupUserLeave;
             eft.GroupReady += Eft_GroupReady;
-			eft.GroupDisbanded += Eft_GroupDisbanded;
+            eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.MapLoading += Eft_MapLoading;
@@ -188,18 +188,19 @@ namespace TarkovMonitor
         private void Eft_GroupInviteAccept(object? sender, GroupInviteAcceptEventArgs e)
         {
             var verb = "accepted";
-            if (e.InviteType == GroupInviteType.Sent) {
+            if (e.InviteType == GroupInviteType.Sent)
+            {
                 verb = "sent";
             }
             messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerInfo.Side.ToUpper()} {e.PlayerInfo.Level}) {verb} group invite.", "group");
         }
 
         private void Eft_GroupDisbanded(object? sender, EventArgs e)
-		{
+        {
             groupManager.ClearGroup();
-		}
+        }
 
-		private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
+        private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
         {
             messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update");
         }
@@ -276,8 +277,8 @@ namespace TarkovMonitor
 
         private void Eft_MatchFound(object? sender, MatchFoundEventArgs e)
         {
-            if (Properties.Settings.Default.matchFoundAlert) 
-            { 
+            if (Properties.Settings.Default.matchFoundAlert)
+            {
                 PlaySoundFromResource(Properties.Resources.match_found);
             }
             var mapName = e.Map;
@@ -358,7 +359,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            
+
             messageLog.AddMessage($"Started task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
             try
             {
@@ -379,28 +380,28 @@ namespace TarkovMonitor
             List<string> received = new();
             //await AllDataLoaded();
             foreach (var receivedId in e.ReceivedItems.Keys)
-			{
-				if (receivedId == "5449016a4bdc2d6f028b456f")
-				{
-					received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("ru-RU")));
+            {
+                if (receivedId == "5449016a4bdc2d6f028b456f")
+                {
+                    received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("ru-RU")));
                     continue;
-				}
+                }
                 else if (receivedId == "5696686a4bdc2da3298b456a")
                 {
-					received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("en-US")));
+                    received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("en-US")));
                     continue;
-				}
-				else if (receivedId == "569668774bdc2da2298b4568")
-				{
-					received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("de-DE")));
-					continue;
-				}
-				var receivedItem = TarkovDev.Items.Find(item => item.id == receivedId);
+                }
+                else if (receivedId == "569668774bdc2da2298b4568")
+                {
+                    received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("de-DE")));
+                    continue;
+                }
+                var receivedItem = TarkovDev.Items.Find(item => item.id == receivedId);
                 if (receivedItem == null)
                 {
                     continue;
                 }
-				received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {receivedItem.name}");
+                received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {receivedItem.name}");
             }
             var soldItem = TarkovDev.Items.Find(item => item.id == e.SoldItemId);
             if (soldItem == null)
@@ -441,12 +442,13 @@ namespace TarkovMonitor
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
             if (e.RaidType != RaidType.Unknown)
-			{
-				messageLog.AddMessage($"Starting {e.RaidType} raid on {mapName}");
-			} else
             {
-				messageLog.AddMessage($"Re-entering raid on {mapName}");
-			}
+                messageLog.AddMessage($"Starting {e.RaidType} raid on {mapName}");
+            }
+            else
+            {
+                messageLog.AddMessage($"Re-entering raid on {mapName}");
+            }
             if (!Properties.Settings.Default.submitQueueTime)
             {
                 return;
@@ -497,6 +499,27 @@ namespace TarkovMonitor
                 Thread.Sleep(500);
             }
             return true;
+        }
+
+        private void MainBlazorUI_Resize(object sender, EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                Hide();
+                notifyIconTarkovMonitor.Visible = true;
+            }
+        }
+
+        private void notifyIconTarkovMonitor_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            Show();
+            this.WindowState = FormWindowState.Normal;
+            notifyIconTarkovMonitor.Visible = false;
+        }
+
+        private void menuItemQuit_Click(object sender, EventArgs e)
+        {
+            this.Close();
         }
     }
 }
