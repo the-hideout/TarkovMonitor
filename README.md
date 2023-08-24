@@ -24,6 +24,10 @@ Once downloaded, extract the zip and run the `TarkovMonitor.exe` executable incl
 
 TarkovMonitor simply watches the log files that the game creates as it's running for certain events.
 
+### I've installed and run TarkovMonitor but it hasn't updated my quest progress, why?
+
+TarkovMonitor only monitors new logs as they are being written while the app is running. Therefore, it doesn't automatically update quest progress that was made prior to the app running. It will, however, still mark quests as complete going forward while the app is running.
+
 ### Is TarkovMonitor a cheat?
 
 We don't have any official word from BSG, but it would be silly for TarkovMonitor to be considerd a cheat. It doesn't do anything while players are in-raid because the logs aren't updated while a raid is in-progress. Moreover, the application is simply reading the logs that are written to your computer.
