@@ -82,7 +82,22 @@ namespace TarkovMonitor.Properties {
                 this["restartTaskAlert"] = value;
             }
         }
-        
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool minimizeAtStartup
+        {
+            get
+            {
+                return ((bool)(this["minimizeAtStartup"]));
+            }
+            set
+            {
+                this["minimizeAtStartup"] = value;
+            }
+        }
+
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
