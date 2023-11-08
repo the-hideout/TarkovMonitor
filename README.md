@@ -24,7 +24,7 @@ Once downloaded, extract the zip and run the `TarkovMonitor.exe` executable incl
 
 TarkovMonitor simply watches the log files that the game creates as it's running for certain events.
 
-### I've installed and run TarkovMonitor, why hasn't marked all my completed quests as complete?
+### I've installed and run TarkovMonitor, why hasn't it marked all my completed quests as complete?
 
 TarkovMonitor only monitors new logs as they are being written while the app is running. Therefore, it doesn't automatically update quest progress that was made prior to the app running. It will, however, still mark quests as complete going forward while the app is running.
 
