@@ -92,13 +92,16 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
 
             if (Properties.Settings.Default.minimizeAtStartup)
             {
 
-                this.WindowState = FormWindowState.Minimized;
-                this.ShowInTaskbar = false;
-                notifyIconTarkovMonitor.Visible = true;
+                WindowState = FormWindowState.Minimized;
             }
         }
 
