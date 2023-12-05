@@ -94,6 +94,17 @@ namespace TarkovMonitor
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            if (Properties.Settings.Default.minimizeAtStartup)
+            {
+
+                WindowState = FormWindowState.Minimized;
+            }
+        }
+
         private void Eft_MapLoaded(object? sender, MatchFoundEventArgs e)
         {
             if (!Properties.Settings.Default.autoNavigateMap)

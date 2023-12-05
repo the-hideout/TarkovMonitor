@@ -25,6 +25,15 @@
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.PowerSettingsNew" Class="mr-2"/>Startup</MudText>
+            <div>
+                <MudSwitch @bind-Checked="@MinimizeAtStartupSwitch" Label="Start Tarkov Monitor Minimized" Color="Color.Info" />
+            </div>
+        </MudPaper>
+	</MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Handshake" Class="mr-2"/>Data Collection</MudText>
             <MudSwitch @bind-Checked="@SubmitQueueTimeSwitch" Label="Submit Queue Time Data" Color="Color.Info" />
         </MudPaper>
@@ -127,6 +136,19 @@
         set
         {
             Properties.Settings.Default.restartTaskAlert = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+    
+    public bool MinimizeAtStartupSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.minimizeAtStartup;
+        }
+        set
+        {
+            Properties.Settings.Default.minimizeAtStartup = value;
             Properties.Settings.Default.Save();
         }
     }
