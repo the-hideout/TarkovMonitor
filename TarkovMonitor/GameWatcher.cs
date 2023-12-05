@@ -139,7 +139,8 @@ namespace TarkovMonitor
             {
                 //DebugMessage?.Invoke(this, new DebugEventArgs(e.NewMessage));
                 NewLogData?.Invoke(this, e);
-                var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})*";
+                var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
+                //var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<version>\d+\.\d+\.\d+\.\d+\.\d+)\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
                 /*Debug.WriteLine("===log chunk start===");
                 Debug.WriteLine(e.NewMessage);
@@ -295,7 +296,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "parsing log data"));
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing {e.Type} log data {e.Data}"));
             }
         }
 
@@ -335,24 +336,23 @@ namespace TarkovMonitor
             // rather than a full file at a time, this could be valuable for future features
             foreach (string logFile in logFiles)
             {
-                bool validType = false;
-                GameLogType logType = new();
+                GameLogType logType;
                 // Check which type of log file this is by the filename
                 if (logFile.Contains("application.log"))
                 {
                     logType = GameLogType.Application;
-                    validType = true;
-                } else if (logFile.Contains("notifications.log"))
+                } 
+                else if (logFile.Contains("notifications.log"))
                 {
                     logType = GameLogType.Notifications;
-                    validType = true;
-                } else if (logFile.Contains("traces.log"))
+                } 
+                else if (logFile.Contains("traces.log"))
                 {
-                    logType = GameLogType.Traces;
-                    validType = false;
+                    // logType = GameLogType.Traces;
                     // Traces are not currently used, so skip them
                     continue;
-                } else
+                } 
+                else
                 {
                     // We're not a known log type, so skip this file
                     continue;
