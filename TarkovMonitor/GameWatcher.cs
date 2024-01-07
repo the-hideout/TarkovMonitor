@@ -12,6 +12,7 @@ namespace TarkovMonitor
         private readonly FileSystemWatcher watcher;
         private readonly FileSystemWatcher screenshotWatcher;
         private string screenshotPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + Path.DirectorySeparatorChar + "Escape From Tarkov" + Path.DirectorySeparatorChar + "Screenshots";
+        private readonly PrintScreen printScreenHandler = new PrintScreen();
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
@@ -189,6 +190,7 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("application|Matching with group id"))
                     {
+                        TakePlayerScreenshot();
                         MapLoading?.Invoke(this, new());
                     }
                     if (eventLine.Contains("application|LocationLoaded"))
@@ -298,6 +300,13 @@ namespace TarkovMonitor
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing {e.Type} log data {e.Data}"));
             }
+        }
+
+        private void TakePlayerScreenshot()
+        {
+            if (process == null) return;
+            IntPtr hWnd = process.MainWindowHandle;
+            printScreenHandler.SaveScreenshot(hWnd, screenshotPath);
         }
 
         private void ProcessTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
