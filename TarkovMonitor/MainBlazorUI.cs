@@ -46,7 +46,8 @@ namespace TarkovMonitor
             eft.FleaOfferExpired += Eft_FleaOfferExpired;
             eft.DebugMessage += Eft_DebugMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
-            eft.RaidLoaded += Eft_RaidLoaded;
+            eft.RaidCountdown += Eft_RaidCountdown;
+            eft.RaidStarted += Eft_RaidStart;
             eft.RaidExited += Eft_RaidExited;
             eft.TaskStarted += Eft_TaskStarted;
             eft.TaskFailed += Eft_TaskFailed;
@@ -105,13 +106,13 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_MapLoaded(object? sender, MatchFoundEventArgs e)
+        private void Eft_MapLoaded(object? sender, RaidInfoEventArgs e)
         {
             if (!Properties.Settings.Default.autoNavigateMap)
             {
                 return;
             }
-            var map = TarkovDev.Maps.Find(m => m.nameId == e.Map);
+            var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
             if (map == null)
             {
                 return;
@@ -286,16 +287,16 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_MatchFound(object? sender, MatchFoundEventArgs e)
+        private void Eft_MatchFound(object? sender, RaidInfoEventArgs e)
         {
             if (Properties.Settings.Default.matchFoundAlert)
             {
                 PlaySoundFromResource(Properties.Resources.match_found);
             }
-            var mapName = e.Map;
+            var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            messageLog.AddMessage($"Matching complete on {mapName} after {e.QueueTime} seconds");
+            messageLog.AddMessage($"Matching complete on {mapName} after {e.RaidInfo.QueueTime} seconds");
         }
 
         private void Eft_NewLogData(object? sender, NewLogDataEventArgs e)
@@ -446,15 +447,23 @@ namespace TarkovMonitor
             messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
-        private async void Eft_RaidLoaded(object? sender, RaidLoadedEventArgs e)
+        private static void Eft_RaidCountdown(object? sender, RaidInfoEventArgs e)
         {
             if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
-            var mapName = e.Map;
+        }
+
+        private async void Eft_RaidStart(object? sender, RaidInfoEventArgs e)
+        {
+            if (e.RaidInfo.RaidType != RaidType.PMC || e.RaidInfo.QueueTime == 0)
+            {
+                if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
+            }
+            var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            if (e.RaidType != RaidType.Unknown)
+            if (e.RaidInfo.RaidType != RaidType.Unknown)
             {
-                messageLog.AddMessage($"Starting {e.RaidType} raid on {mapName}");
+                messageLog.AddMessage($"Starting {e.RaidInfo.RaidType} raid on {mapName}");
             }
             else
             {
@@ -464,13 +473,13 @@ namespace TarkovMonitor
             {
                 return;
             }
-            if (e.QueueTime == 0 || e.RaidType == RaidType.Unknown)
+            if (!e.RaidInfo.Online || e.RaidInfo.QueueTime == 0 || e.RaidInfo.RaidType == RaidType.Unknown)
             {
                 return;
             }
             try
             {
-                await TarkovDev.PostQueueTime(e.Map, (int)Math.Round(e.QueueTime), e.RaidType.ToString().ToLower());
+                await TarkovDev.PostQueueTime(e.RaidInfo.Map, (int)Math.Round(e.RaidInfo.QueueTime), e.RaidInfo.RaidType.ToString().ToLower());
             }
             catch (Exception ex)
             {
