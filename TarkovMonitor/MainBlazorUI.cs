@@ -70,6 +70,8 @@ namespace TarkovMonitor
             UpdateCheck.NewVersion += UpdateCheck_NewVersion;
             UpdateCheck.Error += UpdateCheck_Error;
 
+            SocketClient.ExceptionThrown += SocketClient_ExceptionThrown;
+
             // Update tarkov.dev Repository data
             UpdateItems();
             UpdateTasks();
@@ -93,6 +95,11 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+        }
+
+        private void SocketClient_ExceptionThrown(object? sender, ExceptionEventArgs e)
+        {
+            messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
         protected override void OnShown(EventArgs e)

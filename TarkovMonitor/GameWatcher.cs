@@ -99,21 +99,27 @@ namespace TarkovMonitor
         }
         private void ScreenshotWatcher_Created(object sender, FileSystemEventArgs e)
         {
-            var match = Regex.Match(e.Name, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_(?<position>.+) \(\d\)\.png");
-            if (!match.Success)
+            try
             {
-                return;
-            }
-            var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d.]+), (?<y>-?[\d.]+), (?<z>-?[\d.]+)_.*");
-            if (!position.Success)
+                var match = Regex.Match(e.Name, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_(?<position>.+) \(\d\)\.png");
+                if (!match.Success)
+                {
+                    return;
+                }
+                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d.]+), (?<y>-?[\d.]+), (?<z>-?[\d.]+)_.*");
+                if (!position.Success)
+                {
+                    return;
+                }
+                if (lastKnownMap == null)
+                {
+                    return;
+                }
+                PlayerPosition?.Invoke(this, new(lastKnownMap, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value)));
+            } catch (Exception ex)
             {
-                return;
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing screenshot {e.Name}"));
             }
-            if (lastKnownMap == null)
-            {
-                //return;
-            }
-            PlayerPosition?.Invoke(this, new(lastKnownMap, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value)));
         }
 
         public void Start()
