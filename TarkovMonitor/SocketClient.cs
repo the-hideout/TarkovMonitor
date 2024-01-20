@@ -1,4 +1,5 @@
-﻿using System.Net.WebSockets;
+﻿using MudBlazor;
+using System.Net.WebSockets;
 using System.Text.Json.Nodes;
 using Websocket.Client;
 
@@ -6,6 +7,7 @@ namespace TarkovMonitor
 {
     internal static class SocketClient
     {
+        public static event EventHandler<ExceptionEventArgs> ExceptionThrown;
         private static readonly string wsUrl = "wss://socket.tarkov.dev";
         private static WebsocketClient? socket;
 
@@ -19,7 +21,7 @@ namespace TarkovMonitor
         {
             if (socket != null && socket.IsRunning)
             {
-                socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+                await socket.Stop(WebSocketCloseStatus.NormalClosure, null);
             }
             var remoteId = Properties.Settings.Default.remoteId;
             if (remoteId == null || remoteId == "")
@@ -68,7 +70,7 @@ namespace TarkovMonitor
                 return;
             }
             message["sessionID"] = remoteid;
-            socket.Send(message.ToJsonString());
+            await Task.Run(() => socket.Send(message.ToJsonString()));
         }
 
         public static async Task UpdatePlayerPosition(PlayerPositionEventArgs e)
@@ -93,7 +95,13 @@ namespace TarkovMonitor
                     }
                 }
             };
-            await Send(payload);
+            try
+            {
+                await Send(payload);
+            } catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(payload, new(ex, "updating player position"));
+            }
         }
 
         public static async Task NavigateToMap(TarkovDev.Map map)
@@ -107,7 +115,14 @@ namespace TarkovMonitor
                     ["value"] = map.normalizedName
                 }
             };
-            await Send(payload);
+            try
+            {
+                await Send(payload);
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(payload, new(ex, $"navigating to map {map.name}"));
+            }
         }
     }
 }
