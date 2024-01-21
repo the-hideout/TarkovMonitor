@@ -145,7 +145,13 @@ namespace TarkovMonitor
             try
             {
                 //DebugMessage?.Invoke(this, new DebugEventArgs(e.NewMessage));
-                NewLogData?.Invoke(this, e);
+                try
+                {
+                    NewLogData?.Invoke(this, e);
+                } catch (Exception ex)
+                {
+                    ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"raising {e.Type} new log data event {e.Data}"));
+                }
                 var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<version>\d+\.\d+\.\d+\.\d+\.\d+)\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
