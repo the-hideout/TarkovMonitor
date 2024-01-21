@@ -308,7 +308,13 @@ namespace TarkovMonitor
 
         private void Eft_NewLogData(object? sender, NewLogDataEventArgs e)
         {
-            logRepository.AddLog(e.Data, e.Type.ToString());
+            try
+            {
+                logRepository.AddLog(e.Data, e.Type.ToString());
+            } catch (Exception ex)
+            {
+                messageLog.AddMessage($"{ex.GetType().Name} adding raw lag to repository: "+ex.StackTrace, "exception");
+            }
         }
 
         private void Eft_GroupReady(object? sender, GroupReadyEventArgs e)
