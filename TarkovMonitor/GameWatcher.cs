@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Text;
+using System.Globalization;
 
 namespace TarkovMonitor
 {
@@ -215,7 +216,7 @@ namespace TarkovMonitor
 						// The map has been loaded and the game is searching for a match
 						raidInfo = new()
 						{
-							MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.,]+ real:(?<loadTime>[0-9.,]+)").Groups["loadTime"].Value.Replace(",", "."))
+							MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.,]+ real:(?<loadTime>[0-9.,]+)").Groups["loadTime"].Value.Replace(",", "."), CultureInfo.InvariantCulture)
 						};
 						MatchingStarted?.Invoke(this, new(raidInfo));
 					}
@@ -226,7 +227,7 @@ namespace TarkovMonitor
 						// Occurs on initial raid load and when the user cancels matching
                         // Does not occur when the user re-connects to a raid in progress
 						var queueTimeMatch = Regex.Match(eventLine, @"MatchingCompleted:[0-9.,]+ real:(?<queueTime>[0-9.,]+)");
-						raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value.Replace(",", "."));
+						raidInfo.QueueTime = float.Parse(queueTimeMatch.Groups["queueTime"].Value.Replace(",", "."), CultureInfo.InvariantCulture);
 					}
                     if (eventLine.Contains("application|TRACE-NetworkGameCreate profileStatus"))
                     {
@@ -536,9 +537,9 @@ namespace TarkovMonitor
         }
         public Position(string x, string y, string z)
         {
-            X = float.Parse(x);
-            Y = float.Parse(y);
-            Z = float.Parse(z);
+            X = float.Parse(x, CultureInfo.InvariantCulture);
+            Y = float.Parse(y, CultureInfo.InvariantCulture);
+            Z = float.Parse(z, CultureInfo.InvariantCulture);
         }
     }
     public class RaidExitedEventArgs : EventArgs
