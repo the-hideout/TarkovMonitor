@@ -56,7 +56,8 @@ namespace TarkovMonitor
             eft.GroupInviteSend += Eft_GroupInviteSend;
             eft.GroupInviteAccept += Eft_GroupInviteAccept;
             eft.GroupUserLeave += Eft_GroupUserLeave;
-            eft.GroupReady += Eft_GroupReady;
+            eft.GroupRaidSettings += Eft_GroupRaidSettings;
+            eft.GroupMemberReady += Eft_GroupMemberReady;
             eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
@@ -95,6 +96,11 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+        }
+
+        private void Eft_GroupRaidSettings(object? sender, GroupRaidSettingsEventArgs e)
+        {
+            groupManager.ClearGroup();
         }
 
         private void SocketClient_ExceptionThrown(object? sender, ExceptionEventArgs e)
@@ -317,7 +323,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupReady(object? sender, GroupReadyEventArgs e)
+        private void Eft_GroupMemberReady(object? sender, GroupMemberReadyEventArgs e)
         {
             groupManager.UpdateGroupMember(e.PlayerInfo.Nickname, new GroupMember(e.PlayerInfo.Nickname, e.PlayerLoadout));
             messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) ready.", "group");

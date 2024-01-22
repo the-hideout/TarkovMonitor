@@ -22,7 +22,8 @@ namespace TarkovMonitor
         public event EventHandler GameStarted;
         public event EventHandler<GroupInviteSendEventArgs> GroupInviteSend;
         public event EventHandler<GroupInviteAcceptEventArgs> GroupInviteAccept;
-        public event EventHandler<GroupReadyEventArgs> GroupReady;
+        public event EventHandler<GroupRaidSettingsEventArgs> GroupRaidSettings;
+        public event EventHandler<GroupMemberReadyEventArgs> GroupMemberReady;
         public event EventHandler GroupDisbanded;
         public event EventHandler<GroupUserLeaveEventArgs> GroupUserLeave;
         public event EventHandler MapLoading;
@@ -195,10 +196,15 @@ namespace TarkovMonitor
                         // When the group is disbanded
                         GroupDisbanded?.Invoke(this, new());
                     }
-					if (eventLine.Contains("Got notification | GroupMatchRaidReady"))
+                    if (eventLine.Contains("Got notification | GroupMatchRaidSettings"))
+                    {
+                        // Occurs when group leader invites members to be ready
+                        GroupRaidSettings?.Invoke(this, new GroupRaidSettingsEventArgs(jsonNode));
+                    }
+                    if (eventLine.Contains("Got notification | GroupMatchRaidReady"))
                     {
                         // Occurs for each other member of the group when ready
-                        GroupReady?.Invoke(this, new GroupReadyEventArgs(jsonNode));
+                        GroupMemberReady?.Invoke(this, new GroupMemberReadyEventArgs(jsonNode));
                     }
                     if (eventLine.Contains("application|Matching with group id"))
                     {
@@ -590,11 +596,31 @@ namespace TarkovMonitor
             Nickname = node["Nickname"].ToString();
         }
     }
-	public class GroupReadyEventArgs : EventArgs
+    public class GroupRaidSettingsEventArgs : EventArgs
+    {
+        public string Map { get; set; }
+        public string RaidMode { get; set; }
+        public RaidType RaidType { get; set; } = RaidType.Unknown;
+        public GroupRaidSettingsEventArgs(JsonNode node)
+        {
+            this.Map = node["raidSettings"]["location"].GetValue<string>();
+            this.RaidMode = node["raidSettings"]["raidMode"].GetValue<string>();
+            var stringSide = node["raidSettings"]["side"].GetValue<string>();
+            if (stringSide == "Pmc")
+            {
+                this.RaidType = RaidType.PMC;
+            }
+            if (stringSide == "Savage")
+            {
+                this.RaidType = RaidType.Scav;
+            }
+        }
+    }
+	public class GroupMemberReadyEventArgs : EventArgs
 	{
 		public PlayerInfo PlayerInfo { get; set; }
 		public PlayerLoadout PlayerLoadout { get; set; }
-		public GroupReadyEventArgs(JsonNode node)
+		public GroupMemberReadyEventArgs(JsonNode node)
 		{
 			this.PlayerInfo = new PlayerInfo(node["extendedProfile"]["Info"]);
 			this.PlayerLoadout = new PlayerLoadout(node["extendedProfile"]["PlayerVisualRepresentation"]);
