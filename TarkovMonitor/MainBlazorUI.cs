@@ -206,7 +206,10 @@ namespace TarkovMonitor
 
         private void Eft_GroupUserLeave(object? sender, GroupUserLeaveEventArgs e)
         {
-            groupManager.RemoveGroupMember(e.Nickname);
+            if (e.Nickname != "You")
+            {
+                groupManager.RemoveGroupMember(e.Nickname);
+            }
             messageLog.AddMessage($"{e.Nickname} left the group.", "group");
         }
 

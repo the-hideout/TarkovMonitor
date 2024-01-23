@@ -588,7 +588,15 @@ namespace TarkovMonitor
         public string Nickname { get; set; }
         public GroupUserLeaveEventArgs(JsonNode node)
         {
-            Nickname = node["Nickname"].ToString();
+            // if you're the one to leave the group, Nickname is not included
+            var nickNode = node["Nickname"];
+            if (nickNode != null)
+            {
+                Nickname = node["Nickname"].ToString();
+            } else
+            {
+                Nickname = "You";
+            }
         }
     }
     public class GroupRaidSettingsEventArgs : EventArgs
