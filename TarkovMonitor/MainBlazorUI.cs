@@ -6,6 +6,7 @@ using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Globalization;
+using System.Reflection;
 
 namespace TarkovMonitor
 {
@@ -180,7 +181,7 @@ namespace TarkovMonitor
                 }
                 if (Properties.Settings.Default.restartTaskAlert)
                 {
-                    PlaySoundFromResource(Properties.Resources.restart_failed_tasks);
+                    PlaySound("restart_failed_tasks");
                 }
                 foreach (var task in failedTasks)
                 {
@@ -276,7 +277,6 @@ namespace TarkovMonitor
             try
             {
                 var tokenResponse = await TarkovTracker.TestToken(Properties.Settings.Default.tarkovTrackerToken);
-                Debug.WriteLine(tokenResponse);
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     messageLog.AddMessage("Your Tarkov Tracker token is missing the required write permissions");
@@ -292,7 +292,7 @@ namespace TarkovMonitor
         {
             if (Properties.Settings.Default.matchFoundAlert)
             {
-                PlaySoundFromResource(Properties.Resources.match_found);
+                PlaySound("match_found");
             }
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
@@ -456,14 +456,14 @@ namespace TarkovMonitor
 
         private static void Eft_RaidCountdown(object? sender, RaidInfoEventArgs e)
         {
-            if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
+            if (Properties.Settings.Default.raidStartAlert) PlaySound("raid_starting");
         }
 
         private async void Eft_RaidStart(object? sender, RaidInfoEventArgs e)
         {
             if (e.RaidInfo.RaidType != RaidType.PMC || e.RaidInfo.QueueTime == 0)
             {
-                if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
+                if (Properties.Settings.Default.raidStartAlert) PlaySound("raid_starting");
             }
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
@@ -510,8 +510,16 @@ namespace TarkovMonitor
             }
         }
 
-        private static void PlaySoundFromResource(byte[] resource)
+        private static void PlaySound(string key)
         {
+            byte[] resource = null;
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var filepath = Path.Combine(localAppData, "TarkovMonitor", "sounds", $"{key}.mp3");
+            if (File.Exists(filepath))
+            {
+                resource = File.ReadAllBytes(filepath);
+            }
+            resource ??= Properties.Resources.ResourceManager.GetObject(key) as byte[];
             Stream stream = new MemoryStream(resource);
             var reader = new NAudio.Wave.Mp3FileReader(stream);
             var waveOut = new WaveOut();

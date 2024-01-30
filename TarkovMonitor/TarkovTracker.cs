@@ -1,6 +1,8 @@
 ﻿using Refit;
 using static TarkovMonitor.TarkovTracker;
 
+// TO DO: Implement rate limit policy of 15 requests per minute
+
 namespace TarkovMonitor
 {
     internal interface ITarkovTrackerAPI

@@ -1,0 +1,188 @@
+﻿@page "/sounds"
+@using System.Diagnostics
+@using NAudio.Wave
+@inject GameWatcher eft
+@inject MessageLog messageLog
+@inject IDialogService DialogService
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-0" Spacing="0">
+	<MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Speaker" Class="mr-2"/>Sounds</MudText>
+            <div>
+                <MudSwitch @bind-Checked="@RaidStartSwitch" Label="Custom Raid Starting Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRaidStart"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small"/></MudButton>
+            </div>
+            <div>
+                <MudSwitch @bind-Checked="@MatchFoundSwitch" Label="Custom Match Found Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayMatchFound"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small"/></MudButton>
+            </div>
+            <div>
+                <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Custom Restart Tasks Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
+        </MudPaper>
+	</MudItem>
+</MudGrid>
+
+@code {
+
+    [CascadingParameter(Name="AppLayout")]
+    public AppLayout AppLayout { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            AppLayout.SetTitle("Settings");
+        }
+    }
+
+    public void Dispose()
+    {
+    }
+
+    public void PlayRaidStart()
+    {
+        PlaySound("raid_starting");
+    }
+
+    public void PlayMatchFound()
+    {
+        PlaySound("match_found");
+    }
+
+    public void PlayRestartTask()
+    {
+        PlaySound("restart_failed_tasks");
+    }
+
+    public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
+
+    private OpenFileDialog fileDialog = new OpenFileDialog()
+    {
+        Filter = "MP3 files (*.mp3)|*.mp3"
+    };
+
+    public bool RaidStartSwitch { 
+        get 
+        {
+            return CustomSoundExists("raid_starting");
+        }
+        set
+        {
+            if (value)
+            {
+                fileDialog.Title = "Select raid starting sound";
+            }
+            ToggleCustomSound("raid_starting", value);
+        }
+    }
+
+    public bool MatchFoundSwitch { 
+        get 
+        {
+            return CustomSoundExists("match_found");
+        }
+        set
+        {
+            if (value)
+            {
+                fileDialog.Title = "Select match found sound";
+            }
+            ToggleCustomSound("match_found", value);
+        }
+    }
+
+    public bool RestartTaskSwitch
+    {
+        get
+        {
+            return CustomSoundExists("restart_failed_tasks");
+        }
+        set
+        {
+            if (value)
+            {
+                fileDialog.Title = "Select restart failed tasks sound";
+            }
+            ToggleCustomSound("restart_failed_tasks", value);
+        }
+    }
+
+    private void ToggleCustomSound(string key, bool isCustom)
+    {
+        if (isCustom)
+        {
+            var result = fileDialog.ShowDialog();
+            if (result != System.Windows.Forms.DialogResult.OK)
+            {
+                return;
+            }
+            var soundspath = GetCustomSoundsPath();
+            if (!Directory.Exists(soundspath))
+            {
+                Directory.CreateDirectory(soundspath);
+            }
+            string customPath = GetCustomSoundPath(key);
+            File.Copy(fileDialog.FileName, customPath);
+        }
+        else
+        {
+            try
+            {
+                File.Delete(GetCustomSoundPath(key));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+        }
+    }
+    private string GetCustomSoundsPath()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(localAppData, "TarkovMonitor", "sounds");
+    }
+
+    private string GetCustomSoundPath(string key)
+    {
+        return Path.Combine(GetCustomSoundsPath(), $"{key}.mp3");
+    }
+
+    private bool CustomSoundExists(string key)
+    {
+        var filepath = GetCustomSoundPath(key);
+        if (File.Exists(filepath))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private void PlaySound(string key)
+    {
+        byte[] resource = null;
+        var filepath = GetCustomSoundPath(key);
+        if (File.Exists(filepath))
+        {
+            resource = File.ReadAllBytes(filepath);
+        }
+        resource ??= Properties.Resources.ResourceManager.GetObject(key) as byte[];
+        Stream stream = new MemoryStream(resource);
+        var reader = new NAudio.Wave.Mp3FileReader(stream);
+        var waveOut = new WaveOut();
+        waveOut.Init(reader);
+        waveOut.Play();
+    }
+}
