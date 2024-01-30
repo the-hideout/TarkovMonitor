@@ -10,6 +10,8 @@
                     <MudSelectItem Value="@breakpoint">(@breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()) | @breakpoint.Version | Profile: @breakpoint.ProfileId</MudSelectItem>
             }
         </MudSelect>
+        <p>Select a starting point to read previous logs and update your quest progress. All logs from that point forward with the same profile ID will be read and that cumulative progress will be synced to Tarkov Tracker.</p>
+        <p><strong>WARNING: </strong>You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</p>
         }
         else
         {
