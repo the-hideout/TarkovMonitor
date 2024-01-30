@@ -18,29 +18,8 @@ namespace TarkovMonitor.GroupLoadout
     class GroupManager
     {
         // A list of GroupMembers
-        public Dictionary<string, GroupMember> GroupMembers { get; set; }
-        public bool Stale { get; set; }
-
-        // Constructor
-        public GroupManager()
-        {
-            GroupMembers = new Dictionary<string, GroupMember>();
-            Stale = false;
-        }
-
-        // Add a new GroupMember to the list
-        public void AddGroupMember(GroupMember member)
-        {
-            GroupMembers.Add(member.Name, member);
-            GroupMemberChanged(this, new GroupMemberChangedArgs());
-        }
-
-        // Remove a GroupMember from the list
-        public void RemoveGroupMember(GroupMember member)
-        {
-            GroupMembers.Remove(member.Name);
-            GroupMemberChanged(this, new GroupMemberChangedArgs());
-        }
+        public Dictionary<string, GroupMember> GroupMembers { get; set; } = new();
+        public bool Stale { get; set; } = false;
         
         public void RemoveGroupMember(string name)
         {
@@ -48,19 +27,11 @@ namespace TarkovMonitor.GroupLoadout
             GroupMemberChanged(this, new GroupMemberChangedArgs());
         }
 
-        public void UpdateGroupMember(string name, GroupMember member)
+        public void UpdateGroupMember(GroupMatchRaidReadyEventArgs member)
         {
             if (Stale && GroupMembers.Count > 0) ClearGroup();
-            GroupMember? currentMember = GroupMembers.FirstOrDefault(m => m.Key == name).Value;
-            if(currentMember != null)
-            {
-                currentMember = member;
-                GroupMemberChanged(this, new GroupMemberChangedArgs());
-            }
-            else
-            {
-                AddGroupMember(member);
-            }
+            GroupMembers[member.extendedProfile.Info.Nickname] = new(member);
+            GroupMemberChanged(this, new GroupMemberChangedArgs());
         }
 
         // Clear the GroupMember list

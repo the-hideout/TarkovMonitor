@@ -1,13 +1,25 @@
-﻿using System.Text;
-using System.Text.Json;
-using MudBlazor;
+﻿using Refit;
+using static TarkovMonitor.TarkovTracker;
 
 namespace TarkovMonitor
 {
+    internal interface ITarkovTrackerAPI
+    {
+        [Get("/progress")]
+        Task<ProgressResponse> GetProgress([Header("Authorization")] string authorizationHeaderValue);
+        [Get("/token")]
+        Task<TokenResponse> TestToken([Header("Authorization")] string authorizationHeaderValue);
+        [Post("/progress/task/{id}")]
+        Task<string> SetTaskComplete(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] string body = @$"{{""state"":""completed""}}");
+        [Post("/progress/task/{id}")]
+        Task<string> SetTaskFailed(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] string body = @$"{{""state"":""failed""}}");
+        [Post("/progress/task/{id}")]
+        Task<string> SetTaskUncomplete(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] string body = @$"{{""state"":""uncompleted""}}");
+    }
+
     internal class TarkovTracker
     {
-        private static readonly string apiUrl = "https://tarkovtracker.io/api/v2";
-        private static readonly HttpClient client = new();
+        private static ITarkovTrackerAPI api = RestService.For<ITarkovTrackerAPI>("https://tarkovtracker.io/api/v2");
 
         public static ProgressResponse Progress { get; private set; }
         public static bool ValidToken { get; private set; } = false;
@@ -15,44 +27,27 @@ namespace TarkovMonitor
         public static event EventHandler<EventArgs> TokenValidated;
         public static event EventHandler<EventArgs> TokenInvalid;
         public static event EventHandler<EventArgs> ProgressRetrieved;
-
-        private static HttpRequestMessage GetRequest(string path, string apiToken)
-        {
-            var request = new HttpRequestMessage(HttpMethod.Get, apiUrl + path);
-            request.Headers.Add("Authorization", "Bearer " + apiToken);
-            return request;
-        }
-
-        private static HttpRequestMessage GetRequest(string path)
-        {
-            return GetRequest(path, Properties.Settings.Default.tarkovTrackerToken);
-        }
-
         public static async Task<string> SetTaskComplete(string questId)
         {
             if (!ValidToken)
             {
 				throw new Exception("Invalid token");
 			}
-            var request = GetRequest($"/progress/task/{questId}");
-            request.Method = HttpMethod.Post;
-            var payload = @$"{{""state"":""completed""}}";
-            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
-            //Debug.WriteLine(await request.Content.ReadAsStringAsync());
-            //Debug.WriteLine(request?.RequestUri?.ToString());
-            HttpResponseMessage response = await client.SendAsync(request);
             try
             {
-                response.EnsureSuccessStatusCode();
+                await api.SetTaskComplete(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
             }
-            catch (Exception ex)
+            catch (ApiException ex)
             {
-                var code = ((int)response.StatusCode).ToString();
-                if (code == "401")
+                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"TarkovTracker API error: {ex.Message}");
             }
             try
             {
@@ -91,34 +86,22 @@ namespace TarkovMonitor
             {
 				throw new Exception("Invalid token");
 			}
-            var request = GetRequest($"/progress/task/{questId}");
-            request.Method = HttpMethod.Post;
-            var payload = @$"{{""state"":""failed""}}";
-            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
-            //Debug.WriteLine(await request.Content.ReadAsStringAsync());
-            //Debug.WriteLine(request?.RequestUri?.ToString());
-            HttpResponseMessage response = await client.SendAsync(request);
             try
             {
-                response.EnsureSuccessStatusCode();
-                foreach (var taskStatus in Progress.data.tasksProgress)
-                {
-                    if (taskStatus.id == questId)
-                    {
-                        taskStatus.failed = true;
-                        break;
-                    }
-                }
+                await api.SetTaskFailed(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
                 return "success";
             }
-            catch (Exception ex)
+            catch (ApiException ex)
             {
-                var code = ((int)response.StatusCode).ToString();
-                if (code == "401")
+                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"TarkovTracker API error: {ex.Message}");
             }
         }
 
@@ -146,26 +129,22 @@ namespace TarkovMonitor
             {
                 return "task not marked as failed";
             }
-            var request = GetRequest($"/progress/task/{questId}");
-            request.Method = HttpMethod.Post;
-            var payload = @$"{{""state"":""uncompleted""}}";
-            request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
-            //Debug.WriteLine(await request.Content.ReadAsStringAsync());
-            //Debug.WriteLine(request?.RequestUri?.ToString());
-            HttpResponseMessage response = await client.SendAsync(request);
             try
             {
-                response.EnsureSuccessStatusCode();
+                await api.SetTaskUncomplete(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
                 return "success";
             }
-            catch (Exception ex)
+            catch (ApiException ex)
             {
-                var code = ((int)response.StatusCode).ToString();
-                if (code == "401")
+                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"TarkovTracker API error: {ex.Message}");
             }
         }
 
@@ -175,60 +154,57 @@ namespace TarkovMonitor
 			{
 				throw new Exception("Invalid token");
 			}
-			var request = GetRequest("/progress");
-            HttpResponseMessage response = client.Send(request);
             try
             {
-                response.EnsureSuccessStatusCode();
+                Progress = await api.GetProgress($"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
+                ProgressRetrieved?.Invoke(null, new EventArgs());
+                return Progress;
             }
-            catch (Exception ex)
+            catch (ApiException ex)
             {
-                var code = ((int)response.StatusCode).ToString();
-                if (code == "401")
+                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
             }
-            string responseBody = await response.Content.ReadAsStringAsync();
-            Progress = JsonSerializer.Deserialize<ProgressResponse>(responseBody);
-            ProgressRetrieved?.Invoke(null, new EventArgs());
-            return Progress;
+            catch (Exception ex)
+            {
+                throw new Exception($"TarkovTracker API error: {ex.Message}");
+            }
         }
 
         public static async Task<TokenResponse> TestToken(string apiToken)
         {
-            var path = "/token";
-            var request = GetRequest(path, apiToken);
-            HttpResponseMessage response = client.Send(request);
             try
             {
-                response.EnsureSuccessStatusCode();
+                var response = await api.TestToken($"Bearer {apiToken}");
+                if (response.permissions.Contains("WP"))
+                {
+                    ValidToken = true;
+                    GetProgress();
+                    TokenValidated?.Invoke(null, new EventArgs());
+                }
+                else
+                {
+                    Progress = new();
+                    ValidToken = false;
+                    TokenInvalid?.Invoke(null, new EventArgs());
+                }
+                return response;
             }
-            catch (Exception ex)
+            catch (ApiException ex)
             {
-                var code = ((int)response.StatusCode).ToString();
-                if (code == "401")
+                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({code}): {ex.Message}");
+                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
             }
-            string responseBody = await response.Content.ReadAsStringAsync();
-            var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(responseBody);
-            if (tokenResponse.permissions.Contains("WP"))
-			{
-				ValidToken = true;
-				GetProgress();
-                TokenValidated?.Invoke(null, new EventArgs());
-            }
-            else
+            catch (Exception ex)
             {
-                Progress = new();
-                ValidToken = false;
-                TokenInvalid?.Invoke(null, new EventArgs());
+                throw new Exception($"TarkovTracker API error: {ex.Message}");
             }
-            return tokenResponse;
         }
 
         private static void InvalidTokenException()
@@ -242,7 +218,7 @@ namespace TarkovMonitor
         public class TokenResponse
         {
             //public Dictionary<string, int> CreatedAt { get; set; }
-            public string[] permissions { get; set; }
+            public List<string> permissions { get; set; }
             public string token { get; set; }
             //public int Calls { get; set; }
         }
@@ -255,8 +231,8 @@ namespace TarkovMonitor
 
         public class ProgressResponseData
         {
-            public ProgressResponseTask[] tasksProgress { get; set; }
-            public ProgressResponseHideoutPart[] hideoutModulesProgress { get; set; }
+            public List<ProgressResponseTask> tasksProgress { get; set; }
+            public List<ProgressResponseHideoutPart> hideoutModulesProgress { get; set; }
             public string? displayName { get; set; }
             public string userId { get; set; }
             public int playerLevel { get; set; }

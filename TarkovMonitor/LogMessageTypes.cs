@@ -2,36 +2,33 @@
 
 namespace TarkovMonitor
 {
-    public class LogMessage
+    public class JsonEventArgs : EventArgs
     {
         public string type { get; set; }
         public string eventId { get; set; }
     }
-    public class GroupMatchInviteAccept : LogMessage
+    public class GroupMatchUserLeaveEventArgs : JsonEventArgs
     {
-        public string _id { get; set; }
-        public int aid { get; set; }
+        public string Nickname { get; set; } = "You";
+    }
+    public class GroupEventArgs : JsonEventArgs
+    {
         public PlayerInfo Info { get; set; }
-        public PlayerLoadout PlayerVisualRepresentation { get; set; }
-    }
-    public class GroupMatchInviteSend : LogMessage
-    {
-        public string groupId { get; set; }
-        public int dt { get; set; }
-        public string from { get; set; }
-        public string to { get; set; }
-
-        public GroupMatchInviteSendProfile fromProfile { get; set; }
-    }
-    public class GroupMemberInfo
-    {
-        public PlayerInfo PlayerInfo { get; set; }
         public bool isLeader { get; set; }
-        public GroupMemberInfo(JsonNode node)
+    }
+    public class GroupMatchRaidReadyEventArgs : JsonEventArgs
+    {
+        public ExtendedProfile extendedProfile { get; set; }
+        public override string ToString()
         {
-            this.PlayerInfo = new(node["Info"]);
-            this.isLeader = node["isLeader"].GetValue<bool>();
+            return $"{this.extendedProfile.Info.Nickname} ({this.extendedProfile.PlayerVisualRepresentation.Info.Side}, {this.extendedProfile.PlayerVisualRepresentation.Info.Level})";
         }
+    }
+    public class ExtendedProfile
+    {
+        public PlayerInfo Info { get; set; }
+        public bool isLeader { get; set; }
+        public PlayerVisualRepresentation PlayerVisualRepresentation { get; set; }
     }
     public class PlayerInfo
     {
@@ -39,39 +36,17 @@ namespace TarkovMonitor
         public int Level { get; set; }
         public string Nickname { get; set; }
         public int MemberCategory { get; set; }
-        public PlayerInfo(JsonNode node)
-        {
-            this.Side = node["Side"].GetValue<string>();
-            this.Level = node["Level"].GetValue<int>();
-            this.Nickname = node["Nickname"].GetValue<string>();
-            this.MemberCategory = node["MemberCategory"].GetValue<int>();
-        }
     }
-    public class PlayerLoadout
+    public class PlayerVisualRepresentation
     {
         public PlayerInfo Info { get; set; }
         public PlayerEquipment Equipment { get; set; }
         public PlayerClothes Customization { get; set; }
-        public PlayerLoadout(JsonNode node)
-        {
-            this.Info = new PlayerInfo(node["Info"]);
-            this.Equipment = new PlayerEquipment(node["Equipment"]);
-        }
     }
     public class PlayerEquipment
     {
         public string Id { get; set; }
         public LoadoutItem[] Items { get; set; }
-        public PlayerEquipment(JsonNode node)
-        {
-            this.Id = node["Id"].GetValue<string>();
-            var itemsArray = node["Items"].AsArray();
-            this.Items = new LoadoutItem[itemsArray.Count];
-            for (int i = 0; i < itemsArray.Count; i++)
-            {
-                this.Items[i] = new LoadoutItem(itemsArray[i]);
-            }
-        }
     }
     public class LoadoutItem
     {
@@ -82,21 +57,6 @@ namespace TarkovMonitor
         public string? name { get; set; }
         public LoadoutItemLocation? location { get; set; }
         public LoadoutItemProperties? upd { get; set; }
-        public LoadoutItem(JsonNode node)
-        {
-            this._id = node["_id"].GetValue<string>();
-            this._tpl = node["_tpl"].GetValue<string>();
-            this.parentId = node["parentId"]?.GetValue<string>();
-            this.slotId = node["slotId"]?.GetValue<string>();
-            this.name = node["name"]?.GetValue<string>();
-            if (node["upd"] != null)
-                this.upd = new LoadoutItemProperties(node["upd"]);
-        }
-        LoadoutItem()
-        {
-            _id = "";
-            _tpl = "";
-        }
         public override string ToString()
         {
             var displayName = this._tpl;
@@ -118,99 +78,37 @@ namespace TarkovMonitor
         public int? StackObjectsCount { get; set; }
         public bool? SpawnedInSession { get; set; }
         public LoadoutItemPropertiesDurability? Repairable { get; set; }
-        public LoadoutItemPropertiesMeds? MedKit { get; set; }
-        public LoadoutItemPropertiesFoodDrink? FoodDrink { get; set; }
+        public LoadoutItemPropertiesHpResource? MedKit { get; set; }
+        public LoadoutItemPropertiesHpResource? FoodDrink { get; set; }
         public LoadoutItemPropertiesFireMode? FireMode { get; set; }
         public LoadoutItemPropertiesScope? Sight { get; set; }
         public LoadoutItemPropertiesResource? Resource { get; set; }
         public LoadoutItemPropertiesDogtag? Dogtag { get; set; }
         public LoadoutItemPropertiesTag? Tag { get; set; }
         public LoadoutItemPropertiesKey? Key { get; set; }
-        public LoadoutItemProperties(JsonNode node)
-        {
-            this.StackObjectsCount = node["StackObjectsCount"]?.GetValue<int>();
-            this.SpawnedInSession = node["SpawnedInSession"]?.GetValue<bool>();
-            if (node["Repairable"] != null)
-                this.Repairable = new LoadoutItemPropertiesDurability(node["Repairable"]);
-            if (node["MedKit"] != null)
-                this.MedKit = new LoadoutItemPropertiesMeds(node["MedKit"]);
-            if (node["FoodDrink"] != null)
-                this.FoodDrink = new LoadoutItemPropertiesFoodDrink(node["FoodDrink"]);
-            if (node["FireMode"] != null)
-                this.FireMode = new LoadoutItemPropertiesFireMode(node["FireMode"]);
-            if (node["Sight"] != null)
-                this.Sight = new LoadoutItemPropertiesScope(node["Sight"]);
-            if (node["Resource"] != null)
-                this.Resource = new LoadoutItemPropertiesResource(node["Resource"]);
-            if (node["Dogtag"] != null)
-                this.Dogtag = new LoadoutItemPropertiesDogtag(node["Dogtag"]);
-            if (node["Tag"] != null)
-                this.Tag = new LoadoutItemPropertiesTag(node["Tag"]);
-            if (node["Key"] != null)
-                this.Key = new LoadoutItemPropertiesKey(node["Key"]);
-        }
     }
     public class LoadoutItemPropertiesDurability
     {
         public float MaxDurability { get; set; }
         public float Durability { get; set; }
-        public LoadoutItemPropertiesDurability(JsonNode node) {
-            this.Durability = node["Durability"].GetValue<float>();
-            this.MaxDurability = node["MaxDurability"] != null ? node["MaxDurability"].GetValue<float>() : this.Durability;
-        }
     }
-    public class LoadoutItemPropertiesMeds
+    public class LoadoutItemPropertiesHpResource
     {
         public int HpResource { get; set; }
-        public LoadoutItemPropertiesMeds(JsonNode node)
-        {
-            this.HpResource = node["HpResource"].GetValue<int>();
-        }
-    }
-    public class LoadoutItemPropertiesFoodDrink
-    {
-        public int HpPercent { get; set; }
-        public LoadoutItemPropertiesFoodDrink(JsonNode node) {
-            this.HpPercent = node["HpPercent"].GetValue<int>();
-        }
     }
     public class LoadoutItemPropertiesFireMode
     {
         public string FireMode { get; set; }
-        public LoadoutItemPropertiesFireMode(JsonNode node)
-        {
-            this.FireMode = node["FireMode"].GetValue<string>();
-        }
     }
     public class LoadoutItemPropertiesScope
     {
-        public int[] ScopesCurrentCalibPointIndexes { get; set; }
-        public int[] ScopesSelectedModes { get; set; }
+        public List<int> ScopesCurrentCalibPointIndexes { get; set; }
+        public List<int> ScopesSelectedModes { get; set; }
         public int SelectedScope { get; set; }
-        public LoadoutItemPropertiesScope(JsonNode node)
-        {
-            var magArray = node["ScopesCurrentCalibPointIndexes"].AsArray();
-            this.ScopesCurrentCalibPointIndexes = new int[magArray.Count];
-            for (var i = 0; i < magArray.Count; i++)
-            {
-                this.ScopesCurrentCalibPointIndexes[i] = magArray[i].GetValue<int>();
-            }
-            var scopesArray = node["ScopesSelectedModes"].AsArray();
-            this.ScopesSelectedModes = new int[scopesArray.Count];
-            for (var i = 0; i < scopesArray.Count; i++)
-            {
-                this.ScopesSelectedModes[i] = scopesArray[i].GetValue<int>();
-            }
-            this.SelectedScope = node["SelectedScope"].GetValue<int>();
-        }
     }
     public class LoadoutItemPropertiesResource
     {
         public int Value { get; set; }
-        public LoadoutItemPropertiesResource(JsonNode node)
-        {
-            this.Value = node["Value"].GetValue<int>();
-        }
     }
     public class LoadoutItemPropertiesDogtag
     {
@@ -224,34 +122,14 @@ namespace TarkovMonitor
         public string KillerProfileId { get; set; }
         public string KillerName { get; set; }
         public string WeaponName { get; set; }
-        public LoadoutItemPropertiesDogtag(JsonNode node)
-        {
-            this.AccountId = node["AccountId"].GetValue<string>();
-            this.ProfileId = node["ProfileId"].GetValue<string>();
-            this.Side = node["Side"].GetValue<string>();
-            this.Level = node["Level"].GetValue<int>();
-            this.Time = node["Time"].GetValue<string>();
-            this.Status = node["Status"].GetValue<string>();
-            this.KillerProfileId = node["KillerProfileId"].GetValue<string>();
-            this.KillerName = node["KillerName"].GetValue<string>();
-            this.WeaponName = node["WeaponName"].GetValue<string>();
-        }
     }
     public class LoadoutItemPropertiesTag
     {
         public string Name { get; set; }
-        public LoadoutItemPropertiesTag(JsonNode node)
-        {
-            Name = node["Name"].GetValue<string>();
-        }
     }
     public class LoadoutItemPropertiesKey
     {
         public int NumberOfUsages { get; set; }
-        public LoadoutItemPropertiesKey(JsonNode node)
-        {
-            NumberOfUsages = node["NumberOfUsages"].GetValue<int>();
-        }
     }
     public class PlayerClothes
     {
@@ -259,19 +137,154 @@ namespace TarkovMonitor
         public string Body { get; set; }
         public string Feet { get; set; }
         public string Hands { get; set; }
-        public PlayerClothes(JsonNode node)
+    }
+    public class GroupRaidSettingsEventArgs : JsonEventArgs
+    {
+        public string Map
         {
-            this.Head = node["Head"].GetValue<string>();
-            this.Body = node["Body"].GetValue<string>();
-            this.Feet = node["Feet"].GetValue<string>();
-            this.Hands = node["Hands"].GetValue<string>();
+            get
+            {
+                return raidSettings.location;
+            }
+        }
+        public string RaidMode
+        {
+            get
+            {
+                return raidSettings.raidMode;
+            }
+
+        }
+        public RaidType RaidType
+        {
+            get
+            {
+                if (raidSettings.side == "Pmc")
+                {
+                    return RaidType.PMC;
+                }
+                if (raidSettings.side == "Savage")
+                {
+                    return RaidType.Scav;
+                }
+                return RaidType.Unknown;
+            }
+        }
+        public RaidSettings raidSettings { get; set; }
+        public class RaidSettings
+        {
+            public string location { get; set; }
+            public string raidMode { get; set; }
+            public string side { get; set; }
         }
     }
-    public class GroupMatchInviteSendProfile
+    public class ChatMessageEventArgs : JsonEventArgs
     {
-        public string _id { get; set; }
-        public int aid { get; set; }
-        public PlayerInfo Info { get; set; }
-        public PlayerLoadout PlayerVisualRepresentation { get; set; }
+        public ChatMessage message { get; set; }
+    }
+    public class ChatMessage
+    {
+        public MessageType type { get; set; }
+        public string text { get; set; }
+        public bool hasRewards { get; set; }
+    }
+    public class SystemChatMessage : ChatMessage
+    {
+        public string templateId { get; set; }
+    }
+    public class SystemChatMessageEventArgs : ChatMessageEventArgs
+    {
+        public SystemChatMessage message { get; set; }
+    }
+    public class SystemChatMessageWithItems : SystemChatMessage
+    {
+        public MessageItems items { get; set; }
+    }
+    public class MessageItems
+    {
+        public List<LoadoutItem> data { get; set; }
+    }
+    public class FleaMarketSoldChatMessage : SystemChatMessageWithItems
+    {
+        public FleaSoldData systemData { get; set; }
+    }
+    public class FleaSoldData
+    {
+        public string buyerNickname { get; set; }
+        public string soldItem { get; set; }
+        public int itemCount { get; set; }
+    }
+    public class FleaSoldMessageEventArgs: SystemChatMessageEventArgs
+    {
+        public string Buyer
+        {
+            get
+            {
+                return message.systemData.buyerNickname;
+            }
+        }
+        public string SoldItemId
+        {
+            get
+            {
+                return message.systemData.soldItem;
+            }
+        }
+        public int SoldItemCount
+        {
+            get
+            {
+                return message.systemData.itemCount;
+            }
+        }
+        public Dictionary<string, int> ReceivedItems
+        {
+            get
+            {
+                Dictionary<string, int> items = new();
+                foreach (var item in message.items.data)
+                {
+                    items.Add(item._tpl, (int)item.upd.StackObjectsCount);
+                }
+                return items;
+            }
+        }
+        public FleaMarketSoldChatMessage message { get; set; }
+    }
+    public class FleaExpiredeMessageEventArgs: JsonEventArgs
+    {
+        public string ItemId
+        {
+            get
+            {
+                return message.items.data[0]._id;
+            }
+        }
+        public int ItemCount
+        {
+            get
+            {
+                return (int)message.items.data[0].upd.StackObjectsCount;
+            }
+        }
+        public SystemChatMessageWithItems message { get; set; }
+    }
+    public class TaskStatusMessageEventArgs : ChatMessageEventArgs
+    {
+        public string TaskId
+        {
+            get
+            {
+                return message.templateId.Split(' ')[0];
+            }
+        }
+        public TaskStatus Status
+        {
+            get
+            {
+                return (TaskStatus)message.type;
+            }
+        }
+        public SystemChatMessage message { get; set; }
     }
 }

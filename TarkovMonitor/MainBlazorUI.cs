@@ -53,7 +53,6 @@ namespace TarkovMonitor
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogData += Eft_NewLogData;
-            eft.GroupInviteSend += Eft_GroupInviteSend;
             eft.GroupInviteAccept += Eft_GroupInviteAccept;
             eft.GroupUserLeave += Eft_GroupUserLeave;
             eft.GroupRaidSettings += Eft_GroupRaidSettings;
@@ -194,17 +193,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupInviteSend(object? sender, GroupInviteSendEventArgs e)
-        {
-            List<string> memberNames = new();
-            foreach (var member in e.Members)
-            {
-                memberNames.Add($"{member.PlayerInfo.Nickname} ({member.PlayerInfo.Level} {member.PlayerInfo.Side.ToUpper()})");
-            }
-            messageLog.AddMessage($"Group invite: {String.Join(", ", memberNames.ToArray())}", "group");
-        }
-
-        private void Eft_GroupUserLeave(object? sender, GroupUserLeaveEventArgs e)
+        private void Eft_GroupUserLeave(object? sender, GroupMatchUserLeaveEventArgs e)
         {
             if (e.Nickname != "You")
             {
@@ -213,14 +202,9 @@ namespace TarkovMonitor
             messageLog.AddMessage($"{e.Nickname} left the group.", "group");
         }
 
-        private void Eft_GroupInviteAccept(object? sender, GroupInviteAcceptEventArgs e)
+        private void Eft_GroupInviteAccept(object? sender, GroupEventArgs e)
         {
-            var verb = "accepted";
-            if (e.InviteType == GroupInviteType.Sent)
-            {
-                verb = "sent";
-            }
-            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerInfo.Side.ToUpper()} {e.PlayerInfo.Level}) {verb} group invite.", "group");
+            messageLog.AddMessage($"{e.Info.Nickname} ({e.Info.Side.ToUpper()} {e.Info.Level}) accepted group invite.", "group");
         }
 
         private void Eft_GroupDisbanded(object? sender, EventArgs e)
@@ -292,6 +276,7 @@ namespace TarkovMonitor
             try
             {
                 var tokenResponse = await TarkovTracker.TestToken(Properties.Settings.Default.tarkovTrackerToken);
+                Debug.WriteLine(tokenResponse);
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     messageLog.AddMessage("Your Tarkov Tracker token is missing the required write permissions");
@@ -326,13 +311,13 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupMemberReady(object? sender, GroupMemberReadyEventArgs e)
+        private void Eft_GroupMemberReady(object? sender, GroupMatchRaidReadyEventArgs e)
         {
-            groupManager.UpdateGroupMember(e.PlayerInfo.Nickname, new GroupMember(e.PlayerInfo.Nickname, e.PlayerLoadout));
-            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) ready.", "group");
+            groupManager.UpdateGroupMember(e);
+            messageLog.AddMessage($"{e.extendedProfile.Info.Nickname} ({e.extendedProfile.PlayerVisualRepresentation.Info.Side.ToUpper()} {e.extendedProfile.PlayerVisualRepresentation.Info.Level}) ready.", "group");
         }
 
-        private async void Eft_TaskFinished(object? sender, TaskEventArgs e)
+        private async void Eft_TaskFinished(object? sender, TaskStatusMessageEventArgs e)
         {
             //await AllDataLoaded();
             if (!TarkovTracker.ValidToken)
@@ -358,7 +343,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_TaskFailed(object? sender, TaskEventArgs e)
+        private async void Eft_TaskFailed(object? sender, TaskStatusMessageEventArgs e)
         {
             if (!TarkovTracker.ValidToken)
             {
@@ -382,7 +367,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_TaskStarted(object? sender, TaskEventArgs e)
+        private async void Eft_TaskStarted(object? sender, TaskStatusMessageEventArgs e)
         {
             if (!TarkovTracker.ValidToken)
             {
@@ -405,7 +390,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_FleaSold(object? sender, FleaSoldEventArgs e)
+        private async void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
         {
             if (TarkovDev.Items == null)
             {
@@ -445,7 +430,7 @@ namespace TarkovMonitor
             messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItem.name} for {String.Join(", ", received.ToArray())}", "flea", soldItem.link);
         }
 
-        private void Eft_FleaOfferExpired(object? sender, FleaOfferExpiredEventArgs e)
+        private void Eft_FleaOfferExpired(object? sender, FleaExpiredeMessageEventArgs e)
         {
             if (TarkovDev.Items == null)
             {

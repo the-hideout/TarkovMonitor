@@ -13,7 +13,7 @@
             <MudAlert Severity="Severity.Info">You aren't in a group or have party members yet.</MudAlert>
         }else{
             <MudTabs Elevation="3" Rounded="true" Centered="true" PanelClass="pa-3">
-                @foreach(KeyValuePair<string, GroupMember> member in groupManager.GroupMembers) 
+                @foreach (KeyValuePair<string, GroupMember> member in groupManager.GroupMembers)
                 {
                     <MudTabPanel Text="@member.Key" Icon="@Icons.Material.Filled.Person">
                         <div class="d-flex justify-space-between align-center">
@@ -22,10 +22,10 @@
                             <div><MudText Typo="Typo.h4">@member.Value.Loadout.Info.Side.ToUpper()</MudText></div>
                         </div>
                         <div>
-                            @foreach(LoadoutItem item in parentItems(member.Value.Loadout.Equipment.Items))
+                            @foreach (LoadoutItem item in parentItems(member.Value.Loadout.Equipment.Items))
                             {
-                                
-                                    <LoadoutRecursor Loadout="@member.Value.Loadout.Equipment.Items" Item="item" />
+
+                                <LoadoutRecursor Loadout="@member.Value.Loadout.Equipment.Items" Item="item" />
                             }
                         </div>
                     </MudTabPanel>
