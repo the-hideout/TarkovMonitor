@@ -79,6 +79,7 @@ namespace TarkovMonitor
                             link
                             iconLink
                             gridImageLink
+                            image512pxLink
                             types
                             properties {
                                 ...on ItemPropertiesWeapon {
@@ -198,6 +199,7 @@ namespace TarkovMonitor
 			public string link { get; set; }
 			public string iconLink { get; set; }
             public string gridImageLink { get; set; }
+            public string image512pxLink { get; set; }
             public List<string> types { get; set; }
             public ItemProperties? properties { get; set; }
         }
