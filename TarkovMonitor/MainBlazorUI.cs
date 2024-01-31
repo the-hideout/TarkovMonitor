@@ -6,6 +6,7 @@ using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Globalization;
+using System.ComponentModel;
 
 namespace TarkovMonitor
 {
@@ -25,6 +26,14 @@ namespace TarkovMonitor
                 Properties.Settings.Default.upgradeRequired = false;
                 Properties.Settings.Default.Save();
             }
+            this.TopMost = Properties.Settings.Default.stayOnTop;
+            Properties.Settings.Default.PropertyChanged += (object sender, PropertyChangedEventArgs e) => {
+                if (e.PropertyName != "stayOnTop")
+                {
+                    return;
+                }
+                this.TopMost = Properties.Settings.Default.stayOnTop;
+            };
             eft = new GameWatcher();
             eft.Start();
 

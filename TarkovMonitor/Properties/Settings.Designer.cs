@@ -142,5 +142,17 @@ namespace TarkovMonitor.Properties {
                 this["airFilterAlert"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool stayOnTop {
+            get {
+                return ((bool)(this["stayOnTop"]));
+            }
+            set {
+                this["stayOnTop"] = value;
+            }
+        }
     }
 }

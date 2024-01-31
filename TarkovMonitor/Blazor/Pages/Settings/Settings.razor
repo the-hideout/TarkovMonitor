@@ -32,6 +32,9 @@
             <div>
                 <MudSwitch @bind-Checked="@MinimizeAtStartupSwitch" Label="Start Tarkov Monitor Minimized" Color="Color.Info" />
             </div>
+            <div>
+                <MudSwitch @bind-Checked="@StayOnTopSwitch" Label="Stay on Top" Color="Color.Info" />
+            </div>
         </MudPaper>
 	</MudItem>
 
@@ -170,6 +173,19 @@
         set
         {
             Properties.Settings.Default.minimizeAtStartup = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool StayOnTopSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.stayOnTop;
+        }
+        set
+        {
+            Properties.Settings.Default.stayOnTop = value;
             Properties.Settings.Default.Save();
         }
     }
