@@ -1,4 +1,4 @@
-﻿<MudImage Src="@itemIconURL" Width="@imgWidth" Height="@imgHeight" Class="ma-2"/>
+﻿<MudLink Href="@itemLink"><MudImage Src="@itemIconURL" Width="@imgWidth" Height="@imgHeight" Class="ma-2" /></MudLink>
 
 @code {
     [Parameter]
@@ -12,4 +12,5 @@
     private int imgWidth => devItem != null ? (devItem.width * 31) + 1 : 96;
     private int imgHeight => devItem != null ? (devItem.height * 31) * 1 : 96;
     private string itemIconURL => devItem?.gridImageLink;
+    private string itemLink => devItem?.link;
 }
