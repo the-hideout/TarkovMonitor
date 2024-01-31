@@ -3,30 +3,20 @@
     public class MonitorMessage
     {
         public string Message { get; set; }
-        public DateTime Time { get; set; }
-        public string Type { get; set; }
-        public string Url { get; set; }
-        public MonitorMessage(string message, string? type = null, string? url = null)
+        public DateTime Time { get; set; } = DateTime.Now;
+        public string Type { get; set; } = "";
+        public string Url { get; set; } = "";
+        public Action? OnClick { get; set; } = null;
+        public MonitorMessage(string message)
         {
             Message = message;
-            Time = DateTime.Now;
-            if (type == null)
-            {
-                Type = "";
-            }
-            else
-            {
-                Type = type;
-            }
-            if (url == null)
-            {
-                Url = "";
-            }
-            else
-            {
-                Url = url;
-            }
         }
+        public MonitorMessage(string message, string? type = "", string? url = "") : this(message)
+        {
+            Type = type ?? "";
+            Url = url ?? "";
+        }
+
         public string RenderMessage()
         {
             if (Url.Length > 0)

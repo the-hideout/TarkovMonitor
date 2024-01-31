@@ -14,11 +14,16 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher watcher;
         private readonly FileSystemWatcher screenshotWatcher;
-        private string screenshotPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + Path.DirectorySeparatorChar + "Escape From Tarkov" + Path.DirectorySeparatorChar + "Screenshots";
+        public string ScreenshotsPath
+        {
+            get
+            {
+                return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + Path.DirectorySeparatorChar + "Escape From Tarkov" + Path.DirectorySeparatorChar + "Screenshots";
+            }
+        }
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
-        private string lastKnownMap;
         public event EventHandler<NewLogDataEventArgs> NewLogData;
         public event EventHandler<ExceptionEventArgs> ExceptionThrown;
         public event EventHandler<DebugEventArgs> DebugMessage;
@@ -75,8 +80,8 @@ namespace TarkovMonitor
         {
             try
             {
-                bool screensPathExists = Directory.Exists(screenshotPath);
-                string watchPath = screensPathExists ? screenshotPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                bool screensPathExists = Directory.Exists(ScreenshotsPath);
+                string watchPath = screensPathExists ? ScreenshotsPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 screenshotWatcher.Path = watchPath;
                 screenshotWatcher.IncludeSubdirectories = !screensPathExists;
                 screenshotWatcher.Created -= ScreenshotWatcher_Created;
@@ -100,7 +105,7 @@ namespace TarkovMonitor
 
         private void ScreenshotWatcher_FolderCreated(object sender, FileSystemEventArgs e)
         {
-            if (e.FullPath == screenshotPath)
+            if (e.FullPath == ScreenshotsPath)
             {
                 SetupScreenshotWatcher();
             }
@@ -119,11 +124,11 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                if (lastKnownMap == null)
+                if (raidInfo.Map == "")
                 {
                     return;
                 }
-                PlayerPosition?.Invoke(this, new(lastKnownMap, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value)));
+                PlayerPosition?.Invoke(this, new(raidInfo, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), e.Name));
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing screenshot {e.Name}"));
@@ -231,7 +236,6 @@ namespace TarkovMonitor
                         // Immediately after matching is complete
                         // Sufficient information is available to raise the MatchFound event
                         raidInfo.Map = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
-                        lastKnownMap = raidInfo.Map;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
                         if (raidInfo.Online && raidInfo.QueueTime > 0)
@@ -669,14 +673,14 @@ namespace TarkovMonitor
 			this.Message = message;
 		}
 	}
-    public class PlayerPositionEventArgs : EventArgs
+    public class PlayerPositionEventArgs : RaidInfoEventArgs
     {
         public Position Position { get; set; }
-        public string? Map { get; set; }
-        public PlayerPositionEventArgs(string map, Position position)
+        public string Filename { get; set; }
+        public PlayerPositionEventArgs(RaidInfo raidInfo, Position position, string filename) : base(raidInfo)
         {
-            this.Map = map;
             this.Position = position;
+            this.Filename = filename;
         }
     }
 

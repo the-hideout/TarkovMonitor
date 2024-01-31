@@ -19,9 +19,13 @@ namespace TarkovMonitor
 
         private static async Task Connect()
         {
-            if (socket != null && socket.IsRunning)
+            if (socket != null)
             {
-                await socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+                if (socket.IsRunning)
+                {
+                    await socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+                }
+                socket.Dispose();
             }
             var remoteId = Properties.Settings.Default.remoteId;
             if (remoteId == null || remoteId == "")
@@ -40,6 +44,15 @@ namespace TarkovMonitor
                         ["type"] = "pong"
                     }.ToJsonString());
                 }
+            });
+            socket.DisconnectionHappened.Subscribe(disconnectionInfo =>
+            {
+                if (disconnectionInfo.CloseStatus == WebSocketCloseStatus.NormalClosure)
+                {
+                    return;
+                }
+                ExceptionThrown?.Invoke(socket, new(new("Map remote control connection closed unexpectedly"), "running"));
+                Connect();
             });
             await socket.Start();
             socket.Send(new JsonObject
@@ -75,8 +88,8 @@ namespace TarkovMonitor
 
         public static async Task UpdatePlayerPosition(PlayerPositionEventArgs e)
         {
-            var map = TarkovDev.Maps.Find(m => m.nameId == e.Map)?.normalizedName;
-            if (map == null && e.Map != null)
+            var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map)?.normalizedName;
+            if (map == null && e.RaidInfo.Map != null)
             {
                 return;
             }
