@@ -5,8 +5,6 @@ using System.Text.Json;
 using System.Text;
 using System.Globalization;
 using Microsoft.Win32;
-using System.Security.Policy;
-using MudBlazor;
 
 namespace TarkovMonitor
 {
@@ -38,6 +36,7 @@ namespace TarkovMonitor
         public event EventHandler<RaidInfoEventArgs> RaidCountdown;
         public event EventHandler<RaidInfoEventArgs> RaidStarted;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
+        public event EventHandler<RaidInfoEventArgs> RaidEnded;
         public event EventHandler<TaskStatusMessageEventArgs> TaskModified;
         public event EventHandler<TaskStatusMessageEventArgs> TaskStarted;
         public event EventHandler<TaskStatusMessageEventArgs> TaskFailed;
@@ -179,10 +178,6 @@ namespace TarkovMonitor
                     Debug.WriteLine("logged json");
                     Debug.WriteLine(jsonString);*/
                     var jsonNode = JsonNode.Parse(jsonString);
-                    if (eventLine.Contains("Got notification | UserMatchOver"))
-                    {
-                        RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
-                    }
                     if (eventLine.Contains("Got notification | GroupMatchInviteAccept"))
                     {
                         // GroupMatchInviteAccept occurs when someone you send an invite accepts
@@ -266,12 +261,24 @@ namespace TarkovMonitor
                             //RaidStarted?.Invoke(this, new(raidInfo));
                         }
                         RaidStarted?.Invoke(this, new(raidInfo));
-                        raidInfo = new();
+                        //raidInfo = new();
                     }
                     if (eventLine.Contains("application|Network game matching aborted") || eventLine.Contains("application|Network game matching cancelled"))
                     {
                         // User cancelled matching
                         MatchingAborted?.Invoke(this, new(raidInfo));
+                        raidInfo = new();
+                    }
+                    if (eventLine.Contains("Got notification | UserMatchOver"))
+                    {
+                        RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
+                        raidInfo = new();
+                    }
+                    if (eventLine.Contains("Init: pstrGameVersion: Escape from Tarkov"))
+                    {
+                        if (raidInfo.RaidType != RaidType.Unknown) {
+                            RaidEnded?.Invoke(this, new(raidInfo));
+                        }
                         raidInfo = new();
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))

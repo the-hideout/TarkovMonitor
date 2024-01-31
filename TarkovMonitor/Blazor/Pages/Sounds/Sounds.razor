@@ -20,6 +20,12 @@
             <div>
                 <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Custom Restart Tasks Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
+            <div>
+                <MudSwitch @bind-Checked="@AirFilterOnSwitch" Label="Custom Air Filter On Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilterOn"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
+            <div>
+                <MudSwitch @bind-Checked="@AirFilterOffSwitch" Label="Custom Air Filter On Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilterOff"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
         </MudPaper>
 	</MudItem>
 </MudGrid>
@@ -65,6 +71,16 @@
     public void PlayRestartTask()
     {
         PlaySound("restart_failed_tasks");
+    }
+
+    public void PlayAirFilterOn()
+    {
+        PlaySound("air_filter_on");
+    }
+
+    public void PlayAirFilterOff()
+    {
+        PlaySound("air_filter_off");
     }
 
     public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
@@ -117,6 +133,38 @@
                 fileDialog.Title = "Select restart failed tasks sound";
             }
             ToggleCustomSound("restart_failed_tasks", value);
+        }
+    }
+
+    public bool AirFilterOnSwitch
+    {
+        get
+        {
+            return CustomSoundExists("air_filter_on");
+        }
+        set
+        {
+            if (value)
+            {
+                fileDialog.Title = "Select air filter on sound";
+            }
+            ToggleCustomSound("air_filter_on", value);
+        }
+    }
+
+    public bool AirFilterOffSwitch
+    {
+        get
+        {
+            return CustomSoundExists("air_filter_off");
+        }
+        set
+        {
+            if (value)
+            {
+                fileDialog.Title = "Select air filter off sound";
+            }
+            ToggleCustomSound("air_filter_off", value);
         }
     }
 

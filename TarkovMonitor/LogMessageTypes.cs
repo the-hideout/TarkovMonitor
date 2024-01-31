@@ -55,7 +55,7 @@ namespace TarkovMonitor
         public string? parentId { get; set; }
         public string? slotId { get; set; }
         public string? name { get; set; }
-        public LoadoutItemLocation? location { get; set; }
+        //public LoadoutItemLocation? location { get; set; }
         public LoadoutItemProperties? upd { get; set; }
         public override string ToString()
         {

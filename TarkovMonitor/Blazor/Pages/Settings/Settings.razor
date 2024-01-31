@@ -20,6 +20,9 @@
             <div>
                 <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Restart Tasks Audio Reminder" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
+            <div>
+                <MudSwitch @bind-Checked="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
         </MudPaper>
 	</MudItem>
 
@@ -88,17 +91,22 @@
 
     public void PlayRaidStart()
     {
-        PlaySoundFromResource(Properties.Resources.raid_starting);
+        PlaySound("raid_starting");
     }
 
     public void PlayMatchFound()
     {
-        PlaySoundFromResource(Properties.Resources.match_found);
+        PlaySound("match_found");
     }
 
     public void PlayRestartTask()
     {
-        PlaySoundFromResource(Properties.Resources.restart_failed_tasks);
+        PlaySound("restart_failed_tasks");
+    }
+
+    public void PlayAirFilters()
+    {
+        PlaySound("air_filter_on");
     }
 
     public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
@@ -136,6 +144,19 @@
         set
         {
             Properties.Settings.Default.restartTaskAlert = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool AirFilterSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.airFilterAlert;
+        }
+        set
+        {
+            Properties.Settings.Default.airFilterAlert = value;
             Properties.Settings.Default.Save();
         }
     }
@@ -244,8 +265,36 @@
         Process.Start(psi);
     }
 
-    private void PlaySoundFromResource(byte[] resource)
+    private string GetCustomSoundsPath()
     {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return Path.Combine(localAppData, "TarkovMonitor", "sounds");
+    }
+
+    private string GetCustomSoundPath(string key)
+    {
+        return Path.Combine(GetCustomSoundsPath(), $"{key}.mp3");
+    }
+
+    private bool CustomSoundExists(string key)
+    {
+        var filepath = GetCustomSoundPath(key);
+        if (File.Exists(filepath))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private void PlaySound(string key)
+    {
+        byte[] resource = null;
+        var filepath = GetCustomSoundPath(key);
+        if (File.Exists(filepath))
+        {
+            resource = File.ReadAllBytes(filepath);
+        }
+        resource ??= Properties.Resources.ResourceManager.GetObject(key) as byte[];
         Stream stream = new MemoryStream(resource);
         var reader = new NAudio.Wave.Mp3FileReader(stream);
         var waveOut = new WaveOut();

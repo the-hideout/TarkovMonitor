@@ -82,22 +82,19 @@ namespace TarkovMonitor.Properties {
                 this["restartTaskAlert"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool minimizeAtStartup
-        {
-            get
-            {
+        public bool minimizeAtStartup {
+            get {
                 return ((bool)(this["minimizeAtStartup"]));
             }
-            set
-            {
+            set {
                 this["minimizeAtStartup"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
@@ -131,6 +128,18 @@ namespace TarkovMonitor.Properties {
             }
             set {
                 this["autoNavigateMap"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool airFilterAlert {
+            get {
+                return ((bool)(this["airFilterAlert"]));
+            }
+            set {
+                this["airFilterAlert"] = value;
             }
         }
     }

@@ -6,7 +6,6 @@ using Microsoft.Web.WebView2.Core;
 using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Globalization;
-using System.Reflection;
 
 namespace TarkovMonitor
 {
@@ -50,6 +49,7 @@ namespace TarkovMonitor
             eft.RaidCountdown += Eft_RaidCountdown;
             eft.RaidStarted += Eft_RaidStart;
             eft.RaidExited += Eft_RaidExited;
+            eft.RaidEnded += Eft_RaidEnded;
             eft.TaskStarted += Eft_TaskStarted;
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
@@ -96,6 +96,15 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+        }
+
+        private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
+        {
+            groupManager.Stale = true;
+            var mapName = e.RaidInfo.Map;
+            var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
+            if (map != null) mapName = map.name;
+            messageLog.AddMessage($"Ended {mapName} raid", "raidleave");
         }
 
         private void Eft_GroupRaidSettings(object? sender, GroupRaidSettingsEventArgs e)
@@ -182,6 +191,10 @@ namespace TarkovMonitor
                 if (Properties.Settings.Default.restartTaskAlert)
                 {
                     PlaySound("restart_failed_tasks");
+                }
+                if (Properties.Settings.Default.airFilterAlert)
+                {
+                    PlaySound("air_filter_on");
                 }
                 foreach (var task in failedTasks)
                 {

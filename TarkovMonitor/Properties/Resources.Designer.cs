@@ -63,6 +63,26 @@ namespace TarkovMonitor.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] air_filter_off {
+            get {
+                object obj = ResourceManager.GetObject("air_filter_off", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] air_filter_on {
+            get {
+                object obj = ResourceManager.GetObject("air_filter_on", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] match_found {
             get {
                 object obj = ResourceManager.GetObject("match_found", resourceCulture);
