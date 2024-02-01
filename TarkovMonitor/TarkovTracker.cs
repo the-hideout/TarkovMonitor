@@ -1,4 +1,5 @@
-﻿using Refit;
+﻿using System.Net;
+using Refit;
 using static TarkovMonitor.TarkovTracker;
 
 // TO DO: Implement rate limit policy of 15 requests per minute
@@ -7,17 +8,31 @@ namespace TarkovMonitor
 {
     internal interface ITarkovTrackerAPI
     {
-        [Get("/progress")]
-        Task<ProgressResponse> GetProgress([Header("Authorization")] string authorizationHeaderValue);
         [Get("/token")]
-        Task<TokenResponse> TestToken([Header("Authorization")] string authorizationHeaderValue);
+        [Headers("Authorization: Bearer {token}")]
+        Task<TokenResponse> TestToken(string token);
+
+        [Get("/progress")]
+        [Headers("Authorization: Bearer")]
+        Task<ProgressResponse> GetProgress();
+
         [Post("/progress/task/{id}")]
-        Task<string> SetTaskStatus(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] TaskStatusBody body);
+        [Headers("Authorization: Bearer")]
+        Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body);
     }
 
     internal class TarkovTracker
     {
-        private static ITarkovTrackerAPI api = RestService.For<ITarkovTrackerAPI>("https://tarkovtracker.io/api/v2");
+        private static ITarkovTrackerAPI api = RestService.For<ITarkovTrackerAPI>("https://tarkovtracker.io/api/v2",
+            new RefitSettings
+            {
+                AuthorizationHeaderValueGetter = (rq, cr) => {
+                    return Task.Run<string>(() => {
+                        return Properties.Settings.Default.tarkovTrackerToken;
+                    });
+                },
+            }
+        );
 
         public static ProgressResponse Progress { get; private set; }
         public static bool ValidToken { get; private set; } = false;
@@ -25,6 +40,7 @@ namespace TarkovMonitor
         public static event EventHandler<EventArgs> TokenValidated;
         public static event EventHandler<EventArgs> TokenInvalid;
         public static event EventHandler<EventArgs> ProgressRetrieved;
+
         public static async Task<string> SetTaskComplete(string questId)
         {
             if (!ValidToken)
@@ -33,11 +49,11 @@ namespace TarkovMonitor
 			}
             try
             {
-                await api.SetTaskStatus(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}", TaskStatusBody.Completed);
+                await api.SetTaskStatus(questId, TaskStatusBody.Completed);
             }
             catch (ApiException ex)
             {
-                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
@@ -86,12 +102,12 @@ namespace TarkovMonitor
 			}
             try
             {
-                await api.SetTaskStatus(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}", TaskStatusBody.Failed);
+                await api.SetTaskStatus(questId, TaskStatusBody.Failed);
                 return "success";
             }
             catch (ApiException ex)
             {
-                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
@@ -129,12 +145,12 @@ namespace TarkovMonitor
             }
             try
             {
-                await api.SetTaskStatus(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}", TaskStatusBody.Uncompleted);
+                await api.SetTaskStatus(questId, TaskStatusBody.Uncompleted);
                 return "success";
             }
             catch (ApiException ex)
             {
-                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
@@ -154,13 +170,13 @@ namespace TarkovMonitor
 			}
             try
             {
-                Progress = await api.GetProgress($"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
+                Progress = await api.GetProgress();
                 ProgressRetrieved?.Invoke(null, new EventArgs());
                 return Progress;
             }
             catch (ApiException ex)
             {
-                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
@@ -176,7 +192,7 @@ namespace TarkovMonitor
         {
             try
             {
-                var response = await api.TestToken($"Bearer {apiToken}");
+                var response = await api.TestToken(apiToken);
                 if (response.permissions.Contains("WP"))
                 {
                     ValidToken = true;
@@ -193,7 +209,7 @@ namespace TarkovMonitor
             }
             catch (ApiException ex)
             {
-                if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     InvalidTokenException();
                 }
