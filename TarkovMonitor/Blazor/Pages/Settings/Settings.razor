@@ -97,27 +97,28 @@
 
     public void PlayRaidStart()
     {
-        PlaySound("raid_starting");
+        Sound.Play("raid_starting");
     }
 
     public void PlayMatchFound()
     {
-        PlaySound("match_found");
+        Sound.Play("match_found");
     }
 
     public void PlayRestartTask()
     {
-        PlaySound("restart_failed_tasks");
+        Sound.Play("restart_failed_tasks");
     }
 
     public void PlayRunthrough()
     {
-        PlaySound("runthrough_over");
+        Sound.Play("runthrough_over");
     }
 
-    public void PlayAirFilters()
+    public async void PlayAirFilters()
     {
-        PlaySound("air_filter_on");
+        await Sound.Play("air_filter_on");
+        Sound.Play("air_filter_off");
     }
 
     public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
@@ -184,7 +185,7 @@
             Properties.Settings.Default.Save();
         }
     }
-    
+
     public bool MinimizeAtStartupSwitch
     {
         get
@@ -321,22 +322,6 @@
             return true;
         }
         return false;
-    }
-
-    private void PlaySound(string key)
-    {
-        byte[] resource = null;
-        var filepath = GetCustomSoundPath(key);
-        if (File.Exists(filepath))
-        {
-            resource = File.ReadAllBytes(filepath);
-        }
-        resource ??= Properties.Resources.ResourceManager.GetObject(key) as byte[];
-        Stream stream = new MemoryStream(resource);
-        var reader = new NAudio.Wave.Mp3FileReader(stream);
-        var waveOut = new WaveOut();
-        waveOut.Init(reader);
-        waveOut.Play();
     }
 
     string PasteIcon = Icons.Material.Filled.ContentPaste;

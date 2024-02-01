@@ -119,7 +119,7 @@ namespace TarkovMonitor
         {
             if (Properties.Settings.Default.runthroughAlert)
             {
-                PlaySound("runthrough_over");
+                Sound.Play("runthrough_over");
             }
         }
 
@@ -185,7 +185,7 @@ namespace TarkovMonitor
             messageLog.AddMessage($"New TarkovMonitor version available ({e.Version})!", null, e.Uri.ToString());
         }
 
-        private void Eft_MapLoading(object? sender, EventArgs e)
+        private async void Eft_MapLoading(object? sender, EventArgs e)
         {
             if (TarkovTracker.Progress == null)
             {
@@ -215,17 +215,17 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                if (Properties.Settings.Default.restartTaskAlert)
-                {
-                    PlaySound("restart_failed_tasks");
-                }
-                if (Properties.Settings.Default.airFilterAlert)
-                {
-                    PlaySound("air_filter_on");
-                }
                 foreach (var task in failedTasks)
                 {
                     messageLog.AddMessage($"Failed task {task.name} should be restarted", "quest", task.wikiLink);
+                }
+                if (Properties.Settings.Default.restartTaskAlert)
+                {
+                    await Sound.Play("restart_failed_tasks");
+                }
+                if (Properties.Settings.Default.airFilterAlert)
+                {
+                    Sound.Play("air_filter_on");
                 }
             }
             catch (Exception ex)
@@ -332,7 +332,7 @@ namespace TarkovMonitor
         {
             if (Properties.Settings.Default.matchFoundAlert)
             {
-                PlaySound("match_found");
+                Sound.Play("match_found");
             }
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
@@ -360,10 +360,6 @@ namespace TarkovMonitor
         private async void Eft_TaskFinished(object? sender, TaskStatusMessageEventArgs e)
         {
             //await AllDataLoaded();
-            if (!TarkovTracker.ValidToken)
-            {
-                return;
-            }
             var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
             if (task == null)
             {
@@ -372,6 +368,11 @@ namespace TarkovMonitor
             }
 
             messageLog.AddMessage($"Completed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+
+            if (!TarkovTracker.ValidToken)
+            {
+                return;
+            }
             try
             {
                 await TarkovTracker.SetTaskComplete(task.id);
@@ -385,10 +386,6 @@ namespace TarkovMonitor
 
         private async void Eft_TaskFailed(object? sender, TaskStatusMessageEventArgs e)
         {
-            if (!TarkovTracker.ValidToken)
-            {
-                return;
-            }
             var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
             if (task == null)
             {
@@ -396,6 +393,11 @@ namespace TarkovMonitor
             }
 
             messageLog.AddMessage($"Failed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+
+            if (!TarkovTracker.ValidToken)
+            {
+                return;
+            }
             try
             {
                 await TarkovTracker.SetTaskFailed(task.id);
@@ -409,17 +411,17 @@ namespace TarkovMonitor
 
         private async void Eft_TaskStarted(object? sender, TaskStatusMessageEventArgs e)
         {
-            if (!TarkovTracker.ValidToken)
-            {
-                return;
-            }
             var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
             if (task == null)
             {
                 return;
             }
-
             messageLog.AddMessage($"Started task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+
+            if (!TarkovTracker.ValidToken)
+            {
+                return;
+            }
             try
             {
                 await TarkovTracker.SetTaskUncomplete(e.TaskId);
@@ -496,7 +498,7 @@ namespace TarkovMonitor
 
         private void Eft_RaidCountdown(object? sender, RaidInfoEventArgs e)
         {
-            if (Properties.Settings.Default.raidStartAlert) PlaySound("raid_starting");
+            if (Properties.Settings.Default.raidStartAlert) Sound.Play("raid_starting");
             if (Properties.Settings.Default.runthroughAlert)
             {
                 runthroughTimer.Stop();
@@ -508,7 +510,7 @@ namespace TarkovMonitor
         {
             if (e.RaidInfo.RaidType != RaidType.PMC || e.RaidInfo.QueueTime == 0)
             {
-                if (Properties.Settings.Default.raidStartAlert) PlaySound("raid_starting");
+                if (Properties.Settings.Default.raidStartAlert) Sound.Play("raid_starting");
             }
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
@@ -554,32 +556,6 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Error updating log message from event: {ex.Message}", "exception");
             }
-        }
-
-        private static void PlaySound(string key)
-        {
-            byte[] resource = null;
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var filepath = Path.Combine(localAppData, "TarkovMonitor", "sounds", $"{key}.mp3");
-            if (File.Exists(filepath))
-            {
-                resource = File.ReadAllBytes(filepath);
-            }
-            resource ??= Properties.Resources.ResourceManager.GetObject(key) as byte[];
-            Stream stream = new MemoryStream(resource);
-            var reader = new NAudio.Wave.Mp3FileReader(stream);
-            var waveOut = new WaveOut();
-            waveOut.Init(reader);
-            waveOut.Play();
-        }
-
-        private async Task<bool> AllDataLoaded()
-        {
-            while (TarkovDev.Items.Count == 0 || TarkovDev.Maps.Count == 0 || TarkovDev.Tasks.Count == 0 || TarkovTracker.Progress == null)
-            {
-                Thread.Sleep(500);
-            }
-            return true;
         }
 
         private void MainBlazorUI_Resize(object sender, EventArgs e)

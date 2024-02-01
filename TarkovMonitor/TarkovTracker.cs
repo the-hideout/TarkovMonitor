@@ -65,7 +65,7 @@ namespace TarkovMonitor
             }
             try
             {
-                TarkovDev.Tasks.ForEach(async task => {
+                TarkovDev.Tasks.ForEach(task => {
                     foreach (var failCondition in task.failConditions)
                     {
                         if (failCondition.task == null)
@@ -281,6 +281,18 @@ namespace TarkovMonitor
             public static TaskStatusBody Completed => new("completed");
             public static TaskStatusBody Uncompleted => new("uncompleted");
             public static TaskStatusBody Failed => new("failed");
+            public static TaskStatusBody From(TaskStatus code)
+            {
+                if (code == TaskStatus.Finished)
+                {
+                    return TaskStatusBody.Completed;
+                }
+                if (code == TaskStatus.Failed)
+                {
+                    return TaskStatusBody.Failed;
+                }
+                return TaskStatusBody.Uncompleted;
+            }
         }
     }
 }
