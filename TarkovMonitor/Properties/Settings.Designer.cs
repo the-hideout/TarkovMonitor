@@ -154,5 +154,17 @@ namespace TarkovMonitor.Properties {
                 this["stayOnTop"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool runthroughAlert {
+            get {
+                return ((bool)(this["runthroughAlert"]));
+            }
+            set {
+                this["runthroughAlert"] = value;
+            }
+        }
     }
 }

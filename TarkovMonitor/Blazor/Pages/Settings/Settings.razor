@@ -21,6 +21,9 @@
                 <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Restart Tasks Audio Reminder" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
+                <MudSwitch @bind-Checked="@RunthroughSwitch" Label="Runthrough Period Audio Reminder" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRunthrough"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
+            <div>
                 <MudSwitch @bind-Checked="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
         </MudPaper>
@@ -107,6 +110,11 @@
         PlaySound("restart_failed_tasks");
     }
 
+    public void PlayRunthrough()
+    {
+        PlaySound("runthrough_over");
+    }
+
     public void PlayAirFilters()
     {
         PlaySound("air_filter_on");
@@ -147,6 +155,19 @@
         set
         {
             Properties.Settings.Default.restartTaskAlert = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool RunthroughSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.runthroughAlert;
+        }
+        set
+        {
+            Properties.Settings.Default.runthroughAlert = value;
             Properties.Settings.Default.Save();
         }
     }

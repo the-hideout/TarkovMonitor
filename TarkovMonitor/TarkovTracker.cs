@@ -12,11 +12,7 @@ namespace TarkovMonitor
         [Get("/token")]
         Task<TokenResponse> TestToken([Header("Authorization")] string authorizationHeaderValue);
         [Post("/progress/task/{id}")]
-        Task<string> SetTaskComplete(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] string body = @$"{{""state"":""completed""}}");
-        [Post("/progress/task/{id}")]
-        Task<string> SetTaskFailed(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] string body = @$"{{""state"":""failed""}}");
-        [Post("/progress/task/{id}")]
-        Task<string> SetTaskUncomplete(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] string body = @$"{{""state"":""uncompleted""}}");
+        Task<string> SetTaskStatus(string id, [Header("Authorization")] string authorizationHeaderValue, [Body] TaskStatusBody body);
     }
 
     internal class TarkovTracker
@@ -37,7 +33,7 @@ namespace TarkovMonitor
 			}
             try
             {
-                await api.SetTaskComplete(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
+                await api.SetTaskStatus(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}", TaskStatusBody.Completed);
             }
             catch (ApiException ex)
             {
@@ -90,7 +86,7 @@ namespace TarkovMonitor
 			}
             try
             {
-                await api.SetTaskFailed(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
+                await api.SetTaskStatus(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}", TaskStatusBody.Failed);
                 return "success";
             }
             catch (ApiException ex)
@@ -133,7 +129,7 @@ namespace TarkovMonitor
             }
             try
             {
-                await api.SetTaskUncomplete(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}");
+                await api.SetTaskStatus(questId, $"Bearer {Properties.Settings.Default.tarkovTrackerToken}", TaskStatusBody.Uncompleted);
                 return "success";
             }
             catch (ApiException ex)
@@ -258,6 +254,21 @@ namespace TarkovMonitor
         public class ProgressResponseMeta
         {
             public string self { get; set; }
+        }
+        public class TaskStatusBody
+        {
+            public string state { get; set; }
+            public TaskStatusBody()
+            {
+                state = "uncompleted";
+            }
+            public TaskStatusBody(string newState)
+            {
+                state = newState;
+            }
+            public static TaskStatusBody Completed => new TaskStatusBody("completed");
+            public static TaskStatusBody Uncompleted => new TaskStatusBody("uncompleted");
+            public static TaskStatusBody Failed => new TaskStatusBody("failed");
         }
     }
 }

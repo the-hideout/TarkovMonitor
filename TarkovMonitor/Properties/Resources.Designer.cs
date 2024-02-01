@@ -111,6 +111,16 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] runthrough_over {
+            get {
+                object obj = ResourceManager.GetObject("runthrough_over", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         internal static System.Drawing.Bitmap tarkov_dev_logo {

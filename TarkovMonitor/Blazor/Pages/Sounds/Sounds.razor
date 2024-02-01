@@ -21,6 +21,9 @@
                 <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Custom Restart Tasks Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
+                <MudSwitch @bind-Checked="@RunthroughSwitch" Label="Custom Runthrough Period Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRunthrough"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
+            <div>
                 <MudSwitch @bind-Checked="@AirFilterOnSwitch" Label="Custom Air Filter On Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilterOn"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
@@ -71,6 +74,11 @@
     public void PlayRestartTask()
     {
         PlaySound("restart_failed_tasks");
+    }
+
+    public void PlayRunthrough()
+    {
+        PlaySound("runthrough_over");
     }
 
     public void PlayAirFilterOn()
@@ -133,6 +141,22 @@
                 fileDialog.Title = "Select restart failed tasks sound";
             }
             ToggleCustomSound("restart_failed_tasks", value);
+        }
+    }
+
+    public bool RunthroughSwitch
+    {
+        get
+        {
+            return CustomSoundExists("runthrough_over");
+        }
+        set
+        {
+            if (value)
+            {
+                fileDialog.Title = "Select runthrough period over sound";
+            }
+            ToggleCustomSound("runthrough_over", value);
         }
     }
 

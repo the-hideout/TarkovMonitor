@@ -16,6 +16,7 @@ namespace TarkovMonitor
         private readonly MessageLog messageLog;
         private readonly LogRepository logRepository;
         private readonly GroupManager groupManager;
+        private readonly System.Timers.Timer runthroughTimer;
 
         public MainBlazorUI()
         {
@@ -105,6 +106,21 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+
+            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds+TimeSpan.FromSeconds(10).TotalMilliseconds)
+            {
+                AutoReset = false,
+                Enabled = false
+            };
+            runthroughTimer.Elapsed += RunthroughTimer_Elapsed;
+        }
+
+        private void RunthroughTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (Properties.Settings.Default.runthroughAlert)
+            {
+                PlaySound("runthrough_over");
+            }
         }
 
         private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
@@ -114,6 +130,7 @@ namespace TarkovMonitor
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
             messageLog.AddMessage($"Ended {mapName} raid", "raidleave");
+            runthroughTimer.Stop();
         }
 
         private void Eft_GroupRaidSettings(object? sender, GroupRaidSettingsEventArgs e)
@@ -477,9 +494,14 @@ namespace TarkovMonitor
             messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
-        private static void Eft_RaidCountdown(object? sender, RaidInfoEventArgs e)
+        private void Eft_RaidCountdown(object? sender, RaidInfoEventArgs e)
         {
             if (Properties.Settings.Default.raidStartAlert) PlaySound("raid_starting");
+            if (Properties.Settings.Default.runthroughAlert)
+            {
+                runthroughTimer.Stop();
+                runthroughTimer.Start();
+            }
         }
 
         private async void Eft_RaidStart(object? sender, RaidInfoEventArgs e)
@@ -520,6 +542,7 @@ namespace TarkovMonitor
         private void Eft_RaidExited(object? sender, RaidExitedEventArgs e)
         {
             groupManager.Stale = true;
+            runthroughTimer.Stop();
             try
             {
                 var mapName = e.Map;
