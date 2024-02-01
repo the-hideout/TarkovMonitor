@@ -51,7 +51,7 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                ExceptionThrown?.Invoke(socket, new(new("Map remote control connection closed unexpectedly"), "running"));
+                //ExceptionThrown?.Invoke(socket, new(new("Map remote control connection closed unexpectedly"), "running"));
                 Connect();
             });
             await socket.Start();
