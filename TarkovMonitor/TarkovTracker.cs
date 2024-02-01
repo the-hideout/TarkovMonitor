@@ -257,18 +257,14 @@ namespace TarkovMonitor
         }
         public class TaskStatusBody
         {
-            public string state { get; set; }
-            public TaskStatusBody()
-            {
-                state = "uncompleted";
-            }
-            public TaskStatusBody(string newState)
+            public string state { get; private set; }
+            private TaskStatusBody(string newState)
             {
                 state = newState;
             }
-            public static TaskStatusBody Completed => new TaskStatusBody("completed");
-            public static TaskStatusBody Uncompleted => new TaskStatusBody("uncompleted");
-            public static TaskStatusBody Failed => new TaskStatusBody("failed");
+            public static TaskStatusBody Completed => new("completed");
+            public static TaskStatusBody Uncompleted => new("uncompleted");
+            public static TaskStatusBody Failed => new("failed");
         }
     }
 }
