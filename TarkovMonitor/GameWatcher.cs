@@ -18,7 +18,7 @@ namespace TarkovMonitor
         {
             get
             {
-                return Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + Path.DirectorySeparatorChar + "Escape From Tarkov" + Path.DirectorySeparatorChar + "Screenshots";
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Escape From Tarkov", "Screenshots");
             }
         }
         //private event EventHandler<NewLogEventArgs> NewLog;

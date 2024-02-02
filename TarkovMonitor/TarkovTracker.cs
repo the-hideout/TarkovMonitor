@@ -8,6 +8,8 @@ namespace TarkovMonitor
 {
     internal interface ITarkovTrackerAPI
     {
+        HttpClient Client { get; }
+
         [Get("/token")]
         [Headers("Authorization: Bearer {token}")]
         Task<TokenResponse> TestToken(string token);
@@ -41,15 +43,15 @@ namespace TarkovMonitor
         public static event EventHandler<EventArgs> TokenInvalid;
         public static event EventHandler<EventArgs> ProgressRetrieved;
 
-        public static async Task<string> SetTaskComplete(string questId)
+        public static async Task<string> SetTaskStatus(string questId, TaskStatus status)
         {
             if (!ValidToken)
             {
-				throw new Exception("Invalid token");
-			}
+                throw new Exception("Invalid token");
+            }
             try
             {
-                await api.SetTaskStatus(questId, TaskStatusBody.Completed);
+                await api.SetTaskStatus(questId, TaskStatusBody.From(status));
             }
             catch (ApiException ex)
             {
@@ -63,6 +65,12 @@ namespace TarkovMonitor
             {
                 throw new Exception($"TarkovTracker API error: {ex.Message}");
             }
+            return "success";
+        }
+
+        public static async Task<string> SetTaskComplete(string questId)
+        {
+            await SetTaskStatus(questId, TaskStatus.Finished);
             try
             {
                 TarkovDev.Tasks.ForEach(task => {
@@ -96,70 +104,24 @@ namespace TarkovMonitor
 
         public static async Task<string> SetTaskFailed(string questId)
         {
-            if (!ValidToken)
-            {
-				throw new Exception("Invalid token");
-			}
-            try
-            {
-                await api.SetTaskStatus(questId, TaskStatusBody.Failed);
-                return "success";
-            }
-            catch (ApiException ex)
-            {
-                if (ex.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    InvalidTokenException();
-                }
-                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
-            }
+            return await SetTaskStatus(questId, TaskStatus.Failed);
         }
 
         public static async Task<string> SetTaskUncomplete(string questId)
         {
-            if (!ValidToken)
-            {
-                throw new Exception("Invalid token");
-            }
-
-            var updateNeeded = false;
             foreach (var taskStatus in Progress.data.tasksProgress)
             {
-                if (taskStatus.id == questId)
+                if (taskStatus.id != questId)
                 {
-                    if (taskStatus.failed)
-                    {
-                        taskStatus.failed = false;
-                        updateNeeded = true;
-                    }
-                    break;
+                    continue;
                 }
-            }
-            if (!updateNeeded)
-            {
-                return "task not marked as failed";
-            }
-            try
-            {
-                await api.SetTaskStatus(questId, TaskStatusBody.Uncompleted);
-                return "success";
-            }
-            catch (ApiException ex)
-            {
-                if (ex.StatusCode == HttpStatusCode.Unauthorized)
+                if (taskStatus.failed)
                 {
-                    InvalidTokenException();
+                    return await SetTaskStatus(questId, TaskStatus.None);
                 }
-                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+                break;
             }
-            catch (Exception ex)
-            {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
-            }
+            return "task not marked as failed";
         }
 
         public static async Task<ProgressResponse> GetProgress()
@@ -231,10 +193,8 @@ namespace TarkovMonitor
 
         public class TokenResponse
         {
-            //public Dictionary<string, int> CreatedAt { get; set; }
             public List<string> permissions { get; set; }
             public string token { get; set; }
-            //public int Calls { get; set; }
         }
 
         public class ProgressResponse
@@ -292,6 +252,10 @@ namespace TarkovMonitor
                     return TaskStatusBody.Failed;
                 }
                 return TaskStatusBody.Uncompleted;
+            }
+            public static TaskStatusBody From(MessageType messageType)
+            {
+                return TaskStatusBody.From((TaskStatus)messageType);
             }
         }
     }
