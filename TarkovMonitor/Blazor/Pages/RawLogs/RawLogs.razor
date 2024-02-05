@@ -12,7 +12,7 @@
         </LogBoard>
 	</MudItem>
     <div class="ma-2" style="position:fixed; bottom: 0px; right: 0px;">
-        <MudMenu AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+        <MudMenu AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight" Class="@GetConditional()">
             <ActivatorContent>
                 <MudFab Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" />
             </ActivatorContent>
@@ -65,4 +65,8 @@
 	{
 	}
 
+    private string GetConditional()
+    {
+        return Debugger.IsAttached ? "" : "invisible";
+    }
 }

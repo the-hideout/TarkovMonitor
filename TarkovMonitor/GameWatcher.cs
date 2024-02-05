@@ -164,7 +164,8 @@ namespace TarkovMonitor
             {
                 //DebugMessage?.Invoke(this, new DebugEventArgs(e.NewMessage));
                 NewLogData?.Invoke(this, e);
-                var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
+                var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
+                //var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
                 /*Debug.WriteLine("===log chunk start===");
@@ -172,6 +173,8 @@ namespace TarkovMonitor
                 Debug.WriteLine("===log chunk end===");*/
                 foreach (Match logMessage in logMessages)
                 {
+                    var eventDate = new DateTime();
+                    DateTime.TryParseExact(logMessage.Groups["date"].Value + " " + logMessage.Groups["time"].Value.Split(" ")[0], "yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out eventDate);
                     var eventLine = logMessage.Groups["message"].Value;
                     var jsonString = "{}";
                     if (logMessage.Groups["json"].Success)
@@ -248,7 +251,8 @@ namespace TarkovMonitor
                     if (eventLine.Contains("application|GameStarting"))
                     {
                         // The raid start countdown begins. Only happens for PMCs.
-                        raidInfo.RaidType = RaidType.PMC;
+                        //raidInfo.RaidType = RaidType.PMC;
+                        raidInfo.StartingTime = eventDate;
                         RaidCountdown?.Invoke(this, new(raidInfo));
                     }
                     if (eventLine.Contains("application|GameStarted"))
@@ -257,13 +261,14 @@ namespace TarkovMonitor
                         if (raidInfo.RaidType == RaidType.Unknown && raidInfo.QueueTime > 0)
                         {
                             // RaidType was not set previously for PMC, and we spent time matching, so we must be a scav
-                            raidInfo.RaidType = RaidType.Scav;
+                            //raidInfo.RaidType = RaidType.Scav;
                         }
                         if (raidInfo.Online && raidInfo.RaidType != RaidType.PMC)
                         {
                             // We already raised the RaidLoaded event for PMC, so only raise here if not PMC
                             //RaidStarted?.Invoke(this, new(raidInfo));
                         }
+                        raidInfo.StartedTime = eventDate;
                         RaidStarted?.Invoke(this, new(raidInfo));
                         //raidInfo = new();
                     }
@@ -566,6 +571,9 @@ namespace TarkovMonitor
                 }
                 var newMon = new LogMonitor(path, (GameLogType)newType);
                 newMon.NewLogData += GameWatcher_NewLogData;
+                newMon.Exception += (object sender, ExceptionEventArgs e) => {
+                    ExceptionThrown?.Invoke(sender, e);
+                };
                 newMon.Start();
                 Monitors[(GameLogType)newType] = newMon;
             }
@@ -613,7 +621,26 @@ namespace TarkovMonitor
         public bool Online { get; set; }
         public float MapLoadTime { get; set; }
         public float QueueTime { get; set; }
-        public RaidType RaidType { get; set; }
+        public RaidType RaidType { 
+            get
+            {
+                if (QueueTime == 0)
+                {
+                    return RaidType.Unknown;
+                }
+                if (StartingTime == null || StartedTime == null)
+                {
+                    return RaidType.Unknown;
+                }
+                if ((StartedTime - StartingTime).TotalSeconds > 3)
+                {
+                    return RaidType.PMC;
+                }
+                return RaidType.Scav;
+            }
+        }
+        public DateTime StartingTime { get; set; }
+        public DateTime StartedTime { get; set; }
         public RaidInfo()
         {
             Map = "";
@@ -621,7 +648,7 @@ namespace TarkovMonitor
             RaidId = "";
             MapLoadTime = 0;
             QueueTime = 0;
-            RaidType = RaidType.Unknown;
+            //RaidType = RaidType.Unknown;
         }
     }
     public class Position

@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Refit;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static TarkovMonitor.TarkovTracker;
 
 // TO DO: Implement rate limit policy of 15 requests per minute
@@ -21,7 +22,11 @@ namespace TarkovMonitor
         [Post("/progress/task/{id}")]
         [Headers("Authorization: Bearer")]
         Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body);
-    }
+
+		[Post("/progress/tasks")]
+		[Headers("Authorization: Bearer")]
+		Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
+	}
 
     internal class TarkovTracker
     {
@@ -43,6 +48,37 @@ namespace TarkovMonitor
         public static event EventHandler<EventArgs> TokenInvalid;
         public static event EventHandler<EventArgs> ProgressRetrieved;
 
+        private static void SyncStoredStatus(string questId, TaskStatus status)
+        {
+            var storedStatus = Progress.data.tasksProgress.Find(ts => ts.id == questId);
+            if (storedStatus == null)
+            {
+                storedStatus = new()
+                {
+                    id = questId,
+                };
+                Progress.data.tasksProgress.Add(storedStatus);
+            }
+            if (status == TaskStatus.Finished && !storedStatus.complete)
+            {
+                storedStatus.complete = true;
+                storedStatus.failed = false;
+                storedStatus.invalid = false;
+            }
+            if (status == TaskStatus.Failed && !storedStatus.failed)
+            {
+                storedStatus.complete = false;
+                storedStatus.failed = true;
+                storedStatus.invalid = false;
+            }
+            if (status == TaskStatus.Started && (storedStatus.failed || storedStatus.invalid || storedStatus.complete))
+            {
+                storedStatus.complete = false;
+                storedStatus.failed = false;
+                storedStatus.invalid = false;
+            }
+        }
+
         public static async Task<string> SetTaskStatus(string questId, TaskStatus status)
         {
             if (!ValidToken)
@@ -52,6 +88,7 @@ namespace TarkovMonitor
             try
             {
                 await api.SetTaskStatus(questId, TaskStatusBody.From(status));
+                SyncStoredStatus(questId, status);
             }
             catch (ApiException ex)
             {
@@ -123,6 +160,42 @@ namespace TarkovMonitor
             }
             return "task not marked as failed";
         }
+
+        public static async Task<string> SetTaskStatuses(Dictionary<string, TaskStatus> statuses)
+        {
+			if (!ValidToken)
+			{
+				throw new Exception("Invalid token");
+			}
+            List<TaskStatusBody> body = new();
+            foreach (var kvp in statuses)
+            {
+                TaskStatusBody status = TaskStatusBody.From(kvp.Value);
+                status.id = kvp.Key;
+                body.Add(status);
+            }
+			try
+			{
+				await api.SetTaskStatuses(body);
+                foreach( var kvp in statuses)
+                {
+                    SyncStoredStatus(kvp.Key, kvp.Value);
+                }
+			}
+			catch (ApiException ex)
+			{
+				if (ex.StatusCode == HttpStatusCode.Unauthorized)
+				{
+					InvalidTokenException();
+				}
+				throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+			}
+			catch (Exception ex)
+			{
+				throw new Exception($"TarkovTracker API error: {ex.Message}");
+			}
+			return "success";
+		}
 
         public static async Task<ProgressResponse> GetProgress()
 		{
@@ -233,6 +306,7 @@ namespace TarkovMonitor
         }
         public class TaskStatusBody
         {
+            public string? id { get; set; }
             public string state { get; private set; }
             private TaskStatusBody(string newState)
             {

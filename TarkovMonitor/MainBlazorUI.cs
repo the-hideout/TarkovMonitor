@@ -434,6 +434,7 @@ namespace TarkovMonitor
 
         private async void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
         {
+            Stats.AddFleaSale(e);
             if (TarkovDev.Items == null)
             {
                 return;
@@ -510,8 +511,9 @@ namespace TarkovMonitor
         {
             if (e.RaidInfo.RaidType != RaidType.PMC || e.RaidInfo.QueueTime == 0)
             {
-                if (Properties.Settings.Default.raidStartAlert) Sound.Play("raid_starting");
+                //if (Properties.Settings.Default.raidStartAlert) Sound.Play("raid_starting");
             }
+            Stats.AddRaid(e);
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;

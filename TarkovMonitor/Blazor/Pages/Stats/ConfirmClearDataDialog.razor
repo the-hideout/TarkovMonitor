@@ -1,0 +1,22 @@
+﻿@inject GameWatcher eft
+
+<MudDialog>
+    <DialogContent>
+        <MudText>Are you sure you want to clear all data? This cannot be undone.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Clear Data</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    void Cancel() => MudDialog.Cancel();
+
+    public void Submit()
+    {
+        TarkovMonitor.Stats.ClearData();
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}

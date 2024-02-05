@@ -17,6 +17,9 @@
         {
             <span>Could not find the Escape From Tarkov installation location, or no logs exist.</span>
         }
+        @if (ErrorText != "") {
+            <MudText>@ErrorText</MudText>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
@@ -38,10 +41,11 @@
 
     List<LogDetails> breakpoints = new();
     Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
+    string ErrorText = "";
 
     void Cancel() => MudDialog.Cancel();
 
-    public void Submit()
+    public async void Submit()
     {
         // Check if a path was selected, and if so, load the logs from that path
         if (selectedBreakpoint != null)
@@ -51,6 +55,7 @@
             eft.TaskModified += UpdateTaskStatus;
             eft.ProcessLogsFromBreakpoint(selectedBreakpoint);
             eft.TaskModified -= UpdateTaskStatus;
+            Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
             foreach (var kvp in TaskStatuses)
             {
                 if (kvp.Value == TarkovMonitor.TaskStatus.Started)
@@ -82,19 +87,24 @@
                     // status matches, so don't update
                     continue;
                 }
-                if (kvp.Value == TarkovMonitor.TaskStatus.Finished)
-                {
-                    //TarkovTracker.SetTaskComplete(kvp.Key);
-                    System.Diagnostics.Debug.WriteLine($"Task {kvp.Key} should be complete");
-                }
-                if (kvp.Value == TarkovMonitor.TaskStatus.Failed)
-                {
-                    //TarkovTracker.SetTaskFailed(kvp.Key);
-                    System.Diagnostics.Debug.WriteLine($"Task {kvp.Key} should be failed");
-                }
+                updateTasks.Add(kvp.Key, kvp.Value);
+                System.Diagnostics.Debug.WriteLine($"Task {kvp.Key} should be {kvp.Value}");
             }
+            try
+            {
+                if (updateTasks.Count > 0)
+                {
+                    await TarkovTracker.SetTaskStatuses(updateTasks);
+                }
+                ErrorText = "";
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            catch (Exception ex)
+            {
+                ErrorText = ex.Message + ex.StackTrace;
+            }
+
         }
-        MudDialog.Close(DialogResult.Ok(true));
     }
 
     private void UpdateTaskStatus(object sender, TaskStatusMessageEventArgs e)

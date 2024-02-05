@@ -1,0 +1,92 @@
+﻿@page "/stats"
+@using System.Diagnostics
+@using NAudio.Wave
+@inject GameWatcher eft
+@inject MessageLog messageLog
+@inject IDialogService DialogService
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-0" Spacing="0">
+	<MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.CurrencyRuble" Class="mr-2"/>Flea Market Sales</MudText>
+            @foreach (KeyValuePair<string, string> currency in Currencies)
+            {
+                <MudText Typo="Typo.body2">@GetSales(currency.Key, currency.Value)</MudText>
+            }
+        </MudPaper>
+	</MudItem>
+    <MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Map" Class="mr-2" />Raids</MudText>
+            @foreach (var map in TarkovDev.Maps)
+            {
+                <MudText Typo="Typo.body2">@map.name: @GetRaidCount(map.nameId)</MudText>
+            }
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudButton @onclick="ClearData" Variant="Variant.Text" Color="Color.Info">Clear Data</MudButton>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+
+    [CascadingParameter(Name="AppLayout")]
+    public AppLayout AppLayout { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            AppLayout.SetTitle("Stats");
+        }
+    }
+
+    public void Dispose()
+    {
+    }
+
+    private Dictionary<string, string> Currencies = new()
+    {
+        { "5449016a4bdc2d6f028b456f", "ru-RU" },
+        { "5696686a4bdc2da3298b456a", "en-US" },
+        { "569668774bdc2da2298b4568", "de-DE" },
+    };
+
+    private RenderFragment GetSales(string currId, string formatCode)
+    {
+        return (builder) =>
+        {
+            builder.AddContent(0, TarkovMonitor.Stats.GetTotalSales(currId).ToString("C0", System.Globalization.CultureInfo.CreateSpecificCulture(formatCode)));
+        };
+    }
+
+    private RenderFragment GetRaidCount(string mapNameId)
+    {
+        return (builder) =>
+        {
+            builder.AddContent(0, TarkovMonitor.Stats.GetTotalRaids(mapNameId).ToString());
+        };
+    }
+
+    void ClearData()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
+        DialogService.Show<ConfirmClearDataDialog>("Clear Data?", options);
+    }
+}

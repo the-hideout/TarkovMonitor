@@ -11,6 +11,7 @@ namespace TarkovMonitor
         public string Path { get; set; }
         public GameLogType Type { get; set; }
         public event EventHandler<NewLogDataEventArgs> NewLogData;
+        public event EventHandler<ExceptionEventArgs> Exception;
         private bool cancel;
 
         public LogMonitor(string path, GameLogType logType)
@@ -61,7 +62,9 @@ namespace TarkovMonitor
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) {
+                        Exception?.Invoke(this, new(ex, $"reading {this.Type} log data"));
+                    }
 
                     Thread.Sleep(5000);
                 }
