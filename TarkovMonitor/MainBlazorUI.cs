@@ -171,8 +171,16 @@ namespace TarkovMonitor
         private void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
         {
             var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
+            if (map == null)
+            {
+                return;
+            }
             messageLog.AddMessage($"Player position on {map.name}: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
             SocketClient.UpdatePlayerPosition(e);
+            if (Properties.Settings.Default.navigateMapOnPositionUpdate)
+            {
+                SocketClient.NavigateToMap(map);
+            }
         }
 
         private void UpdateCheck_Error(object? sender, UpdateCheckErrorEventArgs e)

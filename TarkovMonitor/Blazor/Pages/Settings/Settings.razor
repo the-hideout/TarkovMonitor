@@ -63,6 +63,9 @@
             <div>
                 <MudSwitch @bind-Checked="@NavigateMapSwitch" Label="Switch to Tarkov.dev map on raid load" Color="Color.Info" />
             </div>
+            <div>
+                <MudSwitch @bind-Checked="@NavigateMapOnPositionUpdateSwitch" Label="Switch to Tarkov.dev map on position update (via screenshot)" Color="Color.Info" />
+            </div>
         </MudPaper>
     </MudItem>
 
@@ -369,6 +372,18 @@
         set
         {
             Properties.Settings.Default.autoNavigateMap = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+    public bool NavigateMapOnPositionUpdateSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.navigateMapOnPositionUpdate;
+        }
+        set
+        {
+            Properties.Settings.Default.navigateMapOnPositionUpdate = value;
             Properties.Settings.Default.Save();
         }
     }
