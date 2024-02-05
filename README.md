@@ -22,11 +22,13 @@ Once downloaded, extract the zip and run the `TarkovMonitor.exe` executable incl
 
 ### How does TarkovMonitor work?
 
-TarkovMonitor simply watches the log files that the game creates as it's running for certain events.
+TarkovMonitor simply watches the log files that the game creates as it's running. Certain log messages correspond with particular events, so it's possible to automatically read some game events from these log files.
 
 ### I've installed and run TarkovMonitor, why hasn't it marked all my completed quests as complete?
 
 TarkovMonitor only monitors new logs as they are being written while the app is running. Therefore, it doesn't automatically update quest progress that was made prior to the app running. It will, however, still mark quests as complete going forward while the app is running.
+
+If you want to automatically update your progress from previous logs, open the Settings page, scroll down to the First Time Setup section, and click the Read Past Logs button. Tarkov Monitor will then present you with a list of breakpoints to choose the starting point to read logs from. The breakpoints are determined by the game's version number and your player profile id as written into each set of logs. Select the breakpoint corresponding with the start of the wipe for the corret account, click OK, and Tarkov Monitor will process all logs from that point forward for the selected profile and update your quest progress accordingly.
 
 ### Is TarkovMonitor a cheat?
 
