@@ -10,24 +10,34 @@
 	<MudItem xs="12">
         <LogBoard>
         </LogBoard>
-	</MudItem>
-    <div class="ma-2" style="position:fixed; bottom: 0px; right: 0px;">
-        <MudMenu AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight" Class="@GetConditional()">
-            <ActivatorContent>
-                <MudFab Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" />
-            </ActivatorContent>
-            <ChildContent>
-                <MudMenuItem @onclick="OpenCustomDialog">Custom Log Data</MudMenuItem>
-                <MudMenuItem @onclick="OpenForceReadDialog">Read Previous Logs</MudMenuItem>
-            </ChildContent>
-        </MudMenu>
-    </div>
+    </MudItem>
+    @if (DebugMode() || LogsFolderSet())
+    {
+        <div class="ma-2" style="position:fixed; bottom: 0px; right: 0px;">
+            <MudMenu AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+                <ActivatorContent>
+                    <MudFab Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                </ActivatorContent>
+                <ChildContent>
+                    @if(DebugMode())
+                    {
+                        <MudMenuItem @onclick="OpenCustomDialog">Custom Log Data</MudMenuItem>
+                        <MudMenuItem @onclick="OpenForceReadDialog">Read Previous Logs</MudMenuItem>
+                    }
+                    @if(LogsFolderSet())
+                    {
+                        <MudMenuItem @onclick="OpenLogsFolder">Open Logs Folder</MudMenuItem>
+                    }
+                </ChildContent>
+            </MudMenu>
+        </div>
+    }
 </MudGrid>
 
 @code {
     [CascadingParameter(Name="AppLayout")]
     public AppLayout AppLayout { get; set; }
-    
+
     //private int messageCount = 0;
 
     private void OpenCustomDialog()
@@ -40,6 +50,12 @@
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
         DialogService.Show<ForceReadDialog>("Read Past Log Files", options);
+    }
+
+    private void OpenLogsFolder()
+    {
+        System.Diagnostics.Debug.WriteLine(eft.LogsFolder);
+        Process.Start("explorer.exe", eft.LogsFolder);
     }
 
     protected override void OnInitialized()
@@ -61,12 +77,17 @@
         }
     }
 
-	public void Dispose()
-	{
-	}
-
-    private string GetConditional()
+    public void Dispose()
     {
-        return Debugger.IsAttached ? "" : "invisible";
+    }
+
+    private bool DebugMode()
+    {
+        return Debugger.IsAttached;
+    }
+
+    private bool LogsFolderSet()
+    {
+        return eft.LogsFolder != "";
     }
 }

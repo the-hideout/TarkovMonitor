@@ -14,6 +14,7 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher watcher;
         private readonly FileSystemWatcher screenshotWatcher;
+        public string LogsFolder { get; private set; } = "";
         public string ScreenshotsPath
         {
             get
@@ -492,6 +493,7 @@ namespace TarkovMonitor
         {
             try
             {
+                var newProcess = false;
                 if (process != null)
                 {
                     if (!process.HasExited)
@@ -507,43 +509,55 @@ namespace TarkovMonitor
                 {
                     //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
                     process = null;
-                    return;
                 }
-                GameStarted?.Invoke(this, new EventArgs());
-                process = processes.First();
-                var logFolders = System.IO.Directory.GetDirectories(LogsPath);
-                var latestDate = new DateTime(0);
-                var latestLogFolder = logFolders.Last();
-                foreach (var logFolder in logFolders)
+                else
                 {
-                    var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
-                    var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
-                    if (logDate > latestDate)
-                    {
-                        latestDate = logDate;
-                        latestLogFolder = logFolder;
-                    }
+                    GameStarted?.Invoke(this, new EventArgs());
+                    process = processes.First();
+                    newProcess = true;
                 }
-                var files = System.IO.Directory.GetFiles(latestLogFolder);
-                foreach (var file in files)
+                if (newProcess || LogsFolder == "")
                 {
-                    if (file.Contains("notifications.log"))
-                    {
-                        StartNewMonitor(file);
-                    }
-                    if (file.Contains("application.log"))
-                    {
-                        StartNewMonitor(file);
-                    }
-                    /*if (file.Contains("traces.log"))
-                    {
-                        StartNewMonitor(file);
-                    }*/
+                    WatchLatestLogsFolder();
                 }
-
+                
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new(ex, "watching for EFT process"));
+            }
+        }
+
+        private void WatchLatestLogsFolder()
+        {
+            var logFolders = System.IO.Directory.GetDirectories(LogsPath);
+            var latestDate = new DateTime(0);
+            var latestLogFolder = logFolders.Last();
+            foreach (var logFolder in logFolders)
+            {
+                var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
+                var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
+                if (logDate > latestDate)
+                {
+                    latestDate = logDate;
+                    latestLogFolder = logFolder;
+                }
+            }
+            LogsFolder = latestLogFolder;
+            var files = System.IO.Directory.GetFiles(latestLogFolder);
+            foreach (var file in files)
+            {
+                if (file.Contains("notifications.log"))
+                {
+                    StartNewMonitor(file);
+                }
+                if (file.Contains("application.log"))
+                {
+                    StartNewMonitor(file);
+                }
+                /*if (file.Contains("traces.log"))
+                {
+                    StartNewMonitor(file);
+                }*/
             }
         }
 
