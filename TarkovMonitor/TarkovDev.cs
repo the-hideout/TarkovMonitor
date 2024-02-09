@@ -1,13 +1,19 @@
-﻿using System.Text;
-using GraphQL.Client.Http;
+﻿using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.SystemTextJson;
+using Refit;
 
 namespace TarkovMonitor
 {
     internal class TarkovDev
     {
+        internal interface ITarkovDevAPI
+        {
+            [Post("/queue")]
+            Task<QueueTimeResponse> SubmitQueueTime([Body] QueueTimeBody body);
+        }
+
         private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
-        private static readonly HttpClient httpClient = new();
+        private static ITarkovDevAPI api = RestService.For<ITarkovDevAPI>("https://manager.tarkov.dev/api");
         private static readonly System.Timers.Timer updateTimer = new() {
             AutoReset = true,
             Enabled = false, 
@@ -17,6 +23,8 @@ namespace TarkovMonitor
         public static List<Task> Tasks { get; private set; } = new();
         public static List<Map> Maps { get; private set; } = new();
         public static List<Item> Items { get; private set; } = new();
+        public static List<Trader> Traders { get; private set; } = new();
+        public static List<HideoutStation> Stations { get; private set; } = new();
 
         public async static Task<List<Task>> GetTasks()
         {
@@ -112,10 +120,62 @@ namespace TarkovMonitor
             }
             return Items;
         }
-
-        public async static Task<string> PostQueueTime(string mapNameId, int queueTime, string type)
+        public async static Task<List<Trader>> GetTraders()
         {
-            var queueApiUrl = "https://manager.tarkov.dev/api/queue";
+            var request = new GraphQL.GraphQLRequest()
+            {
+                Query = @"
+                    query TarkovMonitorTraders {
+                        traders {
+                            id
+                            name
+                            normalizedName 
+                            reputationLevels {
+                                ...on TraderReputationLevelFence {
+                                    minimumReputation
+                                    scavCooldownModifier
+                                }
+                            }
+                        }
+                    }
+                "
+            };
+            var response = await client.SendQueryAsync<TradersResponse>(request);
+            Traders = response.Data.traders;
+            return Traders;
+        }
+        public async static Task<List<HideoutStation>> GetHideout()
+        {
+            var request = new GraphQL.GraphQLRequest()
+            {
+                Query = @"
+                    query TarkovMonitorHideoutStations {
+                        hideoutStations {
+                            id
+                            name
+                            levels {
+                                id
+                                level
+                                bonuses {
+                                    ...on HideoutStationBonus {
+                                        type
+                                        name
+                                        value
+                                    }
+                                }
+                            }
+                        }
+                    }
+                "
+            };
+            var response = await client.SendQueryAsync<HideoutResponse>(request);
+            Stations = response.Data.hideoutStations;
+            return Stations;
+        }
+
+        public async static Task<QueueTimeResponse> PostQueueTime(string mapNameId, int queueTime, string type)
+        {
+            /*var queueApiUrl = "https://manager.tarkov.dev/api/queue";
             //var queueApiUrl = "http://localhost:4000/api/queue";
             var payload = $"{{\"map\":\"{mapNameId}\",\"time\":{queueTime}, \"type\": \"{type}\"}}";
             var request = new HttpRequestMessage(HttpMethod.Post, queueApiUrl)
@@ -132,6 +192,18 @@ namespace TarkovMonitor
             catch (Exception ex)
             {
                 throw new Exception($"{ex.Message}: {content}");
+            }*/
+            try
+            {
+                return await api.SubmitQueueTime(new QueueTimeBody() { map = mapNameId, time = queueTime, type = type });
+            }
+            catch (ApiException ex)
+            {
+                throw new Exception($"Invalid Queue API response code ({ex.StatusCode}): {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Queue API error: {ex.Message}");
             }
         }
 
@@ -146,6 +218,7 @@ namespace TarkovMonitor
             GetTasks();
             GetMaps();
             GetItems();
+            GetTraders();
         }
 
         public class TasksResponse
@@ -213,6 +286,105 @@ namespace TarkovMonitor
             public string gridImageLink { get; set; }
             public int width { get; set; }
             public int height { get; set; }
+        }
+
+        public class TradersResponse
+        {
+            public List<Trader> traders { get; set; }
+        }
+        public class Trader
+        {
+            public string id { get; set; }
+            public string name { get; set; }
+            public string normalizedName { get; set; }
+            public List<TraderReputationLevel> reputationLevels { get; set; }
+        }
+        public class TraderReputationLevel
+        {
+            public int minimumReputation { get; set; }
+            public decimal scavCooldownModifier { get; set; }
+        }
+
+        public class HideoutResponse
+        {
+            public List<HideoutStation> hideoutStations { get; set; }
+        }
+        public class HideoutStation
+        {
+            public string id { get; set; }
+            public string name { get; set; }
+            public string normalizedName { get; set; }
+            public List<StationLevel> levels { get; set; }
+        }
+        public class StationLevel
+        {
+            public string id { get; set; }
+            public int level { get; set; }
+            public List<StationBonus> bonuses { get; set; }
+        }
+        public class StationBonus
+        {
+            public string type { get; set; }
+            public string name { get; set; }
+            public decimal value { get; set; }
+        }
+
+        public class QueueTimeBody
+        {
+            public string map { get; set; }
+            public int time { get; set; }
+            public string type { get; set; }
+        }
+
+        public class QueueTimeResponse
+        {
+            public string status { get; set; }
+        }
+
+        public static int ScavCooldownSeconds()
+        {
+            decimal baseTimer = 1500;
+
+            decimal hideoutBonus = 0;
+            foreach (var station in Stations)
+            {
+                foreach (var level in station.levels)
+                {
+                    var cooldownBonus = level.bonuses.Find(b => b.type == "ScavCooldownTimer");
+                    if (cooldownBonus == null)
+                    {
+                        continue;
+                    }
+                    if (TarkovTracker.Progress == null)
+                    {
+                        continue;
+                    }
+                    var built = TarkovTracker.Progress.data.hideoutModulesProgress.Find(m => m.id == level.id && m.complete);
+                    if (built == null)
+                    {
+                        continue;
+                    }
+                    hideoutBonus += Math.Abs(cooldownBonus.value);
+                }
+            }
+
+            decimal karmaBonus = 1;
+            foreach (var trader in Traders)
+            {
+                foreach (var repLevel in trader.reputationLevels)
+                {
+                    if (Properties.Settings.Default.scavKarma >= repLevel.minimumReputation)
+                    {
+                        karmaBonus = repLevel.scavCooldownModifier;
+                    }
+                }
+            }
+
+            decimal coolDown = baseTimer * karmaBonus;
+
+            //System.Diagnostics.Debug.WriteLine($"{hideoutBonus} {karmaBonus} {coolDown}");
+
+            return (int)Math.Round(coolDown - (coolDown * hideoutBonus));
         }
     }
 }

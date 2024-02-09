@@ -178,5 +178,29 @@ namespace TarkovMonitor.Properties {
                 this["navigateMapOnPositionUpdate"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool scavCooldownAlert {
+            get {
+                return ((bool)(this["scavCooldownAlert"]));
+            }
+            set {
+                this["scavCooldownAlert"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int scavKarma {
+            get {
+                return ((int)(this["scavKarma"]));
+            }
+            set {
+                this["scavKarma"] = value;
+            }
+        }
     }
 }

@@ -25,6 +25,7 @@
                 <MudText Typo="Typo.body2">@map.name: @GetRaidCount(map.nameId)</MudText>
             }
         </MudPaper>
+        <!--MudChart ChartType="ChartType.StackedBar" ChartSeries="@Series" XAxisLabels="@XAxisLabels" Width="100%" Height="350px"></MudChart-->
     </MudItem>
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
@@ -34,6 +35,12 @@
 </MudGrid>
 
 @code {
+    /*public List<ChartSeries> Series = new List<ChartSeries>()
+    {
+        new ChartSeries() { Name = "PMC", Data = TarkovMonitor.Stats.GetTotalRaidsPerMap(RaidType.PMC).Values.ToArray().Select(n => (double)n).ToArray() },
+        new ChartSeries() { Name = "Scav", Data = TarkovMonitor.Stats.GetTotalRaidsPerMap(RaidType.Scav).Values.ToArray().Select(n => (double)n).ToArray() },
+    };
+    public string[] XAxisLabels = TarkovDev.Maps.Select(m => m.name).ToArray();*/
 
     [CascadingParameter(Name="AppLayout")]
     public AppLayout AppLayout { get; set; }
@@ -64,8 +71,8 @@
     private Dictionary<string, string> Currencies = new()
     {
         { "5449016a4bdc2d6f028b456f", "ru-RU" },
-        { "5696686a4bdc2da3298b456a", "en-US" },
-        { "569668774bdc2da2298b4568", "de-DE" },
+        //{ "5696686a4bdc2da3298b456a", "en-US" },
+        //{ "569668774bdc2da2298b4568", "de-DE" },
     };
 
     private RenderFragment GetSales(string currId, string formatCode)

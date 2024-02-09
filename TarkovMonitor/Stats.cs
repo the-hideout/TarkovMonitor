@@ -21,7 +21,7 @@ namespace TarkovMonitor
             List<string> createTableCommands = new()
             {
                 "CREATE TABLE IF NOT EXISTS flea_sales (id INTEGER PRIMARY KEY, item_id CHAR(24), buyer VARCHAR(14), count INT, currency CHAR(24), price INT, time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
-                "CREATE TABLE IF NOT EXISTS raids (id INTEGER PRIMARY KEY, map VARCHAR(24), raid_type INT, queue_time DECIMAL(6,2), time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+                "CREATE TABLE IF NOT EXISTS raids (id INTEGER PRIMARY KEY, map VARCHAR(24), raid_type INT, queue_time DECIMAL(6,2), raid_id VARCHAR(24), time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             };
             foreach (var commandText in createTableCommands)
             {
@@ -29,6 +29,32 @@ namespace TarkovMonitor
                 command.CommandText = commandText;
                 command.ExecuteNonQuery();
             }
+
+            // example of updating the DB to add a missing field
+            // useful for future updates
+            /*var raidIdFieldExists = false;
+            var result = Query("PRAGMA table_info(raids);");
+            while (result.Read())
+            {
+                for (int i = 0; i < result.FieldCount; i++)
+                {
+                    if (result.GetName(i) != "name")
+                    {
+                        continue;
+                    }
+                    if (result.GetString(i) == "raid_id")
+                    {
+                        raidIdFieldExists = true;
+                        break;
+                    }
+                }
+            }
+            if (!raidIdFieldExists)
+            {
+                using var command = new SQLiteCommand(Connection);
+                command.CommandText = "ALTER TABLE raids ADD COLUMN raid_id VARCHAR(24)";
+                command.ExecuteNonQuery();
+            }*/
         }
 
         public static void ClearData()
@@ -77,7 +103,7 @@ namespace TarkovMonitor
                 },
                 {
                     "price", e.ReceivedItems.ElementAt(0).Value
-                }
+                },
             };
             Query(sql, parameters);
         }
@@ -96,7 +122,7 @@ namespace TarkovMonitor
 		}
         public static void AddRaid(RaidInfoEventArgs e)
         {
-            var sql = "INSERT INTO raids(map, raid_type, queue_time) VALUES (@map, @raid_type, @queue_time);";
+            var sql = "INSERT INTO raids(map, raid_type, queue_time, raid_id) VALUES (@map, @raid_type, @queue_time, @raid_id);";
             var parameters = new Dictionary<string, object> {
                 {
                     "map", e.RaidInfo.Map
@@ -106,7 +132,10 @@ namespace TarkovMonitor
                 },
                 {
                     "queue_time", e.RaidInfo.QueueTime
-                }
+                },
+                {
+                    "raid_id", e.RaidInfo.RaidId
+                },
             };
             Query(sql, parameters);
         }
@@ -122,6 +151,30 @@ namespace TarkovMonitor
                 return reader.GetInt32(0);
             }
             return 0;
+        }
+        public static Dictionary<string, int> GetTotalRaidsPerMap(RaidType raidType)
+        {
+            Dictionary<string, int> mapTotals = new();
+            var reader = Query("SELECT map, COUNT(id) as total FROM raids WHERE raid_type = @raid_type GROUP BY map", new() { { "raid_type", raidType } });
+            while (reader.Read())
+            {
+                if (reader.IsDBNull(1))
+                {
+                    mapTotals[reader.GetString(0)] = 0;
+                    continue;
+                }
+                mapTotals[reader.GetString(0)] = reader.GetInt32(1);
+            }
+            Dictionary<string, int> raidsPerMap = new();
+            foreach (var map in TarkovDev.Maps)
+            {
+                raidsPerMap[map.name] = 0;
+                if (mapTotals.ContainsKey(map.nameId))
+                {
+                    raidsPerMap[map.name] = mapTotals[map.nameId];
+                }
+            }
+            return raidsPerMap;
         }
     }
 }

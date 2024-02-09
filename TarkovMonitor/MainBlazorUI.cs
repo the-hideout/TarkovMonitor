@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
-using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Globalization;
 using System.ComponentModel;
@@ -17,6 +16,7 @@ namespace TarkovMonitor
         private readonly LogRepository logRepository;
         private readonly GroupManager groupManager;
         private readonly System.Timers.Timer runthroughTimer;
+        private readonly System.Timers.Timer scavCooldownTimer;
 
         public MainBlazorUI()
         {
@@ -56,7 +56,7 @@ namespace TarkovMonitor
             eft.FleaOfferExpired += Eft_FleaOfferExpired;
             eft.DebugMessage += Eft_DebugMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
-            eft.RaidCountdown += Eft_RaidCountdown;
+            eft.RaidStarting += Eft_RaidStarting;
             eft.RaidStarted += Eft_RaidStart;
             eft.RaidExited += Eft_RaidExited;
             eft.RaidEnded += Eft_RaidEnded;
@@ -87,6 +87,8 @@ namespace TarkovMonitor
             UpdateItems();
             UpdateTasks();
             UpdateMaps();
+            UpdateTraders();
+            UpdateHideoutStations();
             TarkovDev.StartAutoUpdates();
 
             InitializeProgress();
@@ -113,6 +115,20 @@ namespace TarkovMonitor
                 Enabled = false
             };
             runthroughTimer.Elapsed += RunthroughTimer_Elapsed;
+            scavCooldownTimer = new System.Timers.Timer(TimeSpan.FromSeconds(TarkovDev.ScavCooldownSeconds()).TotalMilliseconds)
+            {
+                AutoReset = false,
+                Enabled = false
+            };
+            scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
+        }
+
+        private void ScavCooldownTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (Properties.Settings.Default.scavCooldownAlert)
+            {
+                Sound.Play("scav_available");
+            }
         }
 
         private void RunthroughTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -131,6 +147,11 @@ namespace TarkovMonitor
             if (map != null) mapName = map.name;
             messageLog.AddMessage($"Ended {mapName} raid", "raidleave");
             runthroughTimer.Stop();
+            if (e.RaidInfo.RaidType == RaidType.Scav && Properties.Settings.Default.scavCooldownAlert)
+            {
+                scavCooldownTimer.Stop();
+                scavCooldownTimer.Start();
+            }
         }
 
         private void Eft_GroupRaidSettings(object? sender, GroupRaidSettingsEventArgs e)
@@ -231,7 +252,7 @@ namespace TarkovMonitor
                 {
                     await Sound.Play("restart_failed_tasks");
                 }
-                if (Properties.Settings.Default.airFilterAlert)
+                if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
                 {
                     Sound.Play("air_filter_on");
                 }
@@ -315,6 +336,32 @@ namespace TarkovMonitor
             }
         }
 
+        private async Task UpdateTraders()
+        {
+            try
+            {
+                await TarkovDev.GetTraders();
+                messageLog.AddMessage($"Retrieved {TarkovDev.Traders.Count} traders from tarkov.dev", "update");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error updating traders: {ex.Message}");
+            }
+        }
+
+        private async Task UpdateHideoutStations()
+        {
+            try
+            {
+                await TarkovDev.GetHideout();
+                messageLog.AddMessage($"Retrieved {TarkovDev.Stations.Count} hideout stations from tarkov.dev", "update");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error updating hideout stations: {ex.Message}");
+            }
+        }
+
         private async Task InitializeProgress()
         {
             if (Properties.Settings.Default.tarkovTrackerToken == "")
@@ -352,6 +399,7 @@ namespace TarkovMonitor
         {
             try
             {
+                //Debug.WriteLine($"MainBlazorUI {e.Type} NewLogData");
                 logRepository.AddLog(e.Data, e.Type.ToString());
             } catch (Exception ex)
             {
@@ -505,29 +553,29 @@ namespace TarkovMonitor
             messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
-        private void Eft_RaidCountdown(object? sender, RaidInfoEventArgs e)
+        private void Eft_RaidStarting(object? sender, RaidInfoEventArgs e)
         {
-            if (Properties.Settings.Default.raidStartAlert) Sound.Play("raid_starting");
-            if (Properties.Settings.Default.runthroughAlert)
+            if (Properties.Settings.Default.raidStartAlert)
             {
-                runthroughTimer.Stop();
-                runthroughTimer.Start();
+                // always notify if the GameStarting event appeared
+                Sound.Play("raid_starting");
             }
         }
 
         private async void Eft_RaidStart(object? sender, RaidInfoEventArgs e)
         {
-            if (e.RaidInfo.RaidType != RaidType.PMC || e.RaidInfo.QueueTime == 0)
-            {
-                //if (Properties.Settings.Default.raidStartAlert) Sound.Play("raid_starting");
-            }
             Stats.AddRaid(e);
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            if (e.RaidInfo.RaidType != RaidType.Unknown)
+            if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
             {
                 messageLog.AddMessage($"Starting {e.RaidInfo.RaidType} raid on {mapName}");
+                if (Properties.Settings.Default.raidStartAlert && e.RaidInfo.StartingTime == null)
+                {
+                    // if there was no GameStarting event in the log, play the notification sound
+                    Sound.Play("raid_starting");
+                }
             }
             else
             {
@@ -537,9 +585,14 @@ namespace TarkovMonitor
             {
                 return;
             }
-            if (!e.RaidInfo.Online || e.RaidInfo.QueueTime == 0 || e.RaidInfo.RaidType == RaidType.Unknown)
+            if (e.RaidInfo.Reconnected || !e.RaidInfo.Online || e.RaidInfo.QueueTime == 0 || e.RaidInfo.RaidType == RaidType.Unknown)
             {
                 return;
+            }
+            if (Properties.Settings.Default.runthroughAlert && e.RaidInfo.RaidType == RaidType.PMC)
+            {
+                runthroughTimer.Stop();
+                runthroughTimer.Start();
             }
             try
             {

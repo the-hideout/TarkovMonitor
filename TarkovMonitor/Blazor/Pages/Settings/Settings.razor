@@ -26,6 +26,15 @@
             <div>
                 <MudSwitch @bind-Checked="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
+            <div>
+                <MudSwitch @bind-Checked="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+                <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="Scav Karma" AnchorOrigin="Origin.BottomCenter" xs="3">
+                    @foreach (TarkovDev.TraderReputationLevel lvl in TarkovDev.Traders.Find(t => t.normalizedName == "fence").reputationLevels) {
+                        <MudSelectItem Value="@lvl.minimumReputation" />
+                    }
+                </MudSelect>
+            </div>
         </MudPaper>
 	</MudItem>
 
@@ -133,6 +142,11 @@
         Sound.Play("air_filter_off");
     }
 
+    public void PlayScavAvailable()
+    {
+        Sound.Play("scav_available");
+    }
+
     public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
 
     public bool RaidStartSwitch { 
@@ -194,6 +208,32 @@
         set
         {
             Properties.Settings.Default.airFilterAlert = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool ScavCooldownSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.scavCooldownAlert;
+        }
+        set
+        {
+            Properties.Settings.Default.scavCooldownAlert = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public int ScavKarmaSelect
+    {
+        get
+        {
+            return Properties.Settings.Default.scavKarma;
+        }
+        set
+        {
+            Properties.Settings.Default.scavKarma = value;
             Properties.Settings.Default.Save();
         }
     }

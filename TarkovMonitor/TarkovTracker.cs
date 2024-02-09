@@ -1,35 +1,33 @@
 ﻿using System.Net;
 using Refit;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-using static TarkovMonitor.TarkovTracker;
 
 // TO DO: Implement rate limit policy of 15 requests per minute
 
 namespace TarkovMonitor
 {
-    internal interface ITarkovTrackerAPI
-    {
-        HttpClient Client { get; }
-
-        [Get("/token")]
-        [Headers("Authorization: Bearer {token}")]
-        Task<TokenResponse> TestToken(string token);
-
-        [Get("/progress")]
-        [Headers("Authorization: Bearer")]
-        Task<ProgressResponse> GetProgress();
-
-        [Post("/progress/task/{id}")]
-        [Headers("Authorization: Bearer")]
-        Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body);
-
-		[Post("/progress/tasks")]
-		[Headers("Authorization: Bearer")]
-		Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
-	}
-
     internal class TarkovTracker
     {
+        internal interface ITarkovTrackerAPI
+        {
+            HttpClient Client { get; }
+
+            [Get("/token")]
+            [Headers("Authorization: Bearer {token}")]
+            Task<TokenResponse> TestToken(string token);
+
+            [Get("/progress")]
+            [Headers("Authorization: Bearer")]
+            Task<ProgressResponse> GetProgress();
+
+            [Post("/progress/task/{id}")]
+            [Headers("Authorization: Bearer")]
+            Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body);
+
+            [Post("/progress/tasks")]
+            [Headers("Authorization: Bearer")]
+            Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
+        }
+
         private static ITarkovTrackerAPI api = RestService.For<ITarkovTrackerAPI>("https://tarkovtracker.io/api/v2",
             new RefitSettings
             {
@@ -264,6 +262,26 @@ namespace TarkovMonitor
             throw new Exception("Tarkov Tracker token is invalid");
         }
 
+        public static bool HasAirFilter()
+        {
+            if (Progress == null)
+            {
+                return false;
+            }
+            var airFilterStation = TarkovDev.Stations.Find(s => s.normalizedName == "air-filtering-unit");
+            if (airFilterStation == null)
+            {
+                return false;
+            }
+            var stationLevel = airFilterStation.levels.FirstOrDefault();
+            if (stationLevel == null)
+            {
+                return false;
+            }
+            var built = Progress.data.hideoutModulesProgress.Find(m => m.id == stationLevel.id && m.complete);
+            return built != null;
+        }
+
         public class TokenResponse
         {
             public List<string> permissions { get; set; }
@@ -279,7 +297,7 @@ namespace TarkovMonitor
         public class ProgressResponseData
         {
             public List<ProgressResponseTask> tasksProgress { get; set; }
-            public List<ProgressResponseHideoutPart> hideoutModulesProgress { get; set; }
+            public List<ProgressResponseHideoutModules> hideoutModulesProgress { get; set; }
             public string? displayName { get; set; }
             public string userId { get; set; }
             public int playerLevel { get; set; }
@@ -294,11 +312,10 @@ namespace TarkovMonitor
             public bool invalid { get; set; }
             public bool failed { get; set; }
         }
-        public class ProgressResponseHideoutPart    
+        public class ProgressResponseHideoutModules    
         {
             public string id { get; set; }
             public bool complete { get; set; }
-            public int count { get; set; }
         }
         public class ProgressResponseMeta
         {

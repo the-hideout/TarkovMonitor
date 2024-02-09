@@ -29,6 +29,9 @@
             <div>
                 <MudSwitch @bind-Checked="@AirFilterOffSwitch" Label="Custom Air Filter On Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilterOff"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
+            <div>
+                <MudSwitch @bind-Checked="@ScavCooldownSwitch" Label="Custom Air Filter On Sound" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
         </MudPaper>
 	</MudItem>
 </MudGrid>
@@ -91,6 +94,11 @@
         Sound.Play("air_filter_off");
     }
 
+    public void PlayScavAvailable()
+    {
+        Sound.Play("scav_available");
+    }
+
     public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
 
     private OpenFileDialog fileDialog = new OpenFileDialog()
@@ -101,7 +109,7 @@
     public bool RaidStartSwitch { 
         get 
         {
-            return CustomSoundExists("raid_starting");
+            return Sound.IsCustom("raid_starting");
         }
         set
         {
@@ -116,7 +124,7 @@
     public bool MatchFoundSwitch { 
         get 
         {
-            return CustomSoundExists("match_found");
+            return Sound.IsCustom("match_found");
         }
         set
         {
@@ -132,7 +140,7 @@
     {
         get
         {
-            return CustomSoundExists("restart_failed_tasks");
+            return Sound.IsCustom("restart_failed_tasks");
         }
         set
         {
@@ -148,7 +156,7 @@
     {
         get
         {
-            return CustomSoundExists("runthrough_over");
+            return Sound.IsCustom("runthrough_over");
         }
         set
         {
@@ -164,7 +172,7 @@
     {
         get
         {
-            return CustomSoundExists("air_filter_on");
+            return Sound.IsCustom("air_filter_on");
         }
         set
         {
@@ -180,7 +188,7 @@
     {
         get
         {
-            return CustomSoundExists("air_filter_off");
+            return Sound.IsCustom("air_filter_off");
         }
         set
         {
@@ -189,6 +197,22 @@
                 fileDialog.Title = "Select air filter off sound";
             }
             ToggleCustomSound("air_filter_off", value);
+        }
+    }
+
+    public bool ScavCooldownSwitch
+    {
+        get
+        {
+            return Sound.IsCustom("scav_available");
+        }
+        set
+        {
+            if (value)
+            {
+                fileDialog.Title = "Select scav available sound";
+            }
+            ToggleCustomSound("scav_available", value);
         }
     }
 
@@ -201,44 +225,18 @@
             {
                 return;
             }
-            var soundspath = GetCustomSoundsPath();
-            if (!Directory.Exists(soundspath))
-            {
-                Directory.CreateDirectory(soundspath);
-            }
-            string customPath = GetCustomSoundPath(key);
-            File.Copy(fileDialog.FileName, customPath);
+            Sound.SetCustomSound(key, fileDialog.FileName);
         }
         else
         {
             try
             {
-                File.Delete(GetCustomSoundPath(key));
+                Sound.RemoveCustomSound(key);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine(ex);
             }
         }
-    }
-    private string GetCustomSoundsPath()
-    {
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(localAppData, "TarkovMonitor", "sounds");
-    }
-
-    private string GetCustomSoundPath(string key)
-    {
-        return Path.Combine(GetCustomSoundsPath(), $"{key}.mp3");
-    }
-
-    private bool CustomSoundExists(string key)
-    {
-        var filepath = GetCustomSoundPath(key);
-        if (File.Exists(filepath))
-        {
-            return true;
-        }
-        return false;
     }
 }

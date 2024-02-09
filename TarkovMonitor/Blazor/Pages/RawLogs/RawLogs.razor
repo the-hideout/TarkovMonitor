@@ -54,8 +54,7 @@
 
     private void OpenLogsFolder()
     {
-        System.Diagnostics.Debug.WriteLine(eft.LogsFolder);
-        Process.Start("explorer.exe", eft.LogsFolder);
+        Process.Start("explorer.exe", eft.CurrentLogsFolder);
     }
 
     protected override void OnInitialized()
@@ -88,6 +87,6 @@
 
     private bool LogsFolderSet()
     {
-        return eft.LogsFolder != "";
+        return eft.CurrentLogsFolder != "";
     }
 }

@@ -12,9 +12,27 @@ namespace TarkovMonitor
     {
         private Process? process;
         private readonly System.Timers.Timer processTimer;
-        private readonly FileSystemWatcher watcher;
+        private readonly FileSystemWatcher logFileCreateWatcher;
         private readonly FileSystemWatcher screenshotWatcher;
-        public string LogsFolder { get; private set; } = "";
+        public string LogsPath { get; private set; } = "";
+        public string CurrentLogsFolder {
+            get
+            {
+                if (Monitors.Count == 0)
+                {
+                    return "";
+                }
+                try
+                {
+                    var logInfo = new FileInfo(Monitors[0].Path);
+                    return logInfo.DirectoryName;
+                }
+                catch { }
+                return "";
+                
+            }
+        }
+        private readonly Dictionary<string, RaidInfo> Raids = new();
         public string ScreenshotsPath
         {
             get
@@ -39,7 +57,7 @@ namespace TarkovMonitor
         public event EventHandler<RaidInfoEventArgs> MatchFound; // only fires on initial load into a raid
         public event EventHandler<RaidInfoEventArgs> MapLoaded; // fires on initial and subsequent loads into a raid
         public event EventHandler<RaidInfoEventArgs> MatchingAborted;
-        public event EventHandler<RaidInfoEventArgs> RaidCountdown;
+        public event EventHandler<RaidInfoEventArgs> RaidStarting;
         public event EventHandler<RaidInfoEventArgs> RaidStarted;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
         public event EventHandler<RaidInfoEventArgs> RaidEnded;
@@ -50,20 +68,17 @@ namespace TarkovMonitor
         public event EventHandler<FleaSoldMessageEventArgs> FleaSold;
         public event EventHandler<FleaExpiredeMessageEventArgs> FleaOfferExpired;
         public event EventHandler<PlayerPositionEventArgs> PlayerPosition;
-        public string LogsPath { get; set; } = "";
 
         public GameWatcher()
         {
             Monitors = new();
             raidInfo = new RaidInfo();
-            using (RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov"))
+            using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov");
+            if (key != null)
             {
-                if (key != null)
-                {
-                    LogsPath = System.IO.Path.Combine(key.GetValue("InstallLocation").ToString(), "Logs");
-                }
+                LogsPath = System.IO.Path.Combine(key.GetValue("InstallLocation").ToString(), "Logs");
             }
-            watcher = new FileSystemWatcher
+            logFileCreateWatcher = new FileSystemWatcher
             {
                 Filter = "*.log",
                 IncludeSubdirectories = true,
@@ -138,16 +153,19 @@ namespace TarkovMonitor
 
         public void Start()
         {
-
-            watcher.EnableRaisingEvents = true;
+            logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
+            logFileCreateWatcher.EnableRaisingEvents = true;
             processTimer.Elapsed += ProcessTimer_Elapsed;
-            watcher.Created += Watcher_Created;
             UpdateProcess();
             SetupScreenshotWatcher();
             processTimer.Enabled = true;
+            if (Monitors.Count == 0)
+            {
+                WatchLogsFolder(GetLatestLogFolder());
+            }
         }
 
-        private void Watcher_Created(object sender, FileSystemEventArgs e)
+        private void LogFileCreateWatcher_Created(object sender, FileSystemEventArgs e)
         {
             if (e.Name.Contains("application.log"))
             {
@@ -242,7 +260,15 @@ namespace TarkovMonitor
                         raidInfo.Map = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
-                        if (raidInfo.Online && raidInfo.QueueTime > 0)
+                        if (Raids.ContainsKey(raidInfo.RaidId)) {
+                            raidInfo = Raids[raidInfo.RaidId];
+                            raidInfo.Reconnected = true;
+                        }
+                        else
+                        {
+                            Raids.Add(raidInfo.RaidId, raidInfo);
+                        }
+                        if (!raidInfo.Reconnected && raidInfo.Online && raidInfo.QueueTime > 0)
                         {
                             // Raise the MatchFound event only if we queued; not if we are re-loading back into a raid
                             MatchFound?.Invoke(this, new(raidInfo));
@@ -251,25 +277,21 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("application|GameStarting"))
                     {
-                        // The raid start countdown begins. Only happens for PMCs.
-                        //raidInfo.RaidType = RaidType.PMC;
-                        raidInfo.StartingTime = eventDate;
-                        RaidCountdown?.Invoke(this, new(raidInfo));
+                        // GameStarting always happens for PMCs and sometimes happens for scavs.
+                        // For PMCs, it corresponds with the start of the countdown timer.
+                        if (!raidInfo.Reconnected)
+                        {
+                            raidInfo.StartingTime = eventDate;
+                        }
+                        RaidStarting?.Invoke(this, new(raidInfo));
                     }
                     if (eventLine.Contains("application|GameStarted"))
                     {
                         // Raid begins, either at the end of the countdown for PMC, or immediately as a scav
-                        if (raidInfo.RaidType == RaidType.Unknown && raidInfo.QueueTime > 0)
+                        if (!raidInfo.Reconnected)
                         {
-                            // RaidType was not set previously for PMC, and we spent time matching, so we must be a scav
-                            //raidInfo.RaidType = RaidType.Scav;
+                            raidInfo.StartedTime = eventDate;
                         }
-                        if (raidInfo.Online && raidInfo.RaidType != RaidType.PMC)
-                        {
-                            // We already raised the RaidLoaded event for PMC, so only raise here if not PMC
-                            //RaidStarted?.Invoke(this, new(raidInfo));
-                        }
-                        raidInfo.StartedTime = eventDate;
                         RaidStarted?.Invoke(this, new(raidInfo));
                         //raidInfo = new();
                     }
@@ -330,7 +352,6 @@ namespace TarkovMonitor
                             }
                         }
                     }
-                    
                 }
             }
             catch (Exception ex)
@@ -360,7 +381,8 @@ namespace TarkovMonitor
                 }
                 // Return the dictionary sorted by the timestamp
                 return folderDictionary.OrderByDescending(key => key.Key).ToDictionary(x => x.Key, x => x.Value);
-            } else
+            } 
+            else
             {
                 return new Dictionary<DateTime, string>();
             }
@@ -493,7 +515,6 @@ namespace TarkovMonitor
         {
             try
             {
-                var newProcess = false;
                 if (process != null)
                 {
                     if (!process.HasExited)
@@ -509,25 +530,18 @@ namespace TarkovMonitor
                 {
                     //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
                     process = null;
+                    return;
                 }
-                else
-                {
-                    GameStarted?.Invoke(this, new EventArgs());
-                    process = processes.First();
-                    newProcess = true;
-                }
-                if (newProcess || LogsFolder == "")
-                {
-                    WatchLatestLogsFolder();
-                }
-                
+                GameStarted?.Invoke(this, new EventArgs());
+                process = processes.First();
+
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new(ex, "watching for EFT process"));
             }
         }
 
-        private void WatchLatestLogsFolder()
+        private string GetLatestLogFolder()
         {
             var logFolders = System.IO.Directory.GetDirectories(LogsPath);
             var latestDate = new DateTime(0);
@@ -542,8 +556,12 @@ namespace TarkovMonitor
                     latestLogFolder = logFolder;
                 }
             }
-            LogsFolder = latestLogFolder;
-            var files = System.IO.Directory.GetFiles(latestLogFolder);
+            return latestLogFolder ?? "";
+        }
+
+        private void WatchLogsFolder(string folderPath)
+        {
+            var files = System.IO.Directory.GetFiles(folderPath);
             foreach (var file in files)
             {
                 if (file.Contains("notifications.log"))
@@ -635,26 +653,29 @@ namespace TarkovMonitor
         public bool Online { get; set; }
         public float MapLoadTime { get; set; }
         public float QueueTime { get; set; }
+        public bool Reconnected { get; set; }
         public RaidType RaidType { 
             get
             {
-                if (QueueTime == 0)
+                // if raid hasn't started, we don't have enough info to know what type it is
+                if (StartedTime == null)
                 {
                     return RaidType.Unknown;
                 }
-                if (StartingTime == null || StartedTime == null)
-                {
-                    return RaidType.Unknown;
-                }
-                if ((StartedTime - StartingTime).TotalSeconds > 3)
+
+                // if GameStarting appeared, could be PMC or scav
+                // check time elapsed between the two to account for the PMC countdown
+                if (StartingTime != null && (StartedTime - StartingTime)?.TotalSeconds > 3)
                 {
                     return RaidType.PMC;
                 }
+
+                // not PMC, so must be scav
                 return RaidType.Scav;
             }
         }
-        public DateTime StartingTime { get; set; }
-        public DateTime StartedTime { get; set; }
+        public DateTime? StartingTime { get; set; }
+        public DateTime? StartedTime { get; set; }
         public RaidInfo()
         {
             Map = "";
@@ -662,6 +683,7 @@ namespace TarkovMonitor
             RaidId = "";
             MapLoadTime = 0;
             QueueTime = 0;
+            Reconnected = false;
             //RaidType = RaidType.Unknown;
         }
     }

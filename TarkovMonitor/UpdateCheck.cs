@@ -1,12 +1,20 @@
 ﻿
-using System.Text.Json.Nodes;
+using Refit;
 
 namespace TarkovMonitor
 {
     internal class UpdateCheck
     {
+        internal interface IGitHubAPI
+        {
+            [Get("/releases/latest")]
+            [Headers("user-agent: tarkov-monitor")]
+            Task<ReleaseData> GetLatestRelease();
+        }
+
         private static string repo = "the-hideout/TarkovMonitor";
-        private static readonly HttpClient client = new();
+
+        private static IGitHubAPI api = RestService.For<IGitHubAPI>($"https://api.github.com/repos/{repo}");
 
         public static event EventHandler<NewVersionEventArgs> NewVersion;
         public static event EventHandler<UpdateCheckErrorEventArgs> Error;
@@ -15,25 +23,30 @@ namespace TarkovMonitor
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");
-                request.Headers.Add("user-agent", "tarkov-monitor");
-                var response = await client.SendAsync(request);
-                response.EnsureSuccessStatusCode();
-                JsonNode latestRelease = JsonNode.Parse(await response.Content.ReadAsStringAsync());
-
-                Version remoteVersion = new Version(latestRelease["tag_name"].ToString());
+                var release = await api.GetLatestRelease();
+                Version remoteVersion = new Version(release.tag_name);
                 Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
                 //System.Diagnostics.Debug.WriteLine(localVersion.ToString());
 
                 if (localVersion.CompareTo(remoteVersion) == -1)
                 {
-                    NewVersion?.Invoke(null, new() { Version = remoteVersion, Uri = new(latestRelease["html_url"].ToString()) });
+                    NewVersion?.Invoke(null, new() { Version = remoteVersion, Uri = new(release.html_url) });
                 }
+            }
+            catch (ApiException ex)
+            {
+                throw new Exception($"Invalid GitHub API response code ({ex.StatusCode}): {ex.Message}");
             }
             catch (Exception ex)
             {
-                Error?.Invoke(null, new() { Exception = ex });
+                throw new Exception($"GitHub API error: {ex.Message}");
             }
+        }
+
+        public class ReleaseData
+        {
+            public string tag_name { get; set; }
+            public string html_url { get; set; }
         }
     }
 
