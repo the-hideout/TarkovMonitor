@@ -44,12 +44,16 @@ namespace TarkovMonitor
         public static async Task Play(string key)
         {
             await Task.Run(() => {
-                byte[] resource = null;
+                byte[]? resource = null;
                 if (IsCustom(key))
                 {
                     resource = File.ReadAllBytes(SoundPath(key));
                 }
                 resource ??= Properties.Resources.ResourceManager.GetObject(key) as byte[];
+                if (resource == null)
+                {
+                    throw new Exception($"Could not load resource for {key}");
+                }
                 using Stream stream = new MemoryStream(resource);
                 using var reader = new Mp3FileReader(stream);
                 using var waveOut = new WaveOut();

@@ -53,12 +53,18 @@
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.PowerSettingsNew" Class="mr-2"/>Startup</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Window" Class="mr-2"/>Window Behavior</MudText>
             <div>
                 <MudSwitch @bind-Checked="@MinimizeAtStartupSwitch" Label="Start Tarkov Monitor Minimized" Color="Color.Info" />
             </div>
             <div>
                 <MudSwitch @bind-Checked="@StayOnTopSwitch" Label="Stay on Top" Color="Color.Info" />
+            </div>
+            <div>
+                <MudSwitch @bind-Checked="@MinimizeToTraySwitch" Label="Minimize to System Tray" Color="Color.Info" />
+            </div>
+            <div>
+                <MudSwitch @bind-Checked="@SkipSplashSwitch" Label="Skip Tarkov.dev Splash Logo" Color="Color.Info" />
             </div>
         </MudPaper>
 	</MudItem>
@@ -289,6 +295,32 @@
         set
         {
             Properties.Settings.Default.stayOnTop = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool MinimizeToTraySwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.minimizeToTray;
+        }
+        set
+        {
+            Properties.Settings.Default.minimizeToTray = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool SkipSplashSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.skipSplash;
+        }
+        set
+        {
+            Properties.Settings.Default.skipSplash = value;
             Properties.Settings.Default.Save();
         }
     }

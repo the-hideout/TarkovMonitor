@@ -28,7 +28,7 @@ namespace TarkovMonitor
                 Properties.Settings.Default.Save();
             }
             this.TopMost = Properties.Settings.Default.stayOnTop;
-            Properties.Settings.Default.PropertyChanged += (object sender, PropertyChangedEventArgs e) => {
+            Properties.Settings.Default.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
                 if (e.PropertyName != "stayOnTop")
                 {
                     return;
@@ -40,7 +40,7 @@ namespace TarkovMonitor
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
-            messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()}");
+            messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
 
             // Singleton log repository to record, display, and analyze logs for TarkovMonitor
             logRepository = new LogRepository();
@@ -499,7 +499,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
+        private void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
         {
             Stats.AddFleaSale(e);
             if (TarkovDev.Items == null)
@@ -634,7 +634,7 @@ namespace TarkovMonitor
 
         private void MainBlazorUI_Resize(object sender, EventArgs e)
         {
-            if (this.WindowState == FormWindowState.Minimized)
+            if (this.WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
             {
                 Hide();
                 notifyIconTarkovMonitor.Visible = true;
