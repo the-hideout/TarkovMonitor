@@ -130,4 +130,16 @@
   <data name="restart_failed_tasks" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\sounds\restart_failed_tasks.mp3;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="air_filter_off" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\sounds\air_filter_off.mp3;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="air_filter_on" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\sounds\air_filter_on.mp3;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="runthrough_over" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\sounds\runthrough_over.mp3;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="scav_available" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\sounds\scav_available.mp3;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
 </root>

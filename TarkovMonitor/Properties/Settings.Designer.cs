@@ -82,22 +82,19 @@ namespace TarkovMonitor.Properties {
                 this["restartTaskAlert"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool minimizeAtStartup
-        {
-            get
-            {
+        public bool minimizeAtStartup {
+            get {
                 return ((bool)(this["minimizeAtStartup"]));
             }
-            set
-            {
+            set {
                 this["minimizeAtStartup"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
@@ -131,6 +128,90 @@ namespace TarkovMonitor.Properties {
             }
             set {
                 this["autoNavigateMap"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool airFilterAlert {
+            get {
+                return ((bool)(this["airFilterAlert"]));
+            }
+            set {
+                this["airFilterAlert"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool stayOnTop {
+            get {
+                return ((bool)(this["stayOnTop"]));
+            }
+            set {
+                this["stayOnTop"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool runthroughAlert {
+            get {
+                return ((bool)(this["runthroughAlert"]));
+            }
+            set {
+                this["runthroughAlert"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool navigateMapOnPositionUpdate {
+            get {
+                return ((bool)(this["navigateMapOnPositionUpdate"]));
+            }
+            set {
+                this["navigateMapOnPositionUpdate"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool scavCooldownAlert {
+            get {
+                return ((bool)(this["scavCooldownAlert"]));
+            }
+            set {
+                this["scavCooldownAlert"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int scavKarma {
+            get {
+                return ((int)(this["scavKarma"]));
+            }
+            set {
+                this["scavKarma"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public int notificationsDevice {
+            get {
+                return ((int)(this["notificationsDevice"]));
+            }
+            set {
+                this["notificationsDevice"] = value;
             }
         }
     }

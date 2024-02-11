@@ -63,6 +63,26 @@ namespace TarkovMonitor.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] air_filter_off {
+            get {
+                object obj = ResourceManager.GetObject("air_filter_off", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] air_filter_on {
+            get {
+                object obj = ResourceManager.GetObject("air_filter_on", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] match_found {
             get {
                 object obj = ResourceManager.GetObject("match_found", resourceCulture);
@@ -86,6 +106,26 @@ namespace TarkovMonitor.Properties {
         internal static byte[] restart_failed_tasks {
             get {
                 object obj = ResourceManager.GetObject("restart_failed_tasks", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] runthrough_over {
+            get {
+                object obj = ResourceManager.GetObject("runthrough_over", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] scav_available {
+            get {
+                object obj = ResourceManager.GetObject("scav_available", resourceCulture);
                 return ((byte[])(obj));
             }
         }

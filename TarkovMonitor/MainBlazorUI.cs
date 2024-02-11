@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
-using NAudio.Wave;
 using TarkovMonitor.GroupLoadout;
 using System.Globalization;
+using System.ComponentModel;
 
 namespace TarkovMonitor
 {
@@ -15,6 +15,8 @@ namespace TarkovMonitor
         private readonly MessageLog messageLog;
         private readonly LogRepository logRepository;
         private readonly GroupManager groupManager;
+        private readonly System.Timers.Timer runthroughTimer;
+        private readonly System.Timers.Timer scavCooldownTimer;
 
         public MainBlazorUI()
         {
@@ -25,6 +27,14 @@ namespace TarkovMonitor
                 Properties.Settings.Default.upgradeRequired = false;
                 Properties.Settings.Default.Save();
             }
+            this.TopMost = Properties.Settings.Default.stayOnTop;
+            Properties.Settings.Default.PropertyChanged += (object sender, PropertyChangedEventArgs e) => {
+                if (e.PropertyName != "stayOnTop")
+                {
+                    return;
+                }
+                this.TopMost = Properties.Settings.Default.stayOnTop;
+            };
             eft = new GameWatcher();
             eft.Start();
 
@@ -46,14 +56,15 @@ namespace TarkovMonitor
             eft.FleaOfferExpired += Eft_FleaOfferExpired;
             eft.DebugMessage += Eft_DebugMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
-            eft.RaidCountdown += Eft_RaidCountdown;
+            eft.RaidStarting += Eft_RaidStarting;
             eft.RaidStarted += Eft_RaidStart;
             eft.RaidExited += Eft_RaidExited;
+            eft.RaidEnded += Eft_RaidEnded;
+            eft.ExitedPostRaidMenus += Eft_ExitedPostRaidMenus;
             eft.TaskStarted += Eft_TaskStarted;
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
             eft.NewLogData += Eft_NewLogData;
-            eft.GroupInviteSend += Eft_GroupInviteSend;
             eft.GroupInviteAccept += Eft_GroupInviteAccept;
             eft.GroupUserLeave += Eft_GroupUserLeave;
             eft.GroupRaidSettings += Eft_GroupRaidSettings;
@@ -77,6 +88,8 @@ namespace TarkovMonitor
             UpdateItems();
             UpdateTasks();
             UpdateMaps();
+            UpdateTraders();
+            UpdateHideoutStations();
             TarkovDev.StartAutoUpdates();
 
             InitializeProgress();
@@ -96,6 +109,60 @@ namespace TarkovMonitor
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
+
+            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds+TimeSpan.FromSeconds(10).TotalMilliseconds)
+            {
+                AutoReset = false,
+                Enabled = false
+            };
+            runthroughTimer.Elapsed += RunthroughTimer_Elapsed;
+            scavCooldownTimer = new System.Timers.Timer(TimeSpan.FromSeconds(TarkovDev.ScavCooldownSeconds()).TotalMilliseconds)
+            {
+                AutoReset = false,
+                Enabled = false
+            };
+            scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
+        }
+
+        private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
+        {
+            if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
+            {
+                Sound.Play("air_filter_off");
+            }
+        }
+
+        private void ScavCooldownTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (Properties.Settings.Default.scavCooldownAlert)
+            {
+                Sound.Play("scav_available");
+                messageLog.AddMessage("Player scav available", "info");
+            }
+        }
+
+        private void RunthroughTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (Properties.Settings.Default.runthroughAlert)
+            {
+                Sound.Play("runthrough_over");
+            }
+        }
+
+        private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
+        {
+            groupManager.Stale = true;
+            var mapName = e.RaidInfo.Map;
+            var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
+            if (map != null) mapName = map.name;
+            messageLog.AddMessage($"Ended {mapName} raid", "raidleave");
+            runthroughTimer.Stop();
+            if (e.RaidInfo.RaidType == RaidType.Scav && Properties.Settings.Default.scavCooldownAlert)
+            {
+                scavCooldownTimer.Stop();
+                scavCooldownTimer.Interval = TimeSpan.FromSeconds(TarkovDev.ResetScavCoolDown()).TotalMilliseconds;
+                scavCooldownTimer.Start();
+            }
         }
 
         private void Eft_GroupRaidSettings(object? sender, GroupRaidSettingsEventArgs e)
@@ -135,8 +202,17 @@ namespace TarkovMonitor
 
         private void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
         {
-            messageLog.AddMessage($"Player position: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
+            var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
+            if (map == null)
+            {
+                return;
+            }
+            messageLog.AddMessage($"Player position on {map.name}: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
             SocketClient.UpdatePlayerPosition(e);
+            if (Properties.Settings.Default.navigateMapOnPositionUpdate)
+            {
+                SocketClient.NavigateToMap(map);
+            }
         }
 
         private void UpdateCheck_Error(object? sender, UpdateCheckErrorEventArgs e)
@@ -149,7 +225,7 @@ namespace TarkovMonitor
             messageLog.AddMessage($"New TarkovMonitor version available ({e.Version})!", null, e.Uri.ToString());
         }
 
-        private void Eft_MapLoading(object? sender, EventArgs e)
+        private async void Eft_MapLoading(object? sender, EventArgs e)
         {
             if (TarkovTracker.Progress == null)
             {
@@ -179,13 +255,17 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                if (Properties.Settings.Default.restartTaskAlert)
-                {
-                    PlaySoundFromResource(Properties.Resources.restart_failed_tasks);
-                }
                 foreach (var task in failedTasks)
                 {
                     messageLog.AddMessage($"Failed task {task.name} should be restarted", "quest", task.wikiLink);
+                }
+                if (Properties.Settings.Default.restartTaskAlert)
+                {
+                    await Sound.Play("restart_failed_tasks");
+                }
+                if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
+                {
+                    Sound.Play("air_filter_on");
                 }
             }
             catch (Exception ex)
@@ -194,17 +274,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupInviteSend(object? sender, GroupInviteSendEventArgs e)
-        {
-            List<string> memberNames = new();
-            foreach (var member in e.Members)
-            {
-                memberNames.Add($"{member.PlayerInfo.Nickname} ({member.PlayerInfo.Level} {member.PlayerInfo.Side.ToUpper()})");
-            }
-            messageLog.AddMessage($"Group invite: {String.Join(", ", memberNames.ToArray())}", "group");
-        }
-
-        private void Eft_GroupUserLeave(object? sender, GroupUserLeaveEventArgs e)
+        private void Eft_GroupUserLeave(object? sender, GroupMatchUserLeaveEventArgs e)
         {
             if (e.Nickname != "You")
             {
@@ -213,14 +283,9 @@ namespace TarkovMonitor
             messageLog.AddMessage($"{e.Nickname} left the group.", "group");
         }
 
-        private void Eft_GroupInviteAccept(object? sender, GroupInviteAcceptEventArgs e)
+        private void Eft_GroupInviteAccept(object? sender, GroupEventArgs e)
         {
-            var verb = "accepted";
-            if (e.InviteType == GroupInviteType.Sent)
-            {
-                verb = "sent";
-            }
-            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerInfo.Side.ToUpper()} {e.PlayerInfo.Level}) {verb} group invite.", "group");
+            messageLog.AddMessage($"{e.Info.Nickname} ({e.Info.Side.ToUpper()} {e.Info.Level}) accepted group invite.", "group");
         }
 
         private void Eft_GroupDisbanded(object? sender, EventArgs e)
@@ -282,6 +347,32 @@ namespace TarkovMonitor
             }
         }
 
+        private async Task UpdateTraders()
+        {
+            try
+            {
+                await TarkovDev.GetTraders();
+                messageLog.AddMessage($"Retrieved {TarkovDev.Traders.Count} traders from tarkov.dev", "update");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error updating traders: {ex.Message}");
+            }
+        }
+
+        private async Task UpdateHideoutStations()
+        {
+            try
+            {
+                await TarkovDev.GetHideout();
+                messageLog.AddMessage($"Retrieved {TarkovDev.Stations.Count} hideout stations from tarkov.dev", "update");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error updating hideout stations: {ex.Message}");
+            }
+        }
+
         private async Task InitializeProgress()
         {
             if (Properties.Settings.Default.tarkovTrackerToken == "")
@@ -307,7 +398,7 @@ namespace TarkovMonitor
         {
             if (Properties.Settings.Default.matchFoundAlert)
             {
-                PlaySoundFromResource(Properties.Resources.match_found);
+                Sound.Play("match_found");
             }
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
@@ -319,6 +410,7 @@ namespace TarkovMonitor
         {
             try
             {
+                //Debug.WriteLine($"MainBlazorUI {e.Type} NewLogData");
                 logRepository.AddLog(e.Data, e.Type.ToString());
             } catch (Exception ex)
             {
@@ -326,19 +418,15 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupMemberReady(object? sender, GroupMemberReadyEventArgs e)
+        private void Eft_GroupMemberReady(object? sender, GroupMatchRaidReadyEventArgs e)
         {
-            groupManager.UpdateGroupMember(e.PlayerInfo.Nickname, new GroupMember(e.PlayerInfo.Nickname, e.PlayerLoadout));
-            messageLog.AddMessage($"{e.PlayerInfo.Nickname} ({e.PlayerLoadout.Info.Side.ToUpper()} {e.PlayerLoadout.Info.Level}) ready.", "group");
+            groupManager.UpdateGroupMember(e);
+            messageLog.AddMessage($"{e.extendedProfile.Info.Nickname} ({e.extendedProfile.PlayerVisualRepresentation.Info.Side.ToUpper()} {e.extendedProfile.PlayerVisualRepresentation.Info.Level}) ready.", "group");
         }
 
-        private async void Eft_TaskFinished(object? sender, TaskEventArgs e)
+        private async void Eft_TaskFinished(object? sender, TaskStatusMessageEventArgs e)
         {
             //await AllDataLoaded();
-            if (!TarkovTracker.ValidToken)
-            {
-                return;
-            }
             var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
             if (task == null)
             {
@@ -347,6 +435,11 @@ namespace TarkovMonitor
             }
 
             messageLog.AddMessage($"Completed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+
+            if (!TarkovTracker.ValidToken)
+            {
+                return;
+            }
             try
             {
                 await TarkovTracker.SetTaskComplete(task.id);
@@ -358,12 +451,8 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_TaskFailed(object? sender, TaskEventArgs e)
+        private async void Eft_TaskFailed(object? sender, TaskStatusMessageEventArgs e)
         {
-            if (!TarkovTracker.ValidToken)
-            {
-                return;
-            }
             var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
             if (task == null)
             {
@@ -371,6 +460,11 @@ namespace TarkovMonitor
             }
 
             messageLog.AddMessage($"Failed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+
+            if (!TarkovTracker.ValidToken)
+            {
+                return;
+            }
             try
             {
                 await TarkovTracker.SetTaskFailed(task.id);
@@ -382,19 +476,19 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_TaskStarted(object? sender, TaskEventArgs e)
+        private async void Eft_TaskStarted(object? sender, TaskStatusMessageEventArgs e)
         {
-            if (!TarkovTracker.ValidToken)
-            {
-                return;
-            }
             var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
             if (task == null)
             {
                 return;
             }
-
             messageLog.AddMessage($"Started task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+
+            if (!TarkovTracker.ValidToken)
+            {
+                return;
+            }
             try
             {
                 await TarkovTracker.SetTaskUncomplete(e.TaskId);
@@ -405,8 +499,9 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_FleaSold(object? sender, FleaSoldEventArgs e)
+        private async void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
         {
+            Stats.AddFleaSale(e);
             if (TarkovDev.Items == null)
             {
                 return;
@@ -445,7 +540,7 @@ namespace TarkovMonitor
             messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItem.name} for {String.Join(", ", received.ToArray())}", "flea", soldItem.link);
         }
 
-        private void Eft_FleaOfferExpired(object? sender, FleaOfferExpiredEventArgs e)
+        private void Eft_FleaOfferExpired(object? sender, FleaExpiredeMessageEventArgs e)
         {
             if (TarkovDev.Items == null)
             {
@@ -469,23 +564,29 @@ namespace TarkovMonitor
             messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
-        private static void Eft_RaidCountdown(object? sender, RaidInfoEventArgs e)
+        private void Eft_RaidStarting(object? sender, RaidInfoEventArgs e)
         {
-            if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
+            if (Properties.Settings.Default.raidStartAlert)
+            {
+                // always notify if the GameStarting event appeared
+                Sound.Play("raid_starting");
+            }
         }
 
         private async void Eft_RaidStart(object? sender, RaidInfoEventArgs e)
         {
-            if (e.RaidInfo.RaidType != RaidType.PMC || e.RaidInfo.QueueTime == 0)
-            {
-                if (Properties.Settings.Default.raidStartAlert) PlaySoundFromResource(Properties.Resources.raid_starting);
-            }
+            Stats.AddRaid(e);
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            if (e.RaidInfo.RaidType != RaidType.Unknown)
+            if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
             {
                 messageLog.AddMessage($"Starting {e.RaidInfo.RaidType} raid on {mapName}");
+                if (Properties.Settings.Default.raidStartAlert && e.RaidInfo.StartingTime == null)
+                {
+                    // if there was no GameStarting event in the log, play the notification sound
+                    Sound.Play("raid_starting");
+                }
             }
             else
             {
@@ -495,9 +596,14 @@ namespace TarkovMonitor
             {
                 return;
             }
-            if (!e.RaidInfo.Online || e.RaidInfo.QueueTime == 0 || e.RaidInfo.RaidType == RaidType.Unknown)
+            if (e.RaidInfo.Reconnected || !e.RaidInfo.Online || e.RaidInfo.QueueTime == 0 || e.RaidInfo.RaidType == RaidType.Unknown)
             {
                 return;
+            }
+            if (Properties.Settings.Default.runthroughAlert && e.RaidInfo.RaidType == RaidType.PMC)
+            {
+                runthroughTimer.Stop();
+                runthroughTimer.Start();
             }
             try
             {
@@ -512,6 +618,7 @@ namespace TarkovMonitor
         private void Eft_RaidExited(object? sender, RaidExitedEventArgs e)
         {
             groupManager.Stale = true;
+            runthroughTimer.Stop();
             try
             {
                 var mapName = e.Map;
@@ -523,24 +630,6 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Error updating log message from event: {ex.Message}", "exception");
             }
-        }
-
-        private static void PlaySoundFromResource(byte[] resource)
-        {
-            Stream stream = new MemoryStream(resource);
-            var reader = new NAudio.Wave.Mp3FileReader(stream);
-            var waveOut = new WaveOut();
-            waveOut.Init(reader);
-            waveOut.Play();
-        }
-
-        private async Task<bool> AllDataLoaded()
-        {
-            while (TarkovDev.Items.Count == 0 || TarkovDev.Maps.Count == 0 || TarkovDev.Tasks.Count == 0 || TarkovTracker.Progress == null)
-            {
-                Thread.Sleep(500);
-            }
-            return true;
         }
 
         private void MainBlazorUI_Resize(object sender, EventArgs e)

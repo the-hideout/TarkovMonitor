@@ -9,14 +9,24 @@ namespace TarkovMonitor.GroupLoadout
 {
     class GroupMember
     {
-        public string Name { get; set; }
-        public PlayerLoadout Loadout { get; set; }
-        
+        public string Name { 
+            get
+            {
+                return groupMatchRaidReady.extendedProfile.Info.Nickname;
+            }
+        }
+        public PlayerVisualRepresentation Loadout { 
+            get
+            {
+                return groupMatchRaidReady.extendedProfile.PlayerVisualRepresentation;
+            }
+        }
+        private GroupMatchRaidReadyEventArgs groupMatchRaidReady { get; }
+
         // GroupMembers are individuals within a group with a loadout of items.
-        public GroupMember(string name, PlayerLoadout loadout)
+        public GroupMember(GroupMatchRaidReadyEventArgs memberReady)
         {
-            Name = name;
-            Loadout = loadout;
+            groupMatchRaidReady = memberReady;
         }
     }
 }

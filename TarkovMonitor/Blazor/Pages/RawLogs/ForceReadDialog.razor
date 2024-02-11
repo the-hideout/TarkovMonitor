@@ -1,20 +1,24 @@
 ﻿@using Humanizer
-@inject GameWatcher eft
 
 <MudDialog>
     <DialogContent>
         @if (eft.LogsPath != "")
         {
-        <MudSelect @bind-Value="selectedPath" Label="Open existing logs" HelperText="Choose which set of logs should be read from" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
-            @foreach (DateTime folderDate in logFolders.Keys)
+        <MudSelect @bind-Value="selectedBreakpoint" Label="Read previous logs" HelperText="Choose the starting point from which to read logs" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
+            @foreach (LogDetails breakpoint in breakpoints)
             {
-                    <MudSelectItem Value="@logFolders[folderDate]">@folderDate.ToLongDateString() - @folderDate.Humanize()</MudSelectItem>
+                    <MudSelectItem Value="@breakpoint">(@breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()) | @breakpoint.Version | Profile: @breakpoint.ProfileId</MudSelectItem>
             }
         </MudSelect>
+        <p>Select a starting point to read previous logs and update your quest progress. All logs from that point forward with the same profile ID will be read and that cumulative progress will be synced to Tarkov Tracker.</p>
+        <p><strong>WARNING: </strong>You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</p>
         }
         else
         {
-            <span>Could not find the Escape From Tarkov process to locate log folders, or no logs exist.</span>
+            <span>Could not find the Escape From Tarkov installation location, or no logs exist.</span>
+        }
+        @if (ErrorText != "") {
+            <MudText>@ErrorText</MudText>
         }
     </DialogContent>
     <DialogActions>
@@ -25,25 +29,86 @@
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
+    internal GameWatcher eft = new();
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        logFolders = eft.GetLogFolders();
+        breakpoints = eft.GetLogBreakpoints();
     }
 
-    string selectedPath = "";
+    LogDetails selectedBreakpoint;
 
-    Dictionary<DateTime, string> logFolders = new Dictionary<DateTime, string>();
+    List<LogDetails> breakpoints = new();
+    Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
+    string ErrorText = "";
 
     void Cancel() => MudDialog.Cancel();
 
-public void Submit()
+    public async void Submit()
     {
         // Check if a path was selected, and if so, load the logs from that path
-        if (selectedPath != "")
+        if (selectedBreakpoint != null)
         {
-            eft.ProcessLogs(selectedPath);
+            TaskStatuses.Clear();
+            //eft.ProcessLogs(selectedPath);
+            eft.TaskModified += UpdateTaskStatus;
+            eft.ProcessLogsFromBreakpoint(selectedBreakpoint);
+            eft.TaskModified -= UpdateTaskStatus;
+            Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
+            foreach (var kvp in TaskStatuses)
+            {
+                if (kvp.Value == TarkovMonitor.TaskStatus.Started)
+                {
+                    // don't update task status if started
+                    continue;
+                }
+                var task = TarkovDev.Tasks.Find((t) => t.id == kvp.Key);
+                if (task == null)
+                {
+                    // probably a daily
+                    continue;
+                }
+                TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
+                var taskProgress = TarkovTracker.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
+                if (taskProgress != null)
+                {
+                    if (taskProgress.failed)
+                    {
+                        savedTaskStatus = TarkovMonitor.TaskStatus.Failed;
+                    }
+                    if (taskProgress.complete)
+                    {
+                        savedTaskStatus = TarkovMonitor.TaskStatus.Finished;
+                    }
+                }
+                if (kvp.Value == savedTaskStatus)
+                {
+                    // status matches, so don't update
+                    continue;
+                }
+                updateTasks.Add(kvp.Key, kvp.Value);
+                System.Diagnostics.Debug.WriteLine($"Task {kvp.Key} should be {kvp.Value}");
+            }
+            try
+            {
+                if (updateTasks.Count > 0)
+                {
+                    await TarkovTracker.SetTaskStatuses(updateTasks);
+                }
+                ErrorText = "";
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            catch (Exception ex)
+            {
+                ErrorText = ex.Message + ex.StackTrace;
+            }
+
         }
-        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void UpdateTaskStatus(object sender, TaskStatusMessageEventArgs e)
+    {
+        TaskStatuses[e.TaskId] = e.Status;
     }
 }
