@@ -13,14 +13,16 @@ namespace TarkovMonitor
         private static string DatabasePath { 
             get
             {
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TarkovMonitor", "TarkovMonitor.db");
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                return Path.Combine(localAppData, "TarkovMonitor", "TarkovMonitor.db");
             }
         }
         private static string ConnectionString
         {
             get
             {
-                return $"Data Source={DatabasePath};Version=3;";
+                var dbPath = DatabasePath;
+                return $"Data Source={dbPath};Version=3;";
             }
         }
         private static SQLiteConnection Connection;
