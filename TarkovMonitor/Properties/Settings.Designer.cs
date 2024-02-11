@@ -202,5 +202,17 @@ namespace TarkovMonitor.Properties {
                 this["scavKarma"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
+        public int notificationsDevice {
+            get {
+                return ((int)(this["notificationsDevice"]));
+            }
+            set {
+                this["notificationsDevice"] = value;
+            }
+        }
     }
 }

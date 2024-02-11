@@ -61,6 +61,7 @@ namespace TarkovMonitor
         public event EventHandler<RaidInfoEventArgs> RaidStarted;
         public event EventHandler<RaidExitedEventArgs> RaidExited;
         public event EventHandler<RaidInfoEventArgs> RaidEnded;
+        public event EventHandler<RaidInfoEventArgs> ExitedPostRaidMenus;
         public event EventHandler<TaskStatusMessageEventArgs> TaskModified;
         public event EventHandler<TaskStatusMessageEventArgs> TaskStarted;
         public event EventHandler<TaskStatusMessageEventArgs> TaskFailed;
@@ -306,12 +307,20 @@ namespace TarkovMonitor
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
                         raidInfo = new();
                     }
-                    if (eventLine.Contains("Init: pstrGameVersion: Escape from Tarkov"))
+                    if (eventLine.Contains("application|SelectProfile ProfileId:"))
                     {
-                        if (raidInfo.RaidType != RaidType.Unknown) {
+                        if (raidInfo.StartedTime != null && raidInfo.EndedTime == null) {
+                            raidInfo.EndedTime = eventDate;
                             RaidEnded?.Invoke(this, new(raidInfo));
                         }
-                        raidInfo = new();
+                    }
+                    if (eventLine.Contains("application|Init: pstrGameVersion: "))
+                    {
+                        if (raidInfo.EndedTime != null)
+                        {
+                            ExitedPostRaidMenus?.Invoke(this, new(raidInfo));
+                            raidInfo = new();
+                        }
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))
                     {
@@ -676,6 +685,7 @@ namespace TarkovMonitor
         }
         public DateTime? StartingTime { get; set; }
         public DateTime? StartedTime { get; set; }
+        public DateTime? EndedTime { get; set; }
         public RaidInfo()
         {
             Map = "";

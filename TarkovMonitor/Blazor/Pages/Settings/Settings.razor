@@ -10,26 +10,39 @@
 <MudGrid Class="pa-0" Spacing="0">
 	<MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2"/>Notifications</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2" />Notifications</MudText>
             <div>
-                <MudSwitch @bind-Checked="@RaidStartSwitch" Label="Raid Starting Audio Notification" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRaidStart"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small"/></MudButton>
+                <MudSelect @bind-Value="@AudioOutputDeviceSelect" T="int" Label="Notifications playback device" AnchorOrigin="Origin.BottomCenter" xs="3">
+                    @foreach (var device in PlaybackDevices)
+                    {
+                        <MudSelectItem T="int" Value="@device.Key">@device.Value</MudSelectItem>
+                    }
+                </MudSelect>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@MatchFoundSwitch" Label="Match Found Audio Notification" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayMatchFound"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small"/></MudButton>
+                <MudSwitch @bind-Checked="@RaidStartSwitch" Label="Raid Starting Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRaidStart" Class="d-inline-flex mt-1" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Restart Tasks Audio Reminder" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+                <MudSwitch @bind-Checked="@MatchFoundSwitch" Label="Match Found Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayMatchFound" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@RunthroughSwitch" Label="Runthrough Period Audio Reminder" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRunthrough"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+                <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Restart Tasks Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" /><MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+                <MudSwitch @bind-Checked="@RunthroughSwitch" Label="Runthrough Period Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRunthrough" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" />
-                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
-                <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="Scav Karma" AnchorOrigin="Origin.BottomCenter" xs="3">
+                <MudSwitch @bind-Checked="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
+            <div>
+                <MudSwitch @bind-Checked="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+                <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="Scav Karma" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
                     @foreach (TarkovDev.TraderReputationLevel lvl in TarkovDev.Traders.Find(t => t.normalizedName == "fence").reputationLevels) {
                         <MudSelectItem Value="@lvl.minimumReputation" />
                     }
@@ -93,9 +106,12 @@
     [CascadingParameter(Name="AppLayout")]
     public AppLayout AppLayout { get; set; }
 
+    private Dictionary<int, string> PlaybackDevices;
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        PlaybackDevices = Sound.GetPlaybackDevices();
     }
 
     protected override void OnParametersSet()
@@ -234,6 +250,19 @@
         set
         {
             Properties.Settings.Default.scavKarma = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public int AudioOutputDeviceSelect
+    {
+        get
+        {
+            return Properties.Settings.Default.notificationsDevice;
+        }
+        set
+        {
+            Properties.Settings.Default.notificationsDevice = value;
             Properties.Settings.Default.Save();
         }
     }

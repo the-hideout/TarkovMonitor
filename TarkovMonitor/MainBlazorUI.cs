@@ -60,6 +60,7 @@ namespace TarkovMonitor
             eft.RaidStarted += Eft_RaidStart;
             eft.RaidExited += Eft_RaidExited;
             eft.RaidEnded += Eft_RaidEnded;
+            eft.ExitedPostRaidMenus += Eft_ExitedPostRaidMenus;
             eft.TaskStarted += Eft_TaskStarted;
             eft.TaskFailed += Eft_TaskFailed;
             eft.TaskFinished += Eft_TaskFinished;
@@ -123,11 +124,20 @@ namespace TarkovMonitor
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
         }
 
+        private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
+        {
+            if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
+            {
+                Sound.Play("air_filter_off");
+            }
+        }
+
         private void ScavCooldownTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
             if (Properties.Settings.Default.scavCooldownAlert)
             {
                 Sound.Play("scav_available");
+                messageLog.AddMessage("Player scav available", "info");
             }
         }
 
@@ -150,6 +160,7 @@ namespace TarkovMonitor
             if (e.RaidInfo.RaidType == RaidType.Scav && Properties.Settings.Default.scavCooldownAlert)
             {
                 scavCooldownTimer.Stop();
+                scavCooldownTimer.Interval = TimeSpan.FromSeconds(TarkovDev.ResetScavCoolDown()).TotalMilliseconds;
                 scavCooldownTimer.Start();
             }
         }

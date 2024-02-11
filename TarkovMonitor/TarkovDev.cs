@@ -25,6 +25,7 @@ namespace TarkovMonitor
         public static List<Item> Items { get; private set; } = new();
         public static List<Trader> Traders { get; private set; } = new();
         public static List<HideoutStation> Stations { get; private set; } = new();
+        public static DateTime ScaveAvailableTime { get; set; } = DateTime.Now;
 
         public async static Task<List<Task>> GetTasks()
         {
@@ -383,8 +384,14 @@ namespace TarkovMonitor
             decimal coolDown = baseTimer * karmaBonus;
 
             //System.Diagnostics.Debug.WriteLine($"{hideoutBonus} {karmaBonus} {coolDown}");
-
             return (int)Math.Round(coolDown - (coolDown * hideoutBonus));
+        }
+
+        public static int ResetScavCoolDown()
+        {
+            var cooldownSeconds = ScavCooldownSeconds();
+            ScaveAvailableTime = DateTime.Now.AddSeconds(cooldownSeconds);
+            return cooldownSeconds;
         }
     }
 }

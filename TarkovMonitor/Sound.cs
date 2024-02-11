@@ -53,6 +53,7 @@ namespace TarkovMonitor
                 using Stream stream = new MemoryStream(resource);
                 using var reader = new Mp3FileReader(stream);
                 using var waveOut = new WaveOut();
+                waveOut.DeviceNumber = Properties.Settings.Default.notificationsDevice;
                 waveOut.Init(reader);
                 waveOut.Play();
                 while (waveOut.PlaybackState == PlaybackState.Playing)
@@ -60,6 +61,18 @@ namespace TarkovMonitor
                     Thread.Sleep(100);
                 }
             });
+        }
+        public static Dictionary<int, string> GetPlaybackDevices()
+        {
+            System.Diagnostics.Debug.WriteLine("GetPlaybackDevices");
+            Dictionary<int, string> devices = new();
+            devices.Add(-1, "Default Device");
+            for (var deviceNum = 0; deviceNum < WaveOut.DeviceCount; deviceNum++)
+            {
+                WaveOutCapabilities deviceInfo = WaveOut.GetCapabilities(deviceNum);
+                devices.Add(deviceNum, deviceInfo.ProductName);
+            }
+            return devices;
         }
         public enum SoundType
         {
