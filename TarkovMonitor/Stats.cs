@@ -26,9 +26,11 @@ namespace TarkovMonitor
             }
         }
         private static SQLiteConnection Connection;
-        static Stats()
+        public static void Init()
         {
-            Connection = new SQLiteConnection(ConnectionString);
+            var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TarkovMonitor", "TarkovMonitor.db");
+            var connectionString = $"Data Source={dbPath};Version=3;";
+            Connection = new SQLiteConnection(connectionString);
             Connection.Open();
 
             List<string> createTableCommands = new()

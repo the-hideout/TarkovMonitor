@@ -122,6 +122,7 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
+            Stats.Init();
         }
 
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
