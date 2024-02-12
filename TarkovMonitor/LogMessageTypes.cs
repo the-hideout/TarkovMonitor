@@ -194,7 +194,7 @@ namespace TarkovMonitor
     }
     public class SystemChatMessageEventArgs : ChatMessageEventArgs
     {
-        public SystemChatMessage message { get; set; }
+        public new SystemChatMessage message { get; set; }
     }
     public class SystemChatMessageWithItems : SystemChatMessage
     {
@@ -249,7 +249,7 @@ namespace TarkovMonitor
                 return items;
             }
         }
-        public FleaMarketSoldChatMessage message { get; set; }
+        public new FleaMarketSoldChatMessage message { get; set; }
     }
     public class FleaExpiredeMessageEventArgs: JsonEventArgs
     {
@@ -285,6 +285,6 @@ namespace TarkovMonitor
                 return (TaskStatus)message.type;
             }
         }
-        public SystemChatMessage message { get; set; }
+        public new SystemChatMessage message { get; set; }
     }
 }

@@ -32,19 +32,22 @@ class Splash : Form
         }
     }
 
-    public Splash(Bitmap bitmap)
+    public Splash(Bitmap bitmap, int splashTime)
     {
-        // Window settings   
+        // Window settings
         this.TopMost = true;
         this.ShowInTaskbar = false;
         this.Size = bitmap.Size;
         this.StartPosition = FormStartPosition.Manual;
         this.Top = (Screen.PrimaryScreen.Bounds.Height - this.Height) / 2;
         this.Left = (Screen.PrimaryScreen.Bounds.Width - this.Width) / 2;
-        // Must be called before setting bitmap   
-        this.BackgroundBitmap = bitmap;
-        this.SelectBitmap(BackgroundBitmap);
-        this.BackColor = Color.Red;
+        if (splashTime > 1)
+		{
+			// Must be called before setting bitmap
+			this.BackgroundBitmap = bitmap;
+			this.SelectBitmap(BackgroundBitmap);
+			this.BackColor = Color.Red;
+		}
 
         // Set current working directory to executable location
         Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
@@ -53,17 +56,17 @@ class Splash : Form
         var existing = _webview2RegKeys.Any(key => Registry.GetValue(key, "pv", null) != null);
         if (!existing) InstallWebview2Runtime();
 
-        splashTimer = new System.Timers.Timer(2000);
-        splashTimer.AutoReset = false;
-        splashTimer.Elapsed += (sender, e) =>
-        {
-            this.Invoke((MethodInvoker) delegate
-            {
-                this.Close();
-            });
-        };
-        splashTimer.Start();
-    }
+		splashTimer = new System.Timers.Timer(splashTime);
+		splashTimer.AutoReset = false;
+		splashTimer.Elapsed += (sender, e) =>
+		{
+			this.Invoke((MethodInvoker)delegate
+			{
+				this.Close();
+			});
+		};
+		splashTimer.Start();
+	}
 
     private void InstallWebview2Runtime()
     {
@@ -82,9 +85,9 @@ class Splash : Form
             // Start the process with the info we specified.
             // Call WaitForExit and then the using statement will close.
             var exeProcess = Process.Start(startInfo);
-            exeProcess.WaitForExit();
+            exeProcess?.WaitForExit();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             Debug.WriteLine("Could not install WebView");
         }
