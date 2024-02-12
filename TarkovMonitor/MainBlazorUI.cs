@@ -35,8 +35,6 @@ namespace TarkovMonitor
                 }
                 this.TopMost = Properties.Settings.Default.stayOnTop;
             };
-            eft = new GameWatcher();
-            eft.Start();
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
@@ -48,11 +46,12 @@ namespace TarkovMonitor
             // Singleton Group tracker
             groupManager = new GroupManager();
 
-            // Singleton tarkov.dev repository (to DI the results of the queries)
-            //tarkovdevRepository = new TarkovDevRepository();
+			// Singleton tarkov.dev repository (to DI the results of the queries)
+			//tarkovdevRepository = new TarkovDevRepository();
 
-            // Add event watchers
-            eft.FleaSold += Eft_FleaSold;
+			eft = new GameWatcher();
+			// Add event watchers
+			eft.FleaSold += Eft_FleaSold;
             eft.FleaOfferExpired += Eft_FleaOfferExpired;
             eft.DebugMessage += Eft_DebugMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
@@ -76,8 +75,9 @@ namespace TarkovMonitor
             eft.MatchFound += Eft_MatchFound;
             eft.MapLoaded += Eft_MapLoaded;
             eft.PlayerPosition += Eft_PlayerPosition;
+			eft.Start();
 
-            TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
+			TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
 
             UpdateCheck.NewVersion += UpdateCheck_NewVersion;
             UpdateCheck.Error += UpdateCheck_Error;

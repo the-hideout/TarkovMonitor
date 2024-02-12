@@ -12,12 +12,12 @@ namespace TarkovMonitor
             Task<ReleaseData> GetLatestRelease();
         }
 
-        private static string repo = "the-hideout/TarkovMonitor";
+        private static readonly string repo = "the-hideout/TarkovMonitor";
 
-        private static IGitHubAPI api = RestService.For<IGitHubAPI>($"https://api.github.com/repos/{repo}");
+        private static readonly IGitHubAPI api = RestService.For<IGitHubAPI>($"https://api.github.com/repos/{repo}");
 
-        public static event EventHandler<NewVersionEventArgs> NewVersion;
-        public static event EventHandler<UpdateCheckErrorEventArgs> Error;
+        public static event EventHandler<NewVersionEventArgs>? NewVersion;
+        public static event EventHandler<UpdateCheckErrorEventArgs>? Error;
 
         public static async void CheckForNewVersion()
         {
@@ -25,7 +25,7 @@ namespace TarkovMonitor
             {
                 var release = await api.GetLatestRelease();
                 Version remoteVersion = new Version(release.tag_name);
-                Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? throw new Exception("Could not retrieve version from assembly");
                 //System.Diagnostics.Debug.WriteLine(localVersion.ToString());
 
                 if (localVersion.CompareTo(remoteVersion) == -1)

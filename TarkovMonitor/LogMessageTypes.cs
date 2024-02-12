@@ -244,7 +244,7 @@ namespace TarkovMonitor
                 Dictionary<string, int> items = new();
                 foreach (var item in message.items.data)
                 {
-                    items.Add(item._tpl, (int)item.upd.StackObjectsCount);
+					items.Add(item._tpl, item.upd?.StackObjectsCount ?? 1);
                 }
                 return items;
             }
@@ -264,7 +264,7 @@ namespace TarkovMonitor
         {
             get
             {
-                return (int)message.items.data[0].upd.StackObjectsCount;
+                return message.items.data[0].upd?.StackObjectsCount ?? 1;
             }
         }
         public SystemChatMessageWithItems message { get; set; }

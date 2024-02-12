@@ -8,7 +8,7 @@ using TarkovMonitor;
 class Splash : Form
 {
     private float _opacity = 1.0f;
-    public Bitmap BackgroundBitmap;
+    public Bitmap? BackgroundBitmap;
 
     private readonly string[] _webview2RegKeys = new[]
     {
@@ -28,7 +28,10 @@ class Splash : Form
         set
         {
             _opacity = value;
-            SelectBitmap(BackgroundBitmap);
+            if (BackgroundBitmap != null)
+            {
+				SelectBitmap(BackgroundBitmap);
+			}
         }
     }
 
@@ -46,11 +49,11 @@ class Splash : Form
 			// Must be called before setting bitmap
 			this.BackgroundBitmap = bitmap;
 			this.SelectBitmap(BackgroundBitmap);
-			this.BackColor = Color.Red;
 		}
+		this.BackColor = Color.Red;
 
-        // Set current working directory to executable location
-        Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+		// Set current working directory to executable location
+		Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
 
         // Install webview2 runtime if it is not already
         var existing = _webview2RegKeys.Any(key => Registry.GetValue(key, "pv", null) != null);
