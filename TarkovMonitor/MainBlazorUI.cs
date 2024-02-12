@@ -110,7 +110,7 @@ namespace TarkovMonitor
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
 
-            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds+TimeSpan.FromSeconds(10).TotalMilliseconds)
+            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds + TimeSpan.FromSeconds(10).TotalMilliseconds)
             {
                 AutoReset = false,
                 Enabled = false
@@ -122,7 +122,8 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
-            Stats.Init();
+            messageLog.AddMessage($"Database path: {Stats.DatabasePath}");
+            messageLog.AddMessage($"Sounds path: {Sound.CustomSoundsPath}");
         }
 
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
