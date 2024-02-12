@@ -7,8 +7,8 @@ namespace TarkovMonitor
         public static string CustomSoundsPath { 
             get
             {
-                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                return Path.Combine(localAppData, "TarkovMonitor", "sounds");
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                return Path.Combine(appDataPath, "TarkovMonitor", "TarkovMonitor", "sounds");
             }
         }
         private static Dictionary<string, bool> customSounds = new();
