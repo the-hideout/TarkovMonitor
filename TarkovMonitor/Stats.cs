@@ -4,12 +4,15 @@ namespace TarkovMonitor
 {
     internal class Stats
     {
-        public static string DatabasePath => Path.Combine(Application.UserAppDataPath, "TarkovMonitor.db");
-        public static string ConnectionString => $"Data Source={DatabasePath};Version=3;";
+        //public static string DatabasePath => Path.Combine(Application.UserAppDataPath, "TarkovMonitor.db");
+        //public static string ConnectionString => $"Data Source={DatabasePath};Version=3;";
         private static SQLiteConnection? Connection;
         public static void OpenConnection()
         {
-            Connection = new SQLiteConnection(ConnectionString);
+            string dbPath = Path.Combine(Application.UserAppDataPath, "TarkovMonitor.db");
+            string connString = "Data Source=" + dbPath + ";Version=3;";
+
+			Connection = new SQLiteConnection(connString);
             Connection.Open();
 
             List<string> createTableCommands = new()

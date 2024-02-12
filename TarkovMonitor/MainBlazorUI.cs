@@ -122,7 +122,7 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
-            messageLog.AddMessage($"LocalAppData path: {Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}");
+            messageLog.AddMessage($"LocalAppData path: {Path.Combine(Application.UserAppDataPath, "TarkovMonitor.db")}");
         }
 
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
