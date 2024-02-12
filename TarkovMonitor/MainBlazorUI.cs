@@ -122,8 +122,7 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
-            messageLog.AddMessage($"Database path: {Stats.DatabasePath}");
-            messageLog.AddMessage($"Sounds path: {Sound.CustomSoundsPath}");
+            messageLog.AddMessage($"LocalAppData path: {Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}");
         }
 
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
