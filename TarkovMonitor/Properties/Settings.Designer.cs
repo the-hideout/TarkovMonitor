@@ -214,5 +214,29 @@ namespace TarkovMonitor.Properties {
                 this["notificationsDevice"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool minimizeToTray {
+            get {
+                return ((bool)(this["minimizeToTray"]));
+            }
+            set {
+                this["minimizeToTray"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool skipSplash {
+            get {
+                return ((bool)(this["skipSplash"]));
+            }
+            set {
+                this["skipSplash"] = value;
+            }
+        }
     }
 }

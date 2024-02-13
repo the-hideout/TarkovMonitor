@@ -28,19 +28,17 @@ namespace TarkovMonitor
                 Properties.Settings.Default.Save();
             }
             this.TopMost = Properties.Settings.Default.stayOnTop;
-            Properties.Settings.Default.PropertyChanged += (object sender, PropertyChangedEventArgs e) => {
+            Properties.Settings.Default.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
                 if (e.PropertyName != "stayOnTop")
                 {
                     return;
                 }
                 this.TopMost = Properties.Settings.Default.stayOnTop;
             };
-            eft = new GameWatcher();
-            eft.Start();
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
-            messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()}");
+            messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
 
             // Singleton log repository to record, display, and analyze logs for TarkovMonitor
             logRepository = new LogRepository();
@@ -48,11 +46,12 @@ namespace TarkovMonitor
             // Singleton Group tracker
             groupManager = new GroupManager();
 
-            // Singleton tarkov.dev repository (to DI the results of the queries)
-            //tarkovdevRepository = new TarkovDevRepository();
+			// Singleton tarkov.dev repository (to DI the results of the queries)
+			//tarkovdevRepository = new TarkovDevRepository();
 
-            // Add event watchers
-            eft.FleaSold += Eft_FleaSold;
+			eft = new GameWatcher();
+			// Add event watchers
+			eft.FleaSold += Eft_FleaSold;
             eft.FleaOfferExpired += Eft_FleaOfferExpired;
             eft.DebugMessage += Eft_DebugMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
@@ -76,8 +75,9 @@ namespace TarkovMonitor
             eft.MatchFound += Eft_MatchFound;
             eft.MapLoaded += Eft_MapLoaded;
             eft.PlayerPosition += Eft_PlayerPosition;
+			eft.Start();
 
-            TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
+			TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
 
             UpdateCheck.NewVersion += UpdateCheck_NewVersion;
             UpdateCheck.Error += UpdateCheck_Error;
@@ -110,7 +110,7 @@ namespace TarkovMonitor
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
 
-            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds+TimeSpan.FromSeconds(10).TotalMilliseconds)
+            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds + TimeSpan.FromSeconds(10).TotalMilliseconds)
             {
                 AutoReset = false,
                 Enabled = false
@@ -499,7 +499,7 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
+        private void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
         {
             Stats.AddFleaSale(e);
             if (TarkovDev.Items == null)
@@ -634,7 +634,7 @@ namespace TarkovMonitor
 
         private void MainBlazorUI_Resize(object sender, EventArgs e)
         {
-            if (this.WindowState == FormWindowState.Minimized)
+            if (this.WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
             {
                 Hide();
                 notifyIconTarkovMonitor.Visible = true;
