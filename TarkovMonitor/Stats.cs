@@ -1,21 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Data.SQLite;
-using System.Windows.Forms;
+﻿using System.Data.SQLite;
+// do not upgrade to 1.0.118
+// newer version throws an error after being compiled as single file assembly
 
 namespace TarkovMonitor
 {
     internal class Stats
     {
-        private static string DatabasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TarkovMonitor", "TarkovMonitor.db");
-        private static string ConnectionString = $"Data Source={DatabasePath};Version=3;";
+        public static string DatabasePath => Path.Join(Application.UserAppDataPath, "TarkovMonitor.db");
+        public static string ConnectionString => $"Data Source={DatabasePath};Version=3;";
         private static SQLiteConnection Connection;
         static Stats()
         {
-            Connection = new SQLiteConnection(ConnectionString);
+			Connection = new SQLiteConnection(ConnectionString);
             Connection.Open();
 
             List<string> createTableCommands = new()

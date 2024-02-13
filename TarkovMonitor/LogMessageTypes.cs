@@ -194,7 +194,7 @@ namespace TarkovMonitor
     }
     public class SystemChatMessageEventArgs : ChatMessageEventArgs
     {
-        public SystemChatMessage message { get; set; }
+        public new SystemChatMessage message { get; set; }
     }
     public class SystemChatMessageWithItems : SystemChatMessage
     {
@@ -244,12 +244,12 @@ namespace TarkovMonitor
                 Dictionary<string, int> items = new();
                 foreach (var item in message.items.data)
                 {
-                    items.Add(item._tpl, (int)item.upd.StackObjectsCount);
+					items.Add(item._tpl, item.upd?.StackObjectsCount ?? 1);
                 }
                 return items;
             }
         }
-        public FleaMarketSoldChatMessage message { get; set; }
+        public new FleaMarketSoldChatMessage message { get; set; }
     }
     public class FleaExpiredeMessageEventArgs: JsonEventArgs
     {
@@ -264,7 +264,7 @@ namespace TarkovMonitor
         {
             get
             {
-                return (int)message.items.data[0].upd.StackObjectsCount;
+                return message.items.data[0].upd?.StackObjectsCount ?? 1;
             }
         }
         public SystemChatMessageWithItems message { get; set; }
@@ -285,6 +285,6 @@ namespace TarkovMonitor
                 return (TaskStatus)message.type;
             }
         }
-        public SystemChatMessage message { get; set; }
+        public new SystemChatMessage message { get; set; }
     }
 }

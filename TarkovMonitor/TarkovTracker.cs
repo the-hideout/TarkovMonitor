@@ -39,12 +39,12 @@ namespace TarkovMonitor
             }
         );
 
-        public static ProgressResponse Progress { get; private set; }
+        public static ProgressResponse Progress { get; private set; } = new();
         public static bool ValidToken { get; private set; } = false;
 
-        public static event EventHandler<EventArgs> TokenValidated;
-        public static event EventHandler<EventArgs> TokenInvalid;
-        public static event EventHandler<EventArgs> ProgressRetrieved;
+        public static event EventHandler<EventArgs>? TokenValidated;
+        public static event EventHandler<EventArgs>? TokenInvalid;
+        public static event EventHandler<EventArgs>? ProgressRetrieved;
 
         private static void SyncStoredStatus(string questId, TaskStatus status)
         {
@@ -130,7 +130,7 @@ namespace TarkovMonitor
                     }
                 });
             } 
-            catch (Exception ex)
+            catch (Exception)
             {
                 // do something?
             }

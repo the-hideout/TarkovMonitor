@@ -25,7 +25,7 @@ namespace TarkovMonitor
                 try
                 {
                     var logInfo = new FileInfo(Monitors[0].Path);
-                    return logInfo.DirectoryName;
+                    return logInfo.DirectoryName ?? "";
                 }
                 catch { }
                 return "";
@@ -43,54 +43,48 @@ namespace TarkovMonitor
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
-        public event EventHandler<NewLogDataEventArgs> NewLogData;
-        public event EventHandler<ExceptionEventArgs> ExceptionThrown;
-        public event EventHandler<DebugEventArgs> DebugMessage;
-        public event EventHandler GameStarted;
-        public event EventHandler<GroupEventArgs> GroupInviteAccept;
-        public event EventHandler<GroupRaidSettingsEventArgs> GroupRaidSettings;
-        public event EventHandler<GroupMatchRaidReadyEventArgs> GroupMemberReady;
-        public event EventHandler GroupDisbanded;
-        public event EventHandler<GroupMatchUserLeaveEventArgs> GroupUserLeave;
-        public event EventHandler MapLoading;
-        public event EventHandler<RaidInfoEventArgs> MatchingStarted;
-        public event EventHandler<RaidInfoEventArgs> MatchFound; // only fires on initial load into a raid
-        public event EventHandler<RaidInfoEventArgs> MapLoaded; // fires on initial and subsequent loads into a raid
-        public event EventHandler<RaidInfoEventArgs> MatchingAborted;
-        public event EventHandler<RaidInfoEventArgs> RaidStarting;
-        public event EventHandler<RaidInfoEventArgs> RaidStarted;
-        public event EventHandler<RaidExitedEventArgs> RaidExited;
-        public event EventHandler<RaidInfoEventArgs> RaidEnded;
-        public event EventHandler<RaidInfoEventArgs> ExitedPostRaidMenus;
-        public event EventHandler<TaskStatusMessageEventArgs> TaskModified;
-        public event EventHandler<TaskStatusMessageEventArgs> TaskStarted;
-        public event EventHandler<TaskStatusMessageEventArgs> TaskFailed;
-        public event EventHandler<TaskStatusMessageEventArgs> TaskFinished;
-        public event EventHandler<FleaSoldMessageEventArgs> FleaSold;
-        public event EventHandler<FleaExpiredeMessageEventArgs> FleaOfferExpired;
-        public event EventHandler<PlayerPositionEventArgs> PlayerPosition;
+        public event EventHandler<NewLogDataEventArgs>? NewLogData;
+        public event EventHandler<ExceptionEventArgs>? ExceptionThrown;
+        public event EventHandler<DebugEventArgs>? DebugMessage;
+        public event EventHandler? GameStarted;
+        public event EventHandler<GroupEventArgs>? GroupInviteAccept;
+        public event EventHandler<GroupRaidSettingsEventArgs>? GroupRaidSettings;
+        public event EventHandler<GroupMatchRaidReadyEventArgs>? GroupMemberReady;
+        public event EventHandler? GroupDisbanded;
+        public event EventHandler<GroupMatchUserLeaveEventArgs>? GroupUserLeave;
+        public event EventHandler? MapLoading;
+        public event EventHandler<RaidInfoEventArgs>? MatchingStarted;
+        public event EventHandler<RaidInfoEventArgs>? MatchFound; // only fires on initial load into a raid
+        public event EventHandler<RaidInfoEventArgs>? MapLoaded; // fires on initial and subsequent loads into a raid
+        public event EventHandler<RaidInfoEventArgs>? MatchingAborted;
+        public event EventHandler<RaidInfoEventArgs>? RaidStarting;
+        public event EventHandler<RaidInfoEventArgs>? RaidStarted;
+        public event EventHandler<RaidExitedEventArgs>? RaidExited;
+        public event EventHandler<RaidInfoEventArgs>? RaidEnded;
+        public event EventHandler<RaidInfoEventArgs>? ExitedPostRaidMenus;
+        public event EventHandler<TaskStatusMessageEventArgs>? TaskModified;
+        public event EventHandler<TaskStatusMessageEventArgs>? TaskStarted;
+        public event EventHandler<TaskStatusMessageEventArgs>? TaskFailed;
+        public event EventHandler<TaskStatusMessageEventArgs>? TaskFinished;
+        public event EventHandler<FleaSoldMessageEventArgs>? FleaSold;
+        public event EventHandler<FleaExpiredeMessageEventArgs>? FleaOfferExpired;
+        public event EventHandler<PlayerPositionEventArgs>? PlayerPosition;
 
         public GameWatcher()
-        {
-            Monitors = new();
-            raidInfo = new RaidInfo();
-            using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov");
-            if (key != null)
-            {
-                LogsPath = System.IO.Path.Combine(key.GetValue("InstallLocation").ToString(), "Logs");
-            }
-            logFileCreateWatcher = new FileSystemWatcher
-            {
-                Filter = "*.log",
-                IncludeSubdirectories = true,
-                Path = LogsPath,
-            };
-            processTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30).TotalMilliseconds)
-            {
-                AutoReset = true,
-                Enabled = false
-            };
-            screenshotWatcher = new FileSystemWatcher();
+		{
+			Monitors = new();
+			raidInfo = new RaidInfo();
+			logFileCreateWatcher = new FileSystemWatcher
+			{
+				Filter = "*.log",
+				IncludeSubdirectories = true,
+			};
+			processTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30).TotalMilliseconds)
+			{
+				AutoReset = true,
+				Enabled = false
+			};
+			screenshotWatcher = new FileSystemWatcher();
         }
 
         public void SetupScreenshotWatcher()
@@ -131,7 +125,8 @@ namespace TarkovMonitor
         {
             try
             {
-                var match = Regex.Match(e.Name, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_(?<position>.+) \(\d\)\.png");
+                string filename = e.Name ?? "";
+                var match = Regex.Match(filename, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_(?<position>.+) \(\d\)\.png");
                 if (!match.Success)
                 {
                     return;
@@ -145,7 +140,7 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                PlayerPosition?.Invoke(this, new(raidInfo, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), e.Name));
+                PlayerPosition?.Invoke(this, new(raidInfo, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), filename));
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing screenshot {e.Name}"));
@@ -154,25 +149,36 @@ namespace TarkovMonitor
 
         public void Start()
         {
-            logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
-            logFileCreateWatcher.EnableRaisingEvents = true;
-            processTimer.Elapsed += ProcessTimer_Elapsed;
-            UpdateProcess();
-            SetupScreenshotWatcher();
-            processTimer.Enabled = true;
-            if (Monitors.Count == 0)
-            {
-                WatchLogsFolder(GetLatestLogFolder());
-            }
+			try
+			{
+				using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov") ?? throw new Exception("EFT install registry entry not found");
+				LogsPath = Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
+				logFileCreateWatcher.Path = LogsPath;
+				logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
+				logFileCreateWatcher.EnableRaisingEvents = true;
+				processTimer.Elapsed += ProcessTimer_Elapsed;
+				UpdateProcess();
+				SetupScreenshotWatcher();
+				processTimer.Enabled = true;
+				if (Monitors.Count == 0)
+				{
+					WatchLogsFolder(GetLatestLogFolder());
+				}
+			}
+			catch (Exception ex)
+			{
+                ExceptionThrown?.Invoke(this, new(ex, "starting game watcher"));
+			}
         }
 
         private void LogFileCreateWatcher_Created(object sender, FileSystemEventArgs e)
         {
-            if (e.Name.Contains("application.log"))
+            string filename = e.Name ?? "";
+            if (filename.Contains("application.log"))
             {
                 StartNewMonitor(e.FullPath);
             }
-            if (e.Name.Contains("notifications.log"))
+            if (filename.Contains("notifications.log"))
             {
                 StartNewMonitor(e.FullPath);
             }
@@ -210,12 +216,12 @@ namespace TarkovMonitor
                     {
                         // GroupMatchInviteAccept occurs when someone you send an invite accepts
                         // GroupMatchInviteSend occurs when you receive an invite and either accept or decline
-                        GroupInviteAccept?.Invoke(this, jsonNode.AsObject().Deserialize<GroupEventArgs>());
+                        GroupInviteAccept?.Invoke(this, jsonNode?.AsObject().Deserialize<GroupEventArgs>() ?? throw new Exception("Error parsing GroupEventArgs"));
                     }
                     if (eventLine.Contains("Got notification | GroupMatchUserLeave"))
                     {
                         // User left the group
-                        GroupUserLeave?.Invoke(this, jsonNode.AsObject().Deserialize<GroupMatchUserLeaveEventArgs>());
+                        GroupUserLeave?.Invoke(this, jsonNode?.AsObject().Deserialize<GroupMatchUserLeaveEventArgs>() ?? throw new Exception("Error parsing GroupMatchUserLeaveEventArgs"));
                     }
 					if (eventLine.Contains("Got notification | GroupMatchWasRemoved"))
                     {
@@ -225,12 +231,12 @@ namespace TarkovMonitor
                     if (eventLine.Contains("Got notification | GroupMatchRaidSettings"))
                     {
                         // Occurs when group leader invites members to be ready
-                        GroupRaidSettings?.Invoke(this, jsonNode.AsObject().Deserialize<GroupRaidSettingsEventArgs>());
+                        GroupRaidSettings?.Invoke(this, jsonNode?.AsObject().Deserialize<GroupRaidSettingsEventArgs>() ?? throw new Exception("Error parsing GroupRaidSettingsEventArgs"));
                     }
                     if (eventLine.Contains("Got notification | GroupMatchRaidReady"))
                     {
                         // Occurs for each other member of the group when ready
-                        GroupMemberReady?.Invoke(this, jsonNode.AsObject().Deserialize<GroupMatchRaidReadyEventArgs>());
+                        GroupMemberReady?.Invoke(this, jsonNode?.AsObject().Deserialize<GroupMatchRaidReadyEventArgs>() ?? throw new Exception("Error parsing GroupMatchRaidReadyEventArgs"));
                     }
                     if (eventLine.Contains("application|Matching with group id"))
                     {
@@ -304,7 +310,7 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("Got notification | UserMatchOver"))
                     {
-                        RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode["location"].ToString(), RaidId = jsonNode["shortId"]?.ToString() });
+                        RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode?["location"]?.ToString() ?? throw new Exception("Error parsing raid location"), RaidId = jsonNode?["shortId"]?.ToString() ?? throw new Exception("Error parsing raid shortId") });
                         raidInfo = new();
                     }
                     if (eventLine.Contains("application|SelectProfile ProfileId:"))
@@ -324,28 +330,28 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))
                     {
-                        var messageEvent = jsonNode.AsObject().Deserialize<ChatMessageEventArgs>();
+                        var messageEvent = jsonNode?.AsObject().Deserialize<ChatMessageEventArgs>() ?? throw new Exception("Error parsing ChatMessageEventArgs");
                         if (messageEvent.message.type == MessageType.PlayerMessage)
                         {
                             continue;
                         }
-                        var systemMessageEvent = jsonNode.AsObject().Deserialize<SystemChatMessageEventArgs>();
+                        var systemMessageEvent = jsonNode?.AsObject().Deserialize<SystemChatMessageEventArgs>() ?? throw new Exception ("Error parsing SystemChatMessageEventArgs");
                         if (messageEvent.message.type == MessageType.FleaMarket)
 						{
 							if (systemMessageEvent.message.templateId == "5bdabfb886f7743e152e867e 0")
 							{
-								FleaSold?.Invoke(this, jsonNode.AsObject().Deserialize<FleaSoldMessageEventArgs>());
+								FleaSold?.Invoke(this, jsonNode?.AsObject().Deserialize<FleaSoldMessageEventArgs>() ?? throw new Exception ("Error parsing FleaSoldMessageEventArgs"));
 								continue;
 							}
 							if (systemMessageEvent.message.templateId == "5bdabfe486f7743e1665df6e 0")
 							{
-								FleaOfferExpired?.Invoke(this, jsonNode.AsObject().Deserialize<FleaExpiredeMessageEventArgs>());
+								FleaOfferExpired?.Invoke(this, jsonNode?.AsObject().Deserialize<FleaExpiredeMessageEventArgs>() ?? throw new Exception("Error parsing FleaExpiredeMessageEventArgs"));
 								continue;
 							}
 						}
                         if (systemMessageEvent.message.type >= MessageType.TaskStarted && systemMessageEvent.message.type <= MessageType.TaskFinished)
                         {
-                            var args = jsonNode.AsObject().Deserialize<TaskStatusMessageEventArgs>();
+                            var args = jsonNode?.AsObject().Deserialize<TaskStatusMessageEventArgs>() ?? throw new Exception("Error parsing TaskStatusMessageEventArgs");
                             TaskModified?.Invoke(this, args);
                             if (args.Status == TaskStatus.Started)
                             {
@@ -474,7 +480,7 @@ namespace TarkovMonitor
             List<LogDetails> breakpoints = new();
             foreach (var kvp in GetLogFolders().OrderBy(key => key.Key).ToDictionary(x => x.Key, x => x.Value))
             {
-                LogDetails breakpoint = GetLogDetails(kvp.Value);
+                LogDetails? breakpoint = GetLogDetails(kvp.Value);
                 if (breakpoint == null)
                 {
                     continue;
@@ -610,7 +616,7 @@ namespace TarkovMonitor
                 }
                 var newMon = new LogMonitor(path, (GameLogType)newType);
                 newMon.NewLogData += GameWatcher_NewLogData;
-                newMon.Exception += (object sender, ExceptionEventArgs e) => {
+                newMon.Exception += (sender, e) => {
                     ExceptionThrown?.Invoke(sender, e);
                 };
                 newMon.Start();
