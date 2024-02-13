@@ -1,4 +1,6 @@
 ﻿using System.Data.SQLite;
+// do not upgrade to 1.0.118
+// newer version throws an error after being compiled as single file assembly
 
 namespace TarkovMonitor
 {
