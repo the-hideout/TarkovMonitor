@@ -5,9 +5,9 @@ namespace TarkovMonitor
     internal class Stats
     {
         public static string DatabasePath => Path.Join(Application.UserAppDataPath, "TarkovMonitor.db");
-        public static string ConnectionString => $"Data Source=\"{DatabasePath}\";Version=3;";
-        private static SQLiteConnection? Connection;
-        public static void OpenConnection()
+        public static string ConnectionString => $"Data Source={DatabasePath};Version=3;";
+        private static SQLiteConnection Connection;
+        static Stats()
         {
 			Connection = new SQLiteConnection(ConnectionString);
             Connection.Open();
@@ -65,10 +65,6 @@ namespace TarkovMonitor
 
         private static SQLiteDataReader Query(string query, Dictionary<string,object> parameters)
         {
-            if (Connection == null)
-            {
-                OpenConnection();
-            }
             using var command = new SQLiteCommand(Connection);
             command.CommandText = query;
             foreach (var parameter in parameters)
