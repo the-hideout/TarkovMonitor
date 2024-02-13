@@ -376,25 +376,23 @@ namespace TarkovMonitor
 
         public Dictionary<DateTime, string> GetLogFolders()
         {
-            // Find all of the log folders in the Logs directory
-            if (LogsPath != "")
+			Dictionary<DateTime, string> folderDictionary = new();
+            if (LogsPath == "")
             {
-                Dictionary<DateTime, string> folderDictionary = new();
-                var logFolders = Directory.GetDirectories(LogsPath);
-                // For each log folder, get the timestamp from the folder name
-                foreach (string folderName in logFolders)
-                {
-                    var dateTimeString = new Regex(@"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Match(folderName).Groups["timestamp"].Value;
-                    DateTime folderDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
-                    folderDictionary.Add(folderDate, folderName);
-                }
-                // Return the dictionary sorted by the timestamp
-                return folderDictionary.OrderByDescending(key => key.Key).ToDictionary(x => x.Key, x => x.Value);
-            } 
-            else
+                return folderDictionary;
+			}
+
+			// Find all of the log folders in the Logs directory
+			var logFolders = Directory.GetDirectories(LogsPath);
+            // For each log folder, get the timestamp from the folder name
+            foreach (string folderName in logFolders)
             {
-                return new Dictionary<DateTime, string>();
+                var dateTimeString = new Regex(@"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Match(folderName).Groups["timestamp"].Value;
+                DateTime folderDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
+                folderDictionary.Add(folderDate, folderName);
             }
+            // Return the dictionary sorted by the timestamp
+            return folderDictionary.OrderByDescending(key => key.Key).ToDictionary(x => x.Key, x => x.Value);
         }
 
         // Process the log files in the specified folder
