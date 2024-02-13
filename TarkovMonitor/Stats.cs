@@ -9,7 +9,7 @@ namespace TarkovMonitor
         private static SQLiteConnection? Connection;
         public static void OpenConnection()
         {
-            string dbPath = Path.Combine(Application.UserAppDataPath, "TarkovMonitor.db");
+            string dbPath = Path.Combine(Sound.AppDataFolder, "TarkovMonitor.db");
             string connString = "Data Source=" + dbPath + ";Version=3;";
 
 			Connection = new SQLiteConnection(connString);
