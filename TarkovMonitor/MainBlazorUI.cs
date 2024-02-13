@@ -75,7 +75,15 @@ namespace TarkovMonitor
             eft.MatchFound += Eft_MatchFound;
             eft.MapLoaded += Eft_MapLoaded;
             eft.PlayerPosition += Eft_PlayerPosition;
-			eft.Start();
+
+            try
+            {
+                eft.Start();
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error starting game watcher: {ex.Message} {ex.StackTrace}", "exception");
+            }
 
 			TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
 

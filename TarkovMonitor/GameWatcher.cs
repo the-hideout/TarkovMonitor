@@ -147,13 +147,19 @@ namespace TarkovMonitor
             }
         }
 
+        public void SetLogsPath()
+        {
+			using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov") ?? throw new Exception("EFT install registry entry not found");
+			LogsPath = Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
+            throw new Exception("test");
+		}
+
         public void Start()
         {
 			try
 			{
-				using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov") ?? throw new Exception("EFT install registry entry not found");
-				LogsPath = Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
-				logFileCreateWatcher.Path = LogsPath;
+                SetLogsPath();
+                logFileCreateWatcher.Path = LogsPath;
 				logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
 				logFileCreateWatcher.EnableRaisingEvents = true;
 				processTimer.Elapsed += ProcessTimer_Elapsed;

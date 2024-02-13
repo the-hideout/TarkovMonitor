@@ -1,4 +1,5 @@
 ﻿@using Humanizer
+@inject MessageLog messageLog
 
 <MudDialog>
     <DialogContent>
@@ -34,6 +35,14 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
+        try
+        {
+            eft.SetLogsPath();
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Error setting game logs path: {ex.Message} {ex.StackTrace}", "exception");
+        }
         breakpoints = eft.GetLogBreakpoints();
     }
 
