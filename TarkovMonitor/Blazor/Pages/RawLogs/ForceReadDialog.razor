@@ -1,6 +1,5 @@
 ﻿@using Humanizer
 @inject MessageLog messageLog
-@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
@@ -61,7 +60,7 @@
         }
         if (!TarkovTracker.ValidToken)
         {
-            Snackbar.Add("You must have a valid Tarkov Tracker API token to read past logs.", Severity.Error);
+            messageLog.AddMessage("You must have a valid Tarkov Tracker API token to read past logs.", "exception");
         }
         TaskStatuses.Clear();
         //eft.ProcessLogs(selectedPath);
@@ -109,17 +108,17 @@
             if (updateTasks.Count > 0)
             {
                 await TarkovTracker.SetTaskStatuses(updateTasks);
-                Snackbar.Add($"Updated status of {updateTasks.Count} tasks in Tarkov Tracker.", Severity.Info);
+                messageLog.AddMessage($"Updated status of {updateTasks.Count} tasks in Tarkov Tracker.", "info");
             }
             else
             {
-                Snackbar.Add("No tasks found in past logs that require updating in Tarkov Tracker.", Severity.Info);
+                messageLog.AddMessage("No tasks found in past logs that require updating in Tarkov Tracker.", "info");
             }
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
-            Snackbar.Add(ex.Message, Severity.Error);
+            messageLog.AddMessage(ex.Message, "exception");
         }
     }
 

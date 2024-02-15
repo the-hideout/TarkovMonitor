@@ -11,10 +11,17 @@ namespace TarkovMonitor
 
     public class NewLogMessageArgs : EventArgs
     {
-        private string type;
-        public NewLogMessageArgs(string Type)
+        public MonitorMessage Message { get; set; }
+        private string type
         {
-            type = Type;
+            get
+            {
+                return Message.Type;
+            }
+        }
+        public NewLogMessageArgs(MonitorMessage message)
+        {
+            Message = message;
         }
     }
 
@@ -33,15 +40,16 @@ namespace TarkovMonitor
             Messages.Add(message);
 
             // Throw event to let watchers know something has changed
-            newMessage(this, new NewLogMessageArgs(message.Type));
+            newMessage(this, new NewLogMessageArgs(message));
         }
 
         public void AddMessage(string message, string? type = "", string? url = null)
         {
-            Messages.Add(new MonitorMessage(message, type, url));
+            var monMessage = new MonitorMessage(message, type, url);
+            Messages.Add(monMessage);
 
             // Throw event to let watchers know something has changed
-            newMessage(this, new NewLogMessageArgs(type ?? ""));
+            newMessage(this, new NewLogMessageArgs(monMessage));
         }
     }
 }

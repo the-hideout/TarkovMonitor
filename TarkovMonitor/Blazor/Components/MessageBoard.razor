@@ -2,6 +2,7 @@
 @using System.Diagnostics;
 @using System.Threading
 @inject MessageLog messageLog
+@inject ISnackbar Snackbar
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
     @if (messageLog.Messages.Count == 0)
     {
@@ -93,8 +94,8 @@
 			FileName = url,
 			UseShellExecute = true,
 		};
-		Process.Start(psi);
-	}
+        Process.Start(psi);
+    }
 
     private void RefreshCallback(object? state)
     {
@@ -104,5 +105,11 @@
     private void MessageAdded(object? sender, NewLogMessageArgs e)
     {
         InvokeAsync(() => StateHasChanged());
+        var severity = Severity.Info;
+        if (e.Message.Type == "exception")
+        {
+            severity = Severity.Error;
+        }
+        Snackbar.Add(e.Message.Message, severity);
     }
 }

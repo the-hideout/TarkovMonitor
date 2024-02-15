@@ -132,6 +132,11 @@ namespace TarkovMonitor
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
         }
 
+        private void MessageLog_newMessage(object source, NewLogMessageArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
         {
             if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
