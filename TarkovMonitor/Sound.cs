@@ -70,9 +70,10 @@ namespace TarkovMonitor
         }
         public static Dictionary<int, string> GetPlaybackDevices()
         {
-            System.Diagnostics.Debug.WriteLine("GetPlaybackDevices");
-            Dictionary<int, string> devices = new();
-            devices.Add(-1, "Default Device");
+            Dictionary<int, string> devices = new()
+            {
+                { -1, "Default Device" }
+            };
             for (var deviceNum = 0; deviceNum < WaveOut.DeviceCount; deviceNum++)
             {
                 WaveOutCapabilities deviceInfo = WaveOut.GetCapabilities(deviceNum);

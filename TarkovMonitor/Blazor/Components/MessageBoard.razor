@@ -110,6 +110,14 @@
         {
             severity = Severity.Error;
         }
+        if (e.Message.Type == "warning")
+        {
+            severity = Severity.Warning;
+        }
+        if (e.Message.Type == "update")
+        {
+            severity = Severity.Success;
+        }
         Snackbar.Add(e.Message.Message, severity);
     }
 }

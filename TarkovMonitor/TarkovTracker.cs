@@ -94,7 +94,11 @@ namespace TarkovMonitor
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -185,8 +189,12 @@ namespace TarkovMonitor
 				if (ex.StatusCode == HttpStatusCode.Unauthorized)
 				{
 					InvalidTokenException();
-				}
-				throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+                }
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
 			}
 			catch (Exception ex)
 			{
@@ -213,7 +221,11 @@ namespace TarkovMonitor
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                throw new Exception($"Invalid TarkovTracker response code: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -246,7 +258,11 @@ namespace TarkovMonitor
                 {
                     InvalidTokenException();
                 }
-                throw new Exception($"Invalid response code ({ex.StatusCode}): {ex.Message}");
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -259,7 +275,7 @@ namespace TarkovMonitor
             Progress = new();
             ValidToken = false;
             TokenInvalid?.Invoke(null, new EventArgs());
-            throw new Exception("Tarkov Tracker token is invalid");
+            throw new Exception("Tarkov Tracker API token is invalid");
         }
 
         public static bool HasAirFilter()

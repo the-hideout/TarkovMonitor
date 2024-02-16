@@ -192,10 +192,17 @@ namespace TarkovMonitor
         {
             base.OnShown(e);
 
-            if (Properties.Settings.Default.minimizeAtStartup)
+            try
             {
+                if (Properties.Settings.Default.minimizeAtStartup)
+                {
 
-                WindowState = FormWindowState.Minimized;
+                    WindowState = FormWindowState.Minimized;
+                }
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error minimizing at startup: {ex.Message} {ex.StackTrace}", "exception");
             }
         }
 
@@ -647,18 +654,32 @@ namespace TarkovMonitor
 
         private void MainBlazorUI_Resize(object sender, EventArgs e)
         {
-            if (this.WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
+            try
             {
-                Hide();
-                notifyIconTarkovMonitor.Visible = true;
+                if (this.WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
+                {
+                    Hide();
+                    notifyIconTarkovMonitor.Visible = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error minimizing to tray: {ex.Message} {ex.StackTrace}", "exception");
             }
         }
 
         private void notifyIconTarkovMonitor_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            Show();
-            this.WindowState = FormWindowState.Normal;
-            notifyIconTarkovMonitor.Visible = false;
+            try
+            {
+                Show();
+                this.WindowState = FormWindowState.Normal;
+                notifyIconTarkovMonitor.Visible = false;
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error restoring from tray: {ex.Message} {ex.StackTrace}", "exception");
+            }
         }
 
         private void menuItemQuit_Click(object sender, EventArgs e)

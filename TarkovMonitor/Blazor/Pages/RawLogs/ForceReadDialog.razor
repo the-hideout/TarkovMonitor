@@ -5,14 +5,22 @@
     <DialogContent>
         @if (eft.LogsPath != "")
         {
-            <MudSelect @bind-Value="selectedBreakpoint" Label="Read previous logs" HelperText="Choose the starting point from which to read logs" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
-                @foreach (LogDetails breakpoint in breakpoints)
-                {
-                    <MudSelectItem Value="@breakpoint">(@breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()) | @breakpoint.Version | Profile: @breakpoint.ProfileId</MudSelectItem>
-                }
-            </MudSelect>
-            <p>Select a starting point to read previous logs and update your quest progress. All logs from that point forward with the same profile ID will be read and that cumulative progress will be synced to Tarkov Tracker.</p>
-            <p><strong>WARNING: </strong>You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</p>
+            if (breakpoints != null)
+            {
+                <MudSelect @bind-Value="selectedBreakpoint" Label="Read previous logs" HelperText="Choose the starting point from which to read logs" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
+                    @foreach (LogDetails breakpoint in breakpoints)
+                    {
+                        <MudSelectItem Value="@breakpoint">(@breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()) | @breakpoint.Version | Profile: @breakpoint.ProfileId</MudSelectItem>
+                    }
+                </MudSelect>
+                <p>Select a starting point to read previous logs and update your quest progress. All logs from that point forward with the same profile ID will be read and that cumulative progress will be synced to Tarkov Tracker.</p>
+                <p><strong>WARNING: </strong>You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</p>
+            }
+            else
+            {
+                <MudProgressCircular Color="Color.Info" Indeterminate="true" />
+            }
+            
         }
         else
         {
@@ -29,7 +37,7 @@
 
     internal GameWatcher eft = new();
     LogDetails? selectedBreakpoint;
-    List<LogDetails> breakpoints = new();
+    List<LogDetails>? breakpoints;
     Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
 
     protected override void OnInitialized()
@@ -46,6 +54,7 @@
         Task.Run(() =>
         {
             breakpoints = eft.GetLogBreakpoints();
+            InvokeAsync(() => StateHasChanged());
         });
     }
 
