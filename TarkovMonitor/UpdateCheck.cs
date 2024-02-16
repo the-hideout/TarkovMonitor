@@ -51,7 +51,7 @@ namespace TarkovMonitor
             }
             catch (ApiException ex)
             {
-                Error?.Invoke(null, new(new Exception($"Invalid GitHub API response code ({ex.StatusCode}): {ex.Message}"), "checking for new version"));
+                Error?.Invoke(null, new(new Exception($"Invalid GitHub API response code: {ex.Message}"), "checking for new version"));
             }
             catch (Exception ex)
             {
@@ -70,10 +70,6 @@ namespace TarkovMonitor
     {
         public Version Version { get; set; }
         public Uri Uri { get; set; }
-    }
-    public class UpdateCheckErrorEventArgs : EventArgs
-    {
-        public Exception Exception { get; set;} 
     }
 }
 
