@@ -13,11 +13,27 @@ namespace TarkovMonitor
         }
 
         private static readonly string repo = "the-hideout/TarkovMonitor";
+        private static readonly System.Timers.Timer updateCheckTimer;
 
         private static readonly IGitHubAPI api = RestService.For<IGitHubAPI>($"https://api.github.com/repos/{repo}");
 
         public static event EventHandler<NewVersionEventArgs>? NewVersion;
-        public static event EventHandler<UpdateCheckErrorEventArgs>? Error;
+        public static event EventHandler<ExceptionEventArgs>? Error;
+
+        static UpdateCheck()
+        {
+            updateCheckTimer = new(TimeSpan.FromDays(1).TotalMilliseconds)
+            {
+                AutoReset = true,
+                Enabled = true
+            };
+            updateCheckTimer.Elapsed += UpdateCheckTimer_Elapsed;
+        }
+
+        private static void UpdateCheckTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            CheckForNewVersion();
+        }
 
         public static async void CheckForNewVersion()
         {
@@ -35,11 +51,11 @@ namespace TarkovMonitor
             }
             catch (ApiException ex)
             {
-                throw new Exception($"Invalid GitHub API response code ({ex.StatusCode}): {ex.Message}");
+                Error?.Invoke(null, new(new Exception($"Invalid GitHub API response code ({ex.StatusCode}): {ex.Message}"), "checking for new version"));
             }
             catch (Exception ex)
             {
-                throw new Exception($"GitHub API error: {ex.Message}");
+                Error?.Invoke(null, new(new Exception($"GitHub API error: {ex.Message}"), "checking for new version"));
             }
         }
 

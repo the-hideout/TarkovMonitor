@@ -235,9 +235,9 @@ namespace TarkovMonitor
             }
         }
 
-        private void UpdateCheck_Error(object? sender, UpdateCheckErrorEventArgs e)
+        private void UpdateCheck_Error(object? sender, ExceptionEventArgs e)
         {
-            messageLog.AddMessage($"Error checking for new version: {e.Exception.Message}");
+            messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}", "exception");
         }
 
         private void UpdateCheck_NewVersion(object? sender, NewVersionEventArgs e)
