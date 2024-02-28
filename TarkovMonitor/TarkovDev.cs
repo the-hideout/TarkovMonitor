@@ -9,7 +9,9 @@ namespace TarkovMonitor
         internal interface ITarkovDevAPI
         {
             [Post("/queue")]
-            Task<QueueTimeResponse> SubmitQueueTime([Body] QueueTimeBody body);
+            Task<DataSubmissionResponse> SubmitQueueTime([Body] QueueTimeBody body);
+            [Post("/goons")]
+            Task<DataSubmissionResponse> SubmitGoonsSighting([Body] GoonsBody body);
         }
 
         private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
@@ -174,26 +176,8 @@ namespace TarkovMonitor
             return Stations;
         }
 
-        public async static Task<QueueTimeResponse> PostQueueTime(string mapNameId, int queueTime, string type)
+        public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type)
         {
-            /*var queueApiUrl = "https://manager.tarkov.dev/api/queue";
-            //var queueApiUrl = "http://localhost:4000/api/queue";
-            var payload = $"{{\"map\":\"{mapNameId}\",\"time\":{queueTime}, \"type\": \"{type}\"}}";
-            var request = new HttpRequestMessage(HttpMethod.Post, queueApiUrl)
-            {
-                Content = new StringContent(payload, Encoding.UTF8, "application/json")
-            };
-            var response = await httpClient.SendAsync(request);
-            var content = await response.Content.ReadAsStringAsync();
-            try
-            {
-                response.EnsureSuccessStatusCode();
-                return content;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"{ex.Message}: {content}");
-            }*/
             try
             {
                 return await api.SubmitQueueTime(new QueueTimeBody() { map = mapNameId, time = queueTime, type = type });
@@ -205,6 +189,22 @@ namespace TarkovMonitor
             catch (Exception ex)
             {
                 throw new Exception($"Queue API error: {ex.Message}");
+            }
+        }
+
+        public async static Task<DataSubmissionResponse> PostGoonsSighting(string mapNameId, DateTime date, int accountId)
+        {
+            try
+            {
+                return await api.SubmitGoonsSighting(new GoonsBody() { map = mapNameId, timestamp = (int)((DateTimeOffset)date).ToUnixTimeMilliseconds(), accountId = accountId });
+            }
+            catch (ApiException ex)
+            {
+                throw new Exception($"Invalid Goons API response code ({ex.StatusCode}): {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Goons API error: {ex.Message}");
             }
         }
 
@@ -337,9 +337,16 @@ namespace TarkovMonitor
             public string type { get; set; }
         }
 
-        public class QueueTimeResponse
+        public class DataSubmissionResponse
         {
             public string status { get; set; }
+        }
+
+        public class GoonsBody
+        {
+            public string map { get; set; }
+            public int timestamp { get; set; }
+            public int accountId { get; set; }
         }
 
         public static int ScavCooldownSeconds()

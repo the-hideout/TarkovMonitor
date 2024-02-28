@@ -6,6 +6,7 @@ using Microsoft.Web.WebView2.Core;
 using TarkovMonitor.GroupLoadout;
 using System.Globalization;
 using System.ComponentModel;
+using MudBlazor;
 
 namespace TarkovMonitor
 {
@@ -168,7 +169,29 @@ namespace TarkovMonitor
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
-            messageLog.AddMessage($"Ended {mapName} raid", "raidleave");
+            MonitorMessage monMessage = new($"Ended {mapName} raid");
+            if (e.RaidInfo.Screenshots.Count > 0) {
+                MonitorMessageButton screenshotButton = new($"Delete {e.RaidInfo.Screenshots.Count} Screenshots", Icons.Material.Filled.Delete);
+                screenshotButton.OnClick = () =>
+                {
+                    try
+                    {
+                        foreach (var filename in e.RaidInfo.Screenshots)
+                        {
+                            File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
+                        }
+                        //e.RaidInfo.Screenshots.Clear();
+                        monMessage.Buttons.Remove(screenshotButton);
+                        messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
+                    }
+                    catch (Exception ex)
+                    {
+                        messageLog.AddMessage($"Error deleting screenshot: {ex.Message} {ex.StackTrace}", "exception");
+                    }
+                };
+                monMessage.Buttons.Add(screenshotButton);
+            }
+            messageLog.AddMessage(monMessage);
             runthroughTimer.Stop();
             if (e.RaidInfo.RaidType == RaidType.Scav && Properties.Settings.Default.scavCooldownAlert)
             {
@@ -315,7 +338,7 @@ namespace TarkovMonitor
 
         private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
         {
-            messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update");
+            messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update", "https://tarkovtracker.io");
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
@@ -601,7 +624,32 @@ namespace TarkovMonitor
             if (map != null) mapName = map.name;
             if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
             {
-                messageLog.AddMessage($"Starting {e.RaidInfo.RaidType} raid on {mapName}");
+                MonitorMessage monMessage = new($"Starting {e.RaidInfo.RaidType} raid on {mapName}");
+                /*if (e.RaidInfo.StartedTime != null)
+                {
+                    MonitorMessageButton goonsButton = new($"Report Goons", Icons.Material.Filled.Groups);
+                    goonsButton.OnClick = async () => {
+                        try
+                        {
+                            var DialogService = blazorWebView1.Services.GetService<IDialogService>();
+                            bool? result = await DialogService.ShowMessageBox(
+                                $"Report Goons Sighting on {mapName}",
+                                "If you saw the goons, reporting it will help others find them. If you didn't see the goons in this raid, please don't submit a report.",
+                                yesText: $"I saw the Goons on {mapName}", cancelText: "Cancel");
+                            if (result == null)
+                            {
+                                return;
+                            }
+                            await TarkovDev.PostGoonsSighting(e.RaidInfo.Map, (DateTime)e.RaidInfo.StartedTime, eft.AccountId);
+                            monMessage.Buttons.Remove(goonsButton);
+                        }
+                        catch (Exception ex) {
+                            messageLog.AddMessage($"Error reporting goons: {ex.Message} {ex.StackTrace}", "exception");
+                        }
+                    };
+                    monMessage.Buttons.Add(goonsButton);
+                }*/
+                messageLog.AddMessage(monMessage);
                 if (Properties.Settings.Default.raidStartAlert && e.RaidInfo.StartingTime == null)
                 {
                     // if there was no GameStarting event in the log, play the notification sound

@@ -40,6 +40,24 @@ namespace TarkovMonitor
                 return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Escape From Tarkov", "Screenshots");
             }
         }
+        private int _accountId = 0;
+        public int AccountId
+        {
+            get
+            {
+                if (_accountId > 0)
+                {
+                    return _accountId;
+                }
+                LogDetails details = GetLogDetails(GetLatestLogFolder());
+                if (details == null)
+                {
+                    return 0;
+                }
+                _accountId = details.AccountId;
+                return details.AccountId;
+            }
+        }
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
@@ -141,6 +159,7 @@ namespace TarkovMonitor
                     return;
                 }
                 PlayerPosition?.Invoke(this, new(raidInfo, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), filename));
+                raidInfo.Screenshots.Add(filename);
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing screenshot {e.Name}"));
@@ -182,6 +201,7 @@ namespace TarkovMonitor
             if (filename.Contains("application.log"))
             {
                 StartNewMonitor(e.FullPath);
+                _accountId = 0;
             }
             if (filename.Contains("notifications.log"))
             {
@@ -315,7 +335,7 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("Got notification | UserMatchOver"))
                     {
-                        RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode?["location"]?.ToString() ?? throw new Exception("Error parsing raid location"), RaidId = jsonNode?["shortId"]?.ToString() ?? throw new Exception("Error parsing raid shortId") });
+                        RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode?["location"]?.ToString() ?? throw new Exception("Error parsing raid location"), RaidId = jsonNode?["shortId"]?.ToString() });
                         raidInfo = new();
                     }
                     if (eventLine.Contains("application|SelectProfile ProfileId:"))
@@ -695,6 +715,7 @@ namespace TarkovMonitor
         public DateTime? StartingTime { get; set; }
         public DateTime? StartedTime { get; set; }
         public DateTime? EndedTime { get; set; }
+        public List<string> Screenshots { get; set; } = new();
         public RaidInfo()
         {
             Map = "";
@@ -727,7 +748,7 @@ namespace TarkovMonitor
     public class RaidExitedEventArgs : EventArgs
 	{
 		public string Map { get; set; }
-		public string RaidId { get; set; }
+		public string? RaidId { get; set; }
 	}
     public class RaidInfoEventArgs : EventArgs
     {

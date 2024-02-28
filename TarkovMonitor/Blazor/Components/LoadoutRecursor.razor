@@ -22,7 +22,6 @@
     public LoadoutItem Item { get; set; }
 
     private LoadoutItem[] subItems { get; set; } = { };
-    private bool subItemsInitailized = false;
 
     bool _expanded = false;
 
@@ -38,7 +37,6 @@
     {
         base.OnInitialized();
         subItems = Loadout.Where(i => i.parentId == Item._id && TarkovDev.Items.Where(it => it.id == i._tpl).FirstOrDefault() != null).ToArray();
-        subItemsInitailized = true;
     }
 
     private void OnExpandCollapseClick()
