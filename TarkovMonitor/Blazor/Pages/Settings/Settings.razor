@@ -43,8 +43,12 @@
                 <MudSwitch @bind-Checked="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
                 <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="Scav Karma" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
-                    @foreach (TarkovDev.TraderReputationLevel lvl in TarkovDev.Traders.Find(t => t.normalizedName == "fence").reputationLevels) {
-                        <MudSelectItem Value="@lvl.minimumReputation" />
+                    @if (TraderFence != null)
+                    {
+                        @foreach (TarkovDev.TraderReputationLevel lvl in TraderFence.reputationLevels)
+                        {
+                            <MudSelectItem Value="@lvl.minimumReputation" />
+                        }
                     }
                 </MudSelect>
             </div>
@@ -113,6 +117,13 @@
     public AppLayout AppLayout { get; set; }
 
     private Dictionary<int, string> PlaybackDevices;
+    private TarkovDev.Trader? TraderFence
+    {
+        get
+        {
+            return TarkovDev.Traders.Find(t => t.normalizedName == "fence");
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -401,7 +412,7 @@
                 var tokenResponse = await TarkovTracker.TestToken(TarkovTrackerToken);
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
-                    messageLog.AddMessage("You do not have write permissions with this token.", "exception");
+                    messageLog.AddMessage("You do not have write permissions with this token.", "warning");
                     return;
                 }
             }

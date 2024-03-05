@@ -3,6 +3,7 @@
 @using System.Threading
 @inject MessageLog messageLog
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject NavigationManager NavManager
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
     @if (messageLog.Messages.Count == 0)
@@ -23,7 +24,7 @@
                         <div class="d-flex align-center">
                             @foreach (MonitorMessageButton button in message.Buttons)
                             {
-                                <MudButton Variant="Variant.Filled" Color="@button.Color" StartIcon="@button.Icon" OnClick="@((e) => button.OnClick?.Invoke() )">@button.Text</MudButton>
+                                <MudButton Variant="Variant.Filled" Color="@button.Color" StartIcon="@button.Icon" OnClick="@((e) => MessageButtonClick(button) )">@button.Text</MudButton>
                             }
                         </div>
                     </MudPaper>
@@ -133,5 +134,28 @@
                 return Task.CompletedTask;
             };
         });
+    }
+
+    private async void MessageButtonClick(MonitorMessageButton button)
+    {
+        try
+        {
+            if (button.Confirm == null)
+            {
+                button.OnClick?.Invoke();
+            }
+            bool? result = await DialogService.ShowMessageBox(
+                button.Confirm.Title,
+                (MarkupString) button.Confirm.Message,
+                yesText: button.Confirm.YesText, cancelText: button.Confirm.CancelText);
+            if (result != null)
+            {
+                button.OnClick?.Invoke();
+            }
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Error in message button: ${ex.Message} {ex.StackTrace}", "exception");
+        }
     }
 }

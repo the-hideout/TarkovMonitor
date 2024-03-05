@@ -68,6 +68,16 @@ namespace TarkovMonitor
                             name
                             nameId
                             normalizedName
+                            bosses {
+                                boss {
+                                    normalizedName
+                                }
+                                escorts {
+                                    boss {
+                                        normalizedName
+                                    }
+                                }
+                            }
                         }
                     }
                 "
@@ -184,7 +194,11 @@ namespace TarkovMonitor
             }
             catch (ApiException ex)
             {
-                throw new Exception($"Invalid Queue API response code ({ex.StatusCode}): {ex.Message}");
+                if (ex.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    throw new Exception($"Invalid Queue API response code ({ex.StatusCode}): {ex.Message}");
+                }
+                throw new Exception($"API exception: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -196,11 +210,15 @@ namespace TarkovMonitor
         {
             try
             {
-                return await api.SubmitGoonsSighting(new GoonsBody() { map = mapNameId, timestamp = (int)((DateTimeOffset)date).ToUnixTimeMilliseconds(), accountId = accountId });
+                return await api.SubmitGoonsSighting(new GoonsBody() { map = mapNameId, timestamp = ((DateTimeOffset)date).ToUnixTimeMilliseconds(), accountId = accountId });
             }
             catch (ApiException ex)
             {
-                throw new Exception($"Invalid Goons API response code ({ex.StatusCode}): {ex.Message}");
+                if (ex.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    throw new Exception($"Invalid Goons API response code ({ex.StatusCode}): {ex.Message}");
+                }
+                throw new Exception($"API exception: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -258,6 +276,25 @@ namespace TarkovMonitor
             public string id { get; set; }
             public string name { get; set; }
             public string nameId { get; set; }
+            public string normalizedName { get; set; }
+            public List<BossSpawn> bosses { get; set; }
+            public bool HasGoons()
+            {
+                List<string> goons = new() { "death-knight", "big-pipe", "birdeye" };
+                return bosses.Any(b => goons.Contains(b.boss.normalizedName) || b.escorts.Any(e => goons.Contains(e.boss.normalizedName)));
+            }
+        }
+        public class BossEscort
+        {
+            public Boss boss { get; set; }
+        }
+        public class BossSpawn
+        {
+            public Boss boss { get; set; }
+            public List<BossEscort> escorts { get; set; }
+        }
+        public class Boss
+        {
             public string normalizedName { get; set; }
         }
         public class ItemsResponse
@@ -345,7 +382,7 @@ namespace TarkovMonitor
         public class GoonsBody
         {
             public string map { get; set; }
-            public int timestamp { get; set; }
+            public long timestamp { get; set; }
             public int accountId { get; set; }
         }
 

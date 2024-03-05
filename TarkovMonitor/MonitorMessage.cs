@@ -43,6 +43,7 @@ namespace TarkovMonitor
         public MudBlazor.Color Color { get; set; } = MudBlazor.Color.Default;
         public Action? OnClick { get; set; }
         public bool Disabled { get; set; } = false;
+        public MonitorMessageButtonConfirm? Confirm { get; set; }
         public MonitorMessageButton(string text, Action? onClick = null, string icon = "")
         {
             Text = text;
@@ -50,5 +51,20 @@ namespace TarkovMonitor
             OnClick = onClick;
         }
         public MonitorMessageButton(string text, string icon = "") : this(text, null, icon) { }
+    }
+
+    public class MonitorMessageButtonConfirm
+    {
+        public string Title { get; set; } = "Confirm";
+        public string Message { get; set; }
+        public string YesText { get; set; }
+        public string CancelText { get; set; } = "Cancel";
+        public MonitorMessageButtonConfirm(string title, string message, string yesText, string cancelText)
+        {
+            Title = title;
+            Message = message;
+            YesText = yesText;
+            CancelText = cancelText;
+        }
     }
 }

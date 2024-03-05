@@ -625,30 +625,27 @@ namespace TarkovMonitor
             if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
             {
                 MonitorMessage monMessage = new($"Starting {e.RaidInfo.RaidType} raid on {mapName}");
-                /*if (e.RaidInfo.StartedTime != null)
+                if (map != null && e.RaidInfo.StartedTime != null && map.HasGoons())
                 {
                     MonitorMessageButton goonsButton = new($"Report Goons", Icons.Material.Filled.Groups);
                     goonsButton.OnClick = async () => {
                         try
                         {
-                            var DialogService = blazorWebView1.Services.GetService<IDialogService>();
-                            bool? result = await DialogService.ShowMessageBox(
-                                $"Report Goons Sighting on {mapName}",
-                                "If you saw the goons, reporting it will help others find them. If you didn't see the goons in this raid, please don't submit a report.",
-                                yesText: $"I saw the Goons on {mapName}", cancelText: "Cancel");
-                            if (result == null)
-                            {
-                                return;
-                            }
                             await TarkovDev.PostGoonsSighting(e.RaidInfo.Map, (DateTime)e.RaidInfo.StartedTime, eft.AccountId);
                             monMessage.Buttons.Remove(goonsButton);
+                            messageLog.AddMessage($"Goons reported on {mapName}", "info");
                         }
                         catch (Exception ex) {
                             messageLog.AddMessage($"Error reporting goons: {ex.Message} {ex.StackTrace}", "exception");
                         }
                     };
+                    goonsButton.Confirm = new(
+                        $"Report Goons on {mapName}",
+                        "<p>Please only submit a report if you saw the goons in this raid.</p><p><strong>Notice:</strong> By submitting a goons report, you consent to collection of your IP address and EFT account id for report verification purposes.</p>",
+                        "Submit report", "Cancel"
+                    );
                     monMessage.Buttons.Add(goonsButton);
-                }*/
+                }
                 messageLog.AddMessage(monMessage);
                 if (Properties.Settings.Default.raidStartAlert && e.RaidInfo.StartingTime == null)
                 {
