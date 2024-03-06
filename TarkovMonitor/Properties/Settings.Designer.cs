@@ -238,5 +238,17 @@ namespace TarkovMonitor.Properties {
                 this["skipSplash"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string customLogsPath {
+            get {
+                return ((string)(this["customLogsPath"]));
+            }
+            set {
+                this["customLogsPath"] = value;
+            }
+        }
     }
 }
