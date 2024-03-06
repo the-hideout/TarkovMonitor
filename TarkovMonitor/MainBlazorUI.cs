@@ -29,13 +29,6 @@ namespace TarkovMonitor
                 Properties.Settings.Default.Save();
             }
             this.TopMost = Properties.Settings.Default.stayOnTop;
-            Properties.Settings.Default.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
-                if (e.PropertyName != "stayOnTop")
-                {
-                    return;
-                }
-                this.TopMost = Properties.Settings.Default.stayOnTop;
-            };
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
@@ -86,7 +79,18 @@ namespace TarkovMonitor
                 messageLog.AddMessage($"Error starting game watcher: {ex.Message} {ex.StackTrace}", "exception");
             }
 
-			TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
+            Properties.Settings.Default.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
+                if (e.PropertyName == "stayOnTop")
+                {
+                    this.TopMost = Properties.Settings.Default.stayOnTop;
+                }
+                if (e.PropertyName == "customLogsPath")
+                {
+                    eft.LogsPath = Properties.Settings.Default.customLogsPath;
+                }
+            };
+
+            TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
 
             UpdateCheck.NewVersion += UpdateCheck_NewVersion;
             UpdateCheck.Error += UpdateCheck_Error;

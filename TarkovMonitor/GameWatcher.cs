@@ -14,7 +14,40 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher logFileCreateWatcher;
         private readonly FileSystemWatcher screenshotWatcher;
-        public string LogsPath { get; private set; } = "";
+        private string _logsPath = "";
+        public string LogsPath { 
+            get
+            {
+                if (_logsPath != "")
+                {
+                    return _logsPath;
+                }
+                if (Properties.Settings.Default.customLogsPath != null && Properties.Settings.Default.customLogsPath != "")
+                {
+                    _logsPath = Properties.Settings.Default.customLogsPath;
+                    return _logsPath;
+                }
+                try
+                {
+                    _logsPath = GetDefaultLogsFolder();
+                }
+                catch (Exception ex)
+                {
+                    ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "getting logs path"));
+                }
+                return _logsPath;
+            }
+            set
+            {
+                _logsPath = value;
+                if (logFileCreateWatcher.EnableRaisingEvents)
+                {
+                    logFileCreateWatcher.Path = LogsPath;
+                    WatchLogsFolder(GetLatestLogFolder());
+                }
+
+            }
+        }
         public string CurrentLogsFolder {
             get
             {
@@ -87,6 +120,12 @@ namespace TarkovMonitor
         public event EventHandler<FleaSoldMessageEventArgs>? FleaSold;
         public event EventHandler<FleaExpiredeMessageEventArgs>? FleaOfferExpired;
         public event EventHandler<PlayerPositionEventArgs>? PlayerPosition;
+
+        public static string GetDefaultLogsFolder()
+        {
+            using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov") ?? throw new Exception("EFT install registry entry not found");
+            return Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
+        }
 
         public GameWatcher()
 		{
@@ -166,17 +205,10 @@ namespace TarkovMonitor
             }
         }
 
-        public void SetLogsPath()
-        {
-			using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov") ?? throw new Exception("EFT install registry entry not found");
-			LogsPath = Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
-		}
-
         public void Start()
         {
 			try
 			{
-                SetLogsPath();
                 logFileCreateWatcher.Path = LogsPath;
 				logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
 				logFileCreateWatcher.EnableRaisingEvents = true;
