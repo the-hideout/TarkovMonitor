@@ -143,11 +143,14 @@
             if (button.Confirm == null)
             {
                 button.OnClick?.Invoke();
+                return;
             }
             bool? result = await DialogService.ShowMessageBox(
                 button.Confirm.Title,
                 (MarkupString) button.Confirm.Message,
-                yesText: button.Confirm.YesText, cancelText: button.Confirm.CancelText);
+                yesText: button.Confirm.YesText, 
+                cancelText: button.Confirm.CancelText
+            );
             if (result != null)
             {
                 button.OnClick?.Invoke();

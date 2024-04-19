@@ -135,11 +135,29 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
-        }
 
-        private void MessageLog_newMessage(object source, NewLogMessageArgs e)
-        {
-            throw new NotImplementedException();
+            Task.Run(async () => {
+                /*try
+                {
+                    await TarkovDev.GetPlayerLevels();
+                    if (TarkovTracker.ValidToken)
+                    {
+                        await UpdatePlayerLevel();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    messageLog.AddMessage($"Error checking player level: ${ex}", "exception");
+                }*/
+                try
+                {
+                    await SocketClient.Connect();
+                }
+                catch (Exception ex)
+                {
+                    messageLog.AddMessage($"Error connecting to websocket server: ${ex}", "exception");
+                }
+            });
         }
 
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
@@ -735,5 +753,18 @@ namespace TarkovMonitor
         {
             this.Close();
         }
+
+        /*private async Task UpdatePlayerLevel()
+        {
+            if (!TarkovTracker.ValidToken)
+            {
+                return;
+            }
+            var level = TarkovDev.GetLevel(await TarkovDev.GetExperience(eft.AccountId));
+            if (level == TarkovTracker.Progress.data.playerLevel)
+            {
+                return;
+            }
+        }*/
     }
 }

@@ -6,59 +6,91 @@ namespace TarkovMonitor
 {
     internal static class SocketClient
     {
-        public static event EventHandler<ExceptionEventArgs> ExceptionThrown;
+        public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
         private static readonly string wsUrl = "wss://socket.tarkov.dev";
+        //private static readonly string wsUrl = "ws://localhost:8080";
         private static WebsocketClient? socket;
 
         static SocketClient()
         {
             Properties.Settings.Default.PropertyChanged += SettingChanged;
-            Connect();
+
+            Application.ApplicationExit += Application_ApplicationExit;
         }
 
-        private static async Task Connect()
+        private static void Application_ApplicationExit(object? sender, EventArgs e)
+        {
+            if (socket != null && socket.IsRunning)
+            {
+                socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+            }
+        }
+
+        private static string GetId(int length)
+        {
+            string result = "";
+            string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+            Random r = new Random();
+            int rInt = r.Next(0, characters.Length);
+
+            for (int i = 0; i < length; i++)
+            {
+                result += characters.Substring(r.Next(0, characters.Length), 1);
+            }
+            return result;
+        }
+
+        public static async Task Connect()
         {
             if (socket != null)
             {
-                if (socket.IsRunning)
+                try
                 {
-                    await socket.Stop(WebSocketCloseStatus.NormalClosure, null);
-                }
-                socket.Dispose();
-            }
-            var remoteId = Properties.Settings.Default.remoteId;
-            if (remoteId == null || remoteId == "")
-            {
-                return;
-            }
-            //var source = new CancellationTokenSource();
-            //source.CancelAfter(5000);
-            socket = new(new Uri(wsUrl));
-            socket.MessageReceived.Subscribe(msg => {
-                var message = JsonNode.Parse(msg.Text);
-                if (message["type"].ToString() == "ping")
-                {
-                    socket.Send(new JsonObject
+
+                    if (socket.IsRunning)
                     {
-                        ["type"] = "pong"
-                    }.ToJsonString());
+                        await socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+                    }
+                    socket.Dispose();
+                } catch (Exception ex)
+                {
+                    // don't error on stopping old client
                 }
-            });
-            socket.DisconnectionHappened.Subscribe(disconnectionInfo =>
-            {
-                if (disconnectionInfo.CloseStatus == WebSocketCloseStatus.NormalClosure)
+            }
+            try {
+                var remoteId = Properties.Settings.Default.remoteId;
+                if (remoteId?.Length != 4)
                 {
                     return;
                 }
-                //ExceptionThrown?.Invoke(socket, new(new("Map remote control connection closed unexpectedly"), "running"));
-                Connect();
-            });
-            await socket.Start();
-            socket.Send(new JsonObject
-            {
-                ["sessionID"] = remoteId,
-                ["type"] = "connect"
-            }.ToJsonString());
+                //var source = new CancellationTokenSource();
+                //source.CancelAfter(5000);
+                socket = new(new Uri(wsUrl+$"?sessionid={remoteId}-tm"));
+                socket.MessageReceived.Subscribe(msg => {
+                    var message = JsonNode.Parse(msg.Text);
+                    if (message["type"].ToString() == "ping")
+                    {
+                        socket.Send(new JsonObject
+                        {
+                            ["type"] = "pong"
+                        }.ToJsonString());
+                    }
+                });
+                socket.DisconnectionHappened.Subscribe(disconnectionInfo =>
+                {
+                    if (disconnectionInfo.CloseStatus == WebSocketCloseStatus.NormalClosure)
+                    {
+                        return;
+                    }
+                    //ExceptionThrown?.Invoke(socket, new(new("Map remote control connection closed unexpectedly"), "running"));
+                    Connect();
+                });
+                await socket.Start();
+            } catch (Exception ex) {
+                ExceptionThrown?.Invoke(null, new(ex, $"Connecting with id {Properties.Settings.Default.remoteId}"));
+            }
+            
         }
 
         private static void SettingChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

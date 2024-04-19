@@ -76,45 +76,53 @@
             messageLog.AddMessage("You must have a valid Tarkov Tracker API token to read past logs.", "exception");
         }
         TaskStatuses.Clear();
-        //eft.ProcessLogs(selectedPath);
-        eft.TaskModified += UpdateTaskStatus;
-        eft.ProcessLogsFromBreakpoint(selectedBreakpoint);
-        eft.TaskModified -= UpdateTaskStatus;
         Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
-        foreach (var kvp in TaskStatuses)
+        try
         {
-            if (kvp.Value == TarkovMonitor.TaskStatus.Started)
+            //eft.ProcessLogs(selectedPath);
+            eft.TaskModified += UpdateTaskStatus;
+            eft.ProcessLogsFromBreakpoint(selectedBreakpoint);
+            eft.TaskModified -= UpdateTaskStatus;
+            foreach (var kvp in TaskStatuses)
             {
-                // don't update task status if started
-                continue;
-            }
-            var task = TarkovDev.Tasks.Find((t) => t.id == kvp.Key);
-            if (task == null)
-            {
-                // probably a daily
-                continue;
-            }
-            TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
-            var taskProgress = TarkovTracker.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
-            if (taskProgress != null)
-            {
-                if (taskProgress.failed)
+                if (kvp.Value == TarkovMonitor.TaskStatus.Started)
                 {
-                    savedTaskStatus = TarkovMonitor.TaskStatus.Failed;
+                    // don't update task status if started
+                    continue;
                 }
-                if (taskProgress.complete)
+                var task = TarkovDev.Tasks.Find((t) => t.id == kvp.Key);
+                if (task == null)
                 {
-                    savedTaskStatus = TarkovMonitor.TaskStatus.Finished;
+                    // probably a daily
+                    continue;
                 }
+                TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
+                var taskProgress = TarkovTracker.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
+                if (taskProgress != null)
+                {
+                    if (taskProgress.failed)
+                    {
+                        savedTaskStatus = TarkovMonitor.TaskStatus.Failed;
+                    }
+                    if (taskProgress.complete)
+                    {
+                        savedTaskStatus = TarkovMonitor.TaskStatus.Finished;
+                    }
+                }
+                if (kvp.Value == savedTaskStatus)
+                {
+                    // status matches, so don't update
+                    continue;
+                }
+                updateTasks.Add(kvp.Key, kvp.Value);
+                //System.Diagnostics.Debug.WriteLine($"Task {kvp.Key} should be {kvp.Value}");
+                messageLog.AddMessage($"{kvp.Value} task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
             }
-            if (kvp.Value == savedTaskStatus)
-            {
-                // status matches, so don't update
-                continue;
-            }
-            updateTasks.Add(kvp.Key, kvp.Value);
-            //System.Diagnostics.Debug.WriteLine($"Task {kvp.Key} should be {kvp.Value}");
-            messageLog.AddMessage($"{kvp.Value} task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Error finding task updates: {ex.Message}", "exception");
+            return;
         }
         try
         {
@@ -131,7 +139,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage(ex.Message, "exception");
+            messageLog.AddMessage($"Error updating tasks: {ex.Message}", "exception");
         }
     }
 

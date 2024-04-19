@@ -244,6 +244,13 @@ namespace TarkovMonitor
                 Dictionary<string, int> items = new();
                 foreach (var item in message.items.data)
                 {
+                    if (items.ContainsKey(item._tpl))
+                    {
+                        // when large amounts of roubles are paid, they are paid stacks of 500k maximum
+                        // which means there may be multiple received "items" of roubles per sale
+                        items[item._tpl] += item.upd?.StackObjectsCount ?? 1;
+                        continue;
+                    }
 					items.Add(item._tpl, item.upd?.StackObjectsCount ?? 1);
                 }
                 return items;

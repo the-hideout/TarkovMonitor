@@ -618,7 +618,13 @@ namespace TarkovMonitor
             var latestLogFolder = logFolders.Last();
             foreach (var logFolder in logFolders)
             {
-                var dateTimeString = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"].Value;
+                var dateTimeMatch = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"];
+                if (!dateTimeMatch.Success)
+                {
+                    continue;
+                }
+                var dateTimeString = dateTimeMatch.Value;
+
                 var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
                 if (logDate > latestDate)
                 {

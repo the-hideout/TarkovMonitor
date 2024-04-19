@@ -92,7 +92,7 @@
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsRemote" Class="mr-2" /><MudButton @onclick="VisitWebsite" Variant="Variant.Text">Tarkov.dev Website Remote</MudButton></MudText>
-            <MudTextField @bind-Value="@RemoteID" Label="Remote ID" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentPaste" OnAdornmentClick="PasteRemoteClick"></MudTextField>
+            <MudTextField @bind-Value="@RemoteID" MaxLength="4" Label="Remote ID" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentPaste" OnAdornmentClick="PasteRemoteClick"></MudTextField>
             <div>
                 <MudSwitch @bind-Checked="@NavigateMapSwitch" Label="Switch to Tarkov.dev map on raid load" Color="Color.Info" />
             </div>

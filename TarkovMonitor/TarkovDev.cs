@@ -1,11 +1,15 @@
 ﻿using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.SystemTextJson;
 using Refit;
+using System.Security.Policy;
+using static TarkovMonitor.TarkovTracker;
 
 namespace TarkovMonitor
 {
     internal class TarkovDev
     {
+        private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
+
         internal interface ITarkovDevAPI
         {
             [Post("/queue")]
@@ -13,9 +17,17 @@ namespace TarkovMonitor
             [Post("/goons")]
             Task<DataSubmissionResponse> SubmitGoonsSighting([Body] GoonsBody body);
         }
-
-        private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
         private static ITarkovDevAPI api = RestService.For<ITarkovDevAPI>("https://manager.tarkov.dev/api");
+
+        internal interface ITarkovDevPlayersAPI
+        {
+            [Get("/name/{name}")]
+            Task<List<PlayerSearchResult>> SearchName(string name);
+            [Get("/account/{accountId}")]
+            Task<PlayerProfileResult> GetProfile(int accountId);
+        }
+        private static ITarkovDevPlayersAPI playersApi = RestService.For<ITarkovDevPlayersAPI>("https://player.tarkov.dev");
+
         private static readonly System.Timers.Timer updateTimer = new() {
             AutoReset = true,
             Enabled = false, 
@@ -27,6 +39,7 @@ namespace TarkovMonitor
         public static List<Item> Items { get; private set; } = new();
         public static List<Trader> Traders { get; private set; } = new();
         public static List<HideoutStation> Stations { get; private set; } = new();
+        public static List<PlayerLevel> PlayerLevels { get; private set; } = new();
         public static DateTime ScaveAvailableTime { get; set; } = DateTime.Now;
 
         public async static Task<List<Task>> GetTasks()
@@ -185,6 +198,23 @@ namespace TarkovMonitor
             Stations = response.Data.hideoutStations;
             return Stations;
         }
+        public async static Task<List<PlayerLevel>> GetPlayerLevels()
+        {
+            var request = new GraphQL.GraphQLRequest()
+            {
+                Query = @"
+                    query TarkovMonitorPlayerLevels {
+                        playerLevels {
+                            level
+                            exp
+                        }
+                    }
+                "
+            };
+            var response = await client.SendQueryAsync<PlayerLevelsResponse>(request);
+            PlayerLevels = response.Data.playerLevels;
+            return PlayerLevels;
+        }
 
         public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type)
         {
@@ -198,7 +228,7 @@ namespace TarkovMonitor
                 {
                     throw new Exception($"Invalid Queue API response code ({ex.StatusCode}): {ex.Message}");
                 }
-                throw new Exception($"API exception: {ex.Message}");
+                throw new Exception($"Queue API exception: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -218,12 +248,60 @@ namespace TarkovMonitor
                 {
                     throw new Exception($"Invalid Goons API response code ({ex.StatusCode}): {ex.Message}");
                 }
-                throw new Exception($"API exception: {ex.Message}");
+                throw new Exception($"Goons API exception: {ex.Message}");
             }
             catch (Exception ex)
             {
                 throw new Exception($"Goons API error: {ex.Message}");
             }
+        }
+
+        public async static Task<int> GetExperience(int accountId)
+        {
+            try
+            {
+                var profile = await playersApi.GetProfile(accountId);
+                if (profile.err != null)
+                {
+                    throw new Exception(profile.errmsg);
+                }
+                return profile.Info.experience;
+            }
+            catch (ApiException ex)
+            {
+                if (ex.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    throw new Exception($"Invalid Players API response code ({ex.StatusCode}): {ex.Message}");
+                }
+                throw new Exception($"Players API exception: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Players API error: {ex.Message}");
+            }
+        }
+
+        public static int GetLevel(int experience)
+        {
+            if (experience == 0)
+            {
+                return 0;
+            }
+            var totalExp = 0;
+            for (var i = 0; i < PlayerLevels.Count; i++)
+            {
+                var levelData = PlayerLevels[i];
+                totalExp += levelData.exp;
+                if (totalExp == experience)
+                {
+                    return levelData.level;
+                }
+                if (totalExp > experience)
+                {
+                    return PlayerLevels[i - 1].level;
+                }
+            }
+            return PlayerLevels[PlayerLevels.Count - 1].level;
         }
 
         public static void StartAutoUpdates()
@@ -367,6 +445,16 @@ namespace TarkovMonitor
             public decimal value { get; set; }
         }
 
+        public class PlayerLevelsResponse
+        {
+            public List<PlayerLevel> playerLevels { get; set; }
+        }
+        public class PlayerLevel
+        {
+            public int level { get; set; }
+            public int exp { get; set; }
+        }
+
         public class QueueTimeBody
         {
             public string map { get; set; }
@@ -384,6 +472,29 @@ namespace TarkovMonitor
             public string map { get; set; }
             public long timestamp { get; set; }
             public int accountId { get; set; }
+        }
+
+        public class PlayerApiResponse
+        {
+            public int? err { get; set; }
+            public string? errmsg { get; set; }
+        }
+
+        public class PlayerSearchResult
+        {
+            public int aid { get; set; }
+            public string name { get; set; }
+        }
+
+        public class PlayerProfileResult
+        {
+            public int? err { get; set; }
+            public string? errmsg { get; set; }
+            public PlayerProfileInfo? Info { get; set; }
+        }
+        public class PlayerProfileInfo
+        {
+            public int experience { get; set; }
         }
 
         public static int ScavCooldownSeconds()
