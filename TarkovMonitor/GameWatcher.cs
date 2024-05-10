@@ -489,7 +489,9 @@ namespace TarkovMonitor
                 }
 
                 // Read the file into memory using UTF-8 encoding
-                var fileContents = File.ReadAllText(logFile, Encoding.UTF8);
+                using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var textReader = new StreamReader(fileStream, Encoding.UTF8);
+                var fileContents = textReader.ReadToEnd();
 
                 GameWatcher_NewLogData(this, new NewLogDataEventArgs { Type = logType, Data = fileContents });
             }
@@ -514,7 +516,9 @@ namespace TarkovMonitor
             {
                 return null;
             }
-            var applicationLog = File.ReadAllText(appLogPath);
+            using var fileStream = new FileStream(appLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var textReader = new StreamReader(fileStream, Encoding.UTF8);
+            var applicationLog = textReader.ReadToEnd();
             var match = Regex.Match(applicationLog, @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|SelectProfile ProfileId:(?<profileId>[a-f0-9]+) AccountId:(?<accountId>\d+)", RegexOptions.Multiline);
             if (!match.Success)
             {
