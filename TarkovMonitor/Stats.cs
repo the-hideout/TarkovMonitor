@@ -16,8 +16,8 @@ namespace TarkovMonitor
 
             List<string> createTableCommands = new()
             {
-                "CREATE TABLE IF NOT EXISTS flea_sales (id INTEGER PRIMARY KEY, item_id CHAR(24), buyer VARCHAR(14), count INT, currency CHAR(24), price INT, time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
-                "CREATE TABLE IF NOT EXISTS raids (id INTEGER PRIMARY KEY, map VARCHAR(24), raid_type INT, queue_time DECIMAL(6,2), raid_id VARCHAR(24), time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+                "CREATE TABLE IF NOT EXISTS flea_sales (id INTEGER PRIMARY KEY, profile_id VARCHAR(24), item_id CHAR(24), buyer VARCHAR(14), count INT, currency CHAR(24), price INT, time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
+                "CREATE TABLE IF NOT EXISTS raids (id INTEGER PRIMARY KEY, profile_id VARCHAR(24), map VARCHAR(24), raid_type INT, queue_time DECIMAL(6,2), raid_id VARCHAR(24), time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             };
             foreach (var commandText in createTableCommands)
             {
@@ -26,31 +26,7 @@ namespace TarkovMonitor
                 command.ExecuteNonQuery();
             }
 
-            // example of updating the DB to add a missing field
-            // useful for future updates
-            /*var raidIdFieldExists = false;
-            var result = Query("PRAGMA table_info(raids);");
-            while (result.Read())
-            {
-                for (int i = 0; i < result.FieldCount; i++)
-                {
-                    if (result.GetName(i) != "name")
-                    {
-                        continue;
-                    }
-                    if (result.GetString(i) == "raid_id")
-                    {
-                        raidIdFieldExists = true;
-                        break;
-                    }
-                }
-            }
-            if (!raidIdFieldExists)
-            {
-                using var command = new SQLiteCommand(Connection);
-                command.CommandText = "ALTER TABLE raids ADD COLUMN raid_id VARCHAR(24)";
-                command.ExecuteNonQuery();
-            }*/
+            UpdateDatabase();
         }
 
         public static void ClearData()
@@ -80,11 +56,14 @@ namespace TarkovMonitor
             return Query(query, new());
         }
 
-        public static void AddFleaSale(FleaSoldMessageEventArgs e)
+        public static void AddFleaSale(FleaSoldMessageLogContent e, Profile profile)
         {
-            var sql = "INSERT INTO flea_sales(item_id, buyer, count, currency, price) VALUES(@item_id, @buyer, @count, @currency, @price);";
+            var sql = "INSERT INTO flea_sales(profile_id, item_id, buyer, count, currency, price) VALUES(@item_id, @buyer, @count, @currency, @price);";
             var parameters = new Dictionary<string, object>
             {
+                {
+                    "profile_id", profile.Id
+                },
                 {
                     "item_id", e.SoldItemId
                 },
@@ -120,6 +99,9 @@ namespace TarkovMonitor
         {
             var sql = "INSERT INTO raids(map, raid_type, queue_time, raid_id) VALUES (@map, @raid_type, @queue_time, @raid_id);";
             var parameters = new Dictionary<string, object> {
+                {
+                    "profile_id", e.Profile.Id
+                },
                 {
                     "map", e.RaidInfo.Map
                 },
@@ -171,6 +153,38 @@ namespace TarkovMonitor
                 }
             }
             return raidsPerMap;
+        }
+
+        private static void UpdateDatabase()
+        {
+            List<string> db_tables = new() { "raids", "flea_sales" };
+            foreach (var tableName in db_tables)
+            {
+                var profileIdFieldExists = false;
+                var result = Query($"PRAGMA table_info({tableName});");
+                while (result.Read())
+                {
+                    for (int i = 0; i < result.FieldCount; i++)
+                    {
+                        if (result.GetName(i) != "name")
+                        {
+                            continue;
+                        }
+                        if (result.GetString(i) == "profile_id")
+                        {
+                            profileIdFieldExists = true;
+                            break;
+                        }
+                    }
+                }
+                if (!profileIdFieldExists)
+                {
+                    using var command = new SQLiteCommand(Connection);
+                    command.CommandText = $"ALTER TABLE {tableName} ADD COLUMN profile_id VARCHAR(24)";
+                    command.ExecuteNonQuery();
+                }
+
+            }
         }
     }
 }

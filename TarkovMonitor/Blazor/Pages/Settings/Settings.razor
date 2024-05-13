@@ -367,7 +367,7 @@
     {
         get
         {
-            return Properties.Settings.Default.tarkovTrackerToken.Length != 22;
+            return TarkovTracker.GetToken(eft.CurrentProfile.Id).Length != 22;
         }
         set
         {
@@ -389,12 +389,11 @@
     {
         get
         {
-            return Properties.Settings.Default.tarkovTrackerToken;
+            return TarkovTracker.GetToken(eft.CurrentProfile.Id);
         }
         set
         {
-            Properties.Settings.Default.tarkovTrackerToken = value;
-            Properties.Settings.Default.Save();
+            TarkovTracker.SetToken(eft.CurrentProfile.Id, value);
         }
     }
 

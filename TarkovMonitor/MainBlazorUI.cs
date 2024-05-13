@@ -69,6 +69,17 @@ namespace TarkovMonitor
             eft.MatchFound += Eft_MatchFound;
             eft.MapLoaded += Eft_MapLoaded;
             eft.PlayerPosition += Eft_PlayerPosition;
+            eft.ProfileChanged += Eft_ProfileChanged;
+            eft.InitialReadComplete += (object? sender, ProfileEventArgs e) =>
+            {
+                if (Properties.Settings.Default.tarkovTrackerToken != "")
+                {
+                    TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
+                    Properties.Settings.Default.tarkovTrackerToken = "";
+                    Properties.Settings.Default.Save();
+                }
+                InitializeProgress();
+            };
 
             try
             {
@@ -105,7 +116,6 @@ namespace TarkovMonitor
             UpdateHideoutStations();
             TarkovDev.StartAutoUpdates();
 
-            InitializeProgress();
             UpdateCheck.CheckForNewVersion();
 
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
@@ -158,6 +168,12 @@ namespace TarkovMonitor
                     messageLog.AddMessage($"Error connecting to websocket server: ${ex}", "exception");
                 }
             });
+        }
+
+        private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
+        {
+            messageLog.AddMessage($"Using {e.Profile.Type} profile");
+            TarkovTracker.SetProfile(e.Profile.Id);
         }
 
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
@@ -223,7 +239,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupRaidSettings(object? sender, GroupRaidSettingsEventArgs e)
+        private void Eft_GroupRaidSettings(object? sender, LogContentEventArgs<GroupRaidSettingsLogContent> e)
         {
             groupManager.ClearGroup();
         }
@@ -339,18 +355,18 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupUserLeave(object? sender, GroupMatchUserLeaveEventArgs e)
+        private void Eft_GroupUserLeave(object? sender, LogContentEventArgs<GroupMatchUserLeaveLogContent> e)
         {
-            if (e.Nickname != "You")
+            if (e.LogContent.Nickname != "You")
             {
-                groupManager.RemoveGroupMember(e.Nickname);
+                groupManager.RemoveGroupMember(e.LogContent.Nickname);
             }
-            messageLog.AddMessage($"{e.Nickname} left the group.", "group");
+            messageLog.AddMessage($"{e.LogContent.Nickname} left the group.", "group");
         }
 
-        private void Eft_GroupInviteAccept(object? sender, GroupEventArgs e)
+        private void Eft_GroupInviteAccept(object? sender, LogContentEventArgs<GroupLogContent> e)
         {
-            messageLog.AddMessage($"{e.Info.Nickname} ({e.Info.Side.ToUpper()} {e.Info.Level}) accepted group invite.", "group");
+            messageLog.AddMessage($"{e.LogContent.Info.Nickname} ({e.LogContent.Info.Side.ToUpper()} {e.LogContent.Info.Level}) accepted group invite.", "group");
         }
 
         private void Eft_GroupDisbanded(object? sender, EventArgs e)
@@ -440,14 +456,24 @@ namespace TarkovMonitor
 
         private async Task InitializeProgress()
         {
-            if (Properties.Settings.Default.tarkovTrackerToken == "")
+            if (TarkovTracker.GetToken(eft.CurrentProfile.Id) == "")
             {
                 messageLog.AddMessage("To automatically track task progress, set your Tarkov Tracker token in Settings");
                 return;
             }
+            messageLog.AddMessage($"Using {eft.CurrentProfile.Type} profile");
             try
             {
-                var tokenResponse = await TarkovTracker.TestToken(Properties.Settings.Default.tarkovTrackerToken);
+                await TarkovTracker.SetProfile(eft.CurrentProfile.Id);
+                return;
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error getting Tarkov Tracker progress: {ex.Message}");
+            }
+            try
+            {
+                var tokenResponse = await TarkovTracker.TestToken(TarkovTracker.GetToken(eft.CurrentProfile.Id));
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     messageLog.AddMessage("Your Tarkov Tracker token is missing the required write permissions");
@@ -483,16 +509,16 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_GroupMemberReady(object? sender, GroupMatchRaidReadyEventArgs e)
+        private void Eft_GroupMemberReady(object? sender, LogContentEventArgs<GroupMatchRaidReadyLogContent> e)
         {
-            groupManager.UpdateGroupMember(e);
-            messageLog.AddMessage($"{e.extendedProfile.Info.Nickname} ({e.extendedProfile.PlayerVisualRepresentation.Info.Side.ToUpper()} {e.extendedProfile.PlayerVisualRepresentation.Info.Level}) ready.", "group");
+            groupManager.UpdateGroupMember(e.LogContent);
+            messageLog.AddMessage($"{e.LogContent.extendedProfile.Info.Nickname} ({e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Side.ToUpper()} {e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Level}) ready.", "group");
         }
 
-        private async void Eft_TaskFinished(object? sender, TaskStatusMessageEventArgs e)
+        private async void Eft_TaskFinished(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
         {
             //await AllDataLoaded();
-            var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
+            var task = TarkovDev.Tasks.Find(t => t.id == e.LogContent.TaskId);
             if (task == null)
             {
                 //Debug.WriteLine($"Task with id {e.TaskId} not found");
@@ -516,9 +542,9 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_TaskFailed(object? sender, TaskStatusMessageEventArgs e)
+        private async void Eft_TaskFailed(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
         {
-            var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
+            var task = TarkovDev.Tasks.Find(t => t.id == e.LogContent.TaskId);
             if (task == null)
             {
                 return;
@@ -541,9 +567,9 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_TaskStarted(object? sender, TaskStatusMessageEventArgs e)
+        private async void Eft_TaskStarted(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
         {
-            var task = TarkovDev.Tasks.Find(t => t.id == e.TaskId);
+            var task = TarkovDev.Tasks.Find(t => t.id == e.LogContent.TaskId);
             if (task == null)
             {
                 return;
@@ -556,7 +582,7 @@ namespace TarkovMonitor
             }
             try
             {
-                await TarkovTracker.SetTaskUncomplete(e.TaskId);
+                await TarkovTracker.SetTaskUncomplete(e.LogContent.TaskId);
             }
             catch (Exception ex)
             {
@@ -564,30 +590,30 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_FleaSold(object? sender, FleaSoldMessageEventArgs e)
+        private void Eft_FleaSold(object? sender, LogContentEventArgs<FleaSoldMessageLogContent> e)
         {
-            Stats.AddFleaSale(e);
+            Stats.AddFleaSale(e.LogContent, e.Profile);
             if (TarkovDev.Items == null)
             {
                 return;
             }
             List<string> received = new();
             //await AllDataLoaded();
-            foreach (var receivedId in e.ReceivedItems.Keys)
+            foreach (var receivedId in e.LogContent.ReceivedItems.Keys)
             {
                 if (receivedId == "5449016a4bdc2d6f028b456f")
                 {
-                    received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("ru-RU")));
+                    received.Add(e.LogContent.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("ru-RU")));
                     continue;
                 }
                 else if (receivedId == "5696686a4bdc2da3298b456a")
                 {
-                    received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("en-US")));
+                    received.Add(e.LogContent.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("en-US")));
                     continue;
                 }
                 else if (receivedId == "569668774bdc2da2298b4568")
                 {
-                    received.Add(e.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("de-DE")));
+                    received.Add(e.LogContent.ReceivedItems[receivedId].ToString("C0", CultureInfo.CreateSpecificCulture("de-DE")));
                     continue;
                 }
                 var receivedItem = TarkovDev.Items.Find(item => item.id == receivedId);
@@ -595,28 +621,28 @@ namespace TarkovMonitor
                 {
                     continue;
                 }
-                received.Add($"{String.Format("{0:n0}", e.ReceivedItems[receivedId])} {receivedItem.name}");
+                received.Add($"{String.Format("{0:n0}", e.LogContent.ReceivedItems[receivedId])} {receivedItem.name}");
             }
-            var soldItem = TarkovDev.Items.Find(item => item.id == e.SoldItemId);
+            var soldItem = TarkovDev.Items.Find(item => item.id == e.LogContent.SoldItemId);
             if (soldItem == null)
             {
                 return;
             }
-            messageLog.AddMessage($"{e.Buyer} purchased {String.Format("{0:n0}", e.SoldItemCount)} {soldItem.name} for {String.Join(", ", received.ToArray())}", "flea", soldItem.link);
+            messageLog.AddMessage($"{e.LogContent.Buyer} purchased {String.Format("{0:n0}", e.LogContent.SoldItemCount)} {soldItem.name} for {String.Join(", ", received.ToArray())}", "flea", soldItem.link);
         }
 
-        private void Eft_FleaOfferExpired(object? sender, FleaExpiredeMessageEventArgs e)
+        private void Eft_FleaOfferExpired(object? sender, LogContentEventArgs<FleaExpiredeMessageLogContent> e)
         {
             if (TarkovDev.Items == null)
             {
                 return;
             }
-            var unsoldItem = TarkovDev.Items.Find(item => item.id == e.ItemId);
+            var unsoldItem = TarkovDev.Items.Find(item => item.id == e.LogContent.ItemId);
             if (unsoldItem == null)
             {
                 return;
             }
-            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.ItemCount}) expired", "flea", unsoldItem.link);
+            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.LogContent.ItemCount}) expired", "flea", unsoldItem.link);
         }
 
         private void Eft_DebugMessage(object? sender, DebugEventArgs e)

@@ -6,6 +6,7 @@ namespace TarkovMonitor
     {
         public string Path { get; set; }
         public GameLogType Type { get; set; }
+        public event EventHandler InitialReadComplete;
         public event EventHandler<NewLogDataEventArgs> NewLogData;
         public event EventHandler<ExceptionEventArgs> Exception;
         private bool cancel;
@@ -18,17 +19,18 @@ namespace TarkovMonitor
             cancel = false;
         }
 
-        public async Task Start(bool readFromStart = false)
+        public async Task Start()
         {
             await Task.Run(() =>
             {
                 long fileBytesRead = 0;
-                if (!readFromStart)
+                if (Type != GameLogType.Application)
                 {
                     try
                     {
                         // if not reading from start, we read new log entries starting after the initial state of the log
                         fileBytesRead = new FileInfo(this.Path).Length;
+                        InitialReadComplete?.Invoke(this, new());
                     }
                     catch (Exception ex)
                     {
@@ -67,7 +69,11 @@ namespace TarkovMonitor
                                 bytesRead = fs.Read(buffer, 0, buffer.Length);
                             }
                             //System.Diagnostics.Debug.WriteLine($"{this.Type} log read {newBytesRead} new bytes");
-                            NewLogData?.Invoke(this, new NewLogDataEventArgs { Type = this.Type, Data = string.Join("", chunks.ToArray()) });
+                            NewLogData?.Invoke(this, new NewLogDataEventArgs { Type = this.Type, Data = string.Join("", chunks.ToArray()), InitialRead = fileBytesRead == 0 });
+                            if (fileBytesRead == 0)
+                            {
+                                InitialReadComplete?.Invoke(this, new());
+                            }
                             fileBytesRead += newBytesRead;
                         }
                     }
@@ -89,5 +95,6 @@ namespace TarkovMonitor
 	{
 		public GameLogType Type { get; set; }
 		public string Data { get; set; }
+        public bool InitialRead { get; set; }
 	}
 }

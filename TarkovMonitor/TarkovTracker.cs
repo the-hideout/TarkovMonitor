@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using System.Text.Json;
+using System.Transactions;
 using Refit;
 
 // TO DO: Implement rate limit policy of 15 requests per minute
@@ -33,7 +35,7 @@ namespace TarkovMonitor
             {
                 AuthorizationHeaderValueGetter = (rq, cr) => {
                     return Task.Run<string>(() => {
-                        return Properties.Settings.Default.tarkovTrackerToken;
+                        return tokens[currentProfile];
                     });
                 },
             }
@@ -41,10 +43,62 @@ namespace TarkovMonitor
 
         public static ProgressResponse Progress { get; private set; } = new();
         public static bool ValidToken { get; private set; } = false;
+        private static Dictionary<string, string> tokens = new();
+        private static string currentProfile = "";
+        private static string savedTokensPath => Path.Join(Application.UserAppDataPath, "tarkov_tracker_tokens.json");
 
         public static event EventHandler<EventArgs>? TokenValidated;
         public static event EventHandler<EventArgs>? TokenInvalid;
         public static event EventHandler<EventArgs>? ProgressRetrieved;
+
+        static TarkovTracker() {
+            if (File.Exists(savedTokensPath))
+            {
+                tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(savedTokensPath)) ?? tokens;
+            }
+        }
+
+        public static string GetToken(string profileId)
+        {
+            if (!tokens.ContainsKey(profileId))
+            {
+                return "";
+            }
+            return tokens[profileId];
+        }
+
+        public static void SetToken(string profileId, string token)
+        {
+            if (profileId == "")
+            {
+                return;
+            }
+            tokens[profileId] = token;
+            File.WriteAllText(savedTokensPath, JsonSerializer.Serialize(tokens));
+        }
+
+        public static async Task<ProgressResponse> SetProfile(string profileId)
+        {
+            if (currentProfile == profileId)
+            {
+                return Progress;
+            }
+            var newToken = GetToken(profileId);
+            var oldToken = GetToken(currentProfile);
+            if (oldToken == newToken)
+            {
+                return Progress;
+            }
+            if (newToken == "" || newToken.Length != 22)
+            {
+                ValidToken = false;
+                Progress = new();
+                return Progress;
+            }
+            currentProfile = profileId;
+            await TestToken(newToken);
+            return Progress;
+        }
 
         private static void SyncStoredStatus(string questId, TaskStatus status)
         {

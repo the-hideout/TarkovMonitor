@@ -21,10 +21,10 @@ namespace TarkovMonitor.GroupLoadout
                 return groupMatchRaidReady.extendedProfile.PlayerVisualRepresentation;
             }
         }
-        private GroupMatchRaidReadyEventArgs groupMatchRaidReady { get; }
+        private GroupMatchRaidReadyLogContent groupMatchRaidReady { get; }
 
         // GroupMembers are individuals within a group with a loadout of items.
-        public GroupMember(GroupMatchRaidReadyEventArgs memberReady)
+        public GroupMember(GroupMatchRaidReadyLogContent memberReady)
         {
             groupMatchRaidReady = memberReady;
         }

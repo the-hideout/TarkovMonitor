@@ -1,20 +1,24 @@
 ﻿@using System.ComponentModel
 @using Humanizer
 @inject MessageLog messageLog
+@inject GameWatcher eft
 
 <MudDialog>
     <DialogContent>
-        @if (eft.LogsPath != "")
+        <div>
+            Current profile: @eft.CurrentProfile.Id (@eft.CurrentProfile.Type)
+        </div>
+        @if (customWatcher.LogsPath != "")
         {
             if (breakpoints != null)
             {
                 <MudSelect @bind-Value="selectedBreakpoint" Label="Read previous logs" HelperText="Choose the starting point from which to read logs" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
                     @foreach (LogDetails breakpoint in breakpoints)
                     {
-                        <MudSelectItem Value="@breakpoint">(@breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()) | @breakpoint.Version | Profile: @breakpoint.ProfileId</MudSelectItem>
+                        <MudSelectItem Value="@breakpoint">@breakpoint.Version | @breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()</MudSelectItem>
                     }
                 </MudSelect>
-                <p>Select a starting point to read previous logs and update your quest progress. All logs from that point forward with the same profile ID will be read and that cumulative progress will be synced to Tarkov Tracker.</p>
+                <p>Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same will be read and that cumulative progress will be synced to Tarkov Tracker.</p>
                 <p><strong>WARNING: </strong>You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</p>
             }
             else
@@ -36,7 +40,7 @@
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    internal GameWatcher eft = new();
+    internal GameWatcher customWatcher = new();
     LogDetails? selectedBreakpoint;
     List<LogDetails>? breakpoints;
     Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
@@ -50,7 +54,7 @@
         {
             if (e.PropertyName == "customLogsPath")
             {
-                eft.LogsPath = Properties.Settings.Default.customLogsPath;
+                customWatcher.LogsPath = Properties.Settings.Default.customLogsPath;
                 Task.Run(GetBreakPoints);
             }
         };
@@ -58,7 +62,7 @@
 
     private void GetBreakPoints()
     {
-        breakpoints = eft.GetLogBreakpoints();
+        breakpoints = customWatcher.GetLogBreakpoints(eft.CurrentProfile.Id);
         InvokeAsync(() => StateHasChanged());
     }
 
@@ -80,9 +84,9 @@
         try
         {
             //eft.ProcessLogs(selectedPath);
-            eft.TaskModified += UpdateTaskStatus;
-            eft.ProcessLogsFromBreakpoint(selectedBreakpoint);
-            eft.TaskModified -= UpdateTaskStatus;
+            customWatcher.TaskModified += UpdateTaskStatus;
+            customWatcher.ProcessLogsFromBreakpoint(selectedBreakpoint);
+            customWatcher.TaskModified -= UpdateTaskStatus;
             foreach (var kvp in TaskStatuses)
             {
                 if (kvp.Value == TarkovMonitor.TaskStatus.Started)
@@ -143,8 +147,8 @@
         }
     }
 
-    private void UpdateTaskStatus(object? sender, TaskStatusMessageEventArgs e)
+    private void UpdateTaskStatus(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
     {
-        TaskStatuses[e.TaskId] = e.Status;
+        TaskStatuses[e.LogContent.TaskId] = e.LogContent.Status;
     }
 }
