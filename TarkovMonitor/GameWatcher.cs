@@ -197,12 +197,20 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                if (raidInfo.Map == "")
+                var raid = raidInfo;
+                if (raid.Map == "" && Properties.Settings.Default.customMap != "")
+                {
+                    raid = new()
+                    {
+                        Map = Properties.Settings.Default.customMap
+                    };
+                }
+                if (raid.Map == "")
                 {
                     return;
                 }
-                PlayerPosition?.Invoke(this, new(raidInfo, CurrentProfile, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), filename));
-                raidInfo.Screenshots.Add(filename);
+                PlayerPosition?.Invoke(this, new(raid, CurrentProfile, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), filename));
+                raid.Screenshots.Add(filename);
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing screenshot {e.Name}"));
@@ -609,8 +617,11 @@ namespace TarkovMonitor
 
         public List<LogDetails> GetLogBreakpoints(string profileId)
         {
-            Debug.WriteLine($"Getting breakpoints for {profileId}");
             List<LogDetails> breakpoints = new();
+            if (profileId == "")
+            {
+                return breakpoints;
+            }
             foreach (var kvp in GetLogFolders().OrderBy(key => key.Key).ToDictionary(x => x.Key, x => x.Value))
             {
                 List<LogDetails> folderBreakpoints = GetLogDetails(kvp.Value);

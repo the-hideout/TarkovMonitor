@@ -97,6 +97,7 @@ namespace TarkovMonitor
             };
             var response = await client.SendQueryAsync<MapsResponse>(request);
             Maps = response.Data.maps;
+            Maps.Sort((a, b) => a.name.CompareTo(b.name));
             return Maps;
         }
         public async static Task<List<Item>> GetItems()

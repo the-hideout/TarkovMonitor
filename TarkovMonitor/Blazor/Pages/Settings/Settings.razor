@@ -54,7 +54,7 @@
                 </MudSelect>
             </div>
         </MudPaper>
-	</MudItem>
+    </MudItem>
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
@@ -99,6 +99,13 @@
             <div>
                 <MudSwitch @bind-Checked="@NavigateMapOnPositionUpdateSwitch" Label="Switch to Tarkov.dev map on position update (via screenshot)" Color="Color.Info" />
             </div>
+            <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="Offline Map" ShrinkLabel="true" HelperText="Map to use for offline raids" AnchorOrigin="Origin.BottomCenter" xs="3">
+                <MudSelectItem T="string" Value="@string.Empty">None</MudSelectItem>
+                @foreach (var map in TarkovDev.Maps)
+                {
+                    <MudSelectItem T="string" Value="@map.nameId">@map.name</MudSelectItem>
+                }
+            </MudSelect>
         </MudPaper>
     </MudItem>
 
@@ -294,6 +301,19 @@
         set
         {
             Properties.Settings.Default.notificationsDevice = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public string MapOverrideSelect
+    {
+        get
+        {
+            return Properties.Settings.Default.customMap;
+        }
+        set
+        {
+            Properties.Settings.Default.customMap = value;
             Properties.Settings.Default.Save();
         }
     }

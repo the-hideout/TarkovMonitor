@@ -172,6 +172,10 @@ namespace TarkovMonitor
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
+            if (e.Profile.Id == TarkovTracker.CurrentProfileId)
+            {
+                return;
+            }
             messageLog.AddMessage($"Using {e.Profile.Type} profile");
             TarkovTracker.SetProfile(e.Profile.Id);
         }

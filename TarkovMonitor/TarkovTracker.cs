@@ -45,6 +45,7 @@ namespace TarkovMonitor
         public static bool ValidToken { get; private set; } = false;
         private static Dictionary<string, string> tokens = new();
         private static string currentProfile = "";
+        public static string CurrentProfileId { get { return currentProfile; } }
         private static string savedTokensPath => Path.Join(Application.UserAppDataPath, "tarkov_tracker_tokens.json");
 
         public static event EventHandler<EventArgs>? TokenValidated;
