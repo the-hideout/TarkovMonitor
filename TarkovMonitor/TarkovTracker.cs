@@ -46,17 +46,13 @@ namespace TarkovMonitor
         private static Dictionary<string, string> tokens = new();
         private static string currentProfile = "";
         public static string CurrentProfileId { get { return currentProfile; } }
-        private static string savedTokensPath => Path.Join(Application.UserAppDataPath, "tarkov_tracker_tokens.json");
 
         public static event EventHandler<EventArgs>? TokenValidated;
         public static event EventHandler<EventArgs>? TokenInvalid;
         public static event EventHandler<EventArgs>? ProgressRetrieved;
 
         static TarkovTracker() {
-            if (File.Exists(savedTokensPath))
-            {
-                tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(savedTokensPath)) ?? tokens;
-            }
+            tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
         }
 
         public static string GetToken(string profileId)
@@ -75,7 +71,8 @@ namespace TarkovMonitor
                 return;
             }
             tokens[profileId] = token;
-            File.WriteAllText(savedTokensPath, JsonSerializer.Serialize(tokens));
+            Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
+            Properties.Settings.Default.Save();
         }
 
         public static async Task<ProgressResponse> SetProfile(string profileId)
@@ -86,6 +83,7 @@ namespace TarkovMonitor
             }
             var newToken = GetToken(profileId);
             var oldToken = GetToken(currentProfile);
+            currentProfile = profileId;
             if (oldToken == newToken)
             {
                 return Progress;
@@ -96,7 +94,6 @@ namespace TarkovMonitor
                 Progress = new();
                 return Progress;
             }
-            currentProfile = profileId;
             await TestToken(newToken);
             return Progress;
         }

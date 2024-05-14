@@ -62,5 +62,8 @@
     <Setting Name="customMap" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="tarkovTrackerTokens" Type="System.String" Scope="User">
+      <Value Profile="(Default)">{}</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

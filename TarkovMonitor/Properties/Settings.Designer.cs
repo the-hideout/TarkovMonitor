@@ -262,5 +262,17 @@ namespace TarkovMonitor.Properties {
                 this["customMap"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("{}")]
+        public string tarkovTrackerTokens {
+            get {
+                return ((string)(this["tarkovTrackerTokens"]));
+            }
+            set {
+                this["tarkovTrackerTokens"] = value;
+            }
+        }
     }
 }
