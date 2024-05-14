@@ -5,9 +5,12 @@
 
 <MudDialog>
     <DialogContent>
-        <div>
+        <MudText>
             Current profile: @eft.CurrentProfile.Id (@eft.CurrentProfile.Type)
-        </div>
+        </MudText>
+        <MudText>
+            If you want to update progress for a different profile, activate that profile in the game.
+        </MudText>
         @if (customWatcher.LogsPath != "")
         {
             if (breakpoints != null)
