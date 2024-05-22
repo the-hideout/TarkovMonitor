@@ -53,7 +53,8 @@ namespace TarkovMonitor
                         await socket.Stop(WebSocketCloseStatus.NormalClosure, null);
                     }
                     socket.Dispose();
-                } catch (Exception ex)
+                } 
+                catch (Exception ex)
                 {
                     // don't error on stopping old client
                 }
@@ -87,7 +88,8 @@ namespace TarkovMonitor
                     Connect();
                 });
                 await socket.Start();
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 ExceptionThrown?.Invoke(null, new(ex, $"Connecting with id {Properties.Settings.Default.remoteId}"));
             }
             
@@ -142,7 +144,8 @@ namespace TarkovMonitor
             try
             {
                 await Send(payload);
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(payload, new(ex, "updating player position"));
             }

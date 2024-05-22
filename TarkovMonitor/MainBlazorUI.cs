@@ -709,10 +709,6 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Re-entering raid on {mapName}");
             }
-            if (!Properties.Settings.Default.submitQueueTime)
-            {
-                return;
-            }
             if (e.RaidInfo.Reconnected || !e.RaidInfo.Online || e.RaidInfo.QueueTime == 0 || e.RaidInfo.RaidType == RaidType.Unknown)
             {
                 return;
@@ -721,6 +717,10 @@ namespace TarkovMonitor
             {
                 runthroughTimer.Stop();
                 runthroughTimer.Start();
+            }
+            if (!Properties.Settings.Default.submitQueueTime || e.Profile.Type == ProfileType.PVE)
+            {
+                return;
             }
             try
             {
