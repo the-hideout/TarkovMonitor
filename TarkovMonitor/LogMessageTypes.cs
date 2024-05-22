@@ -2,21 +2,21 @@
 
 namespace TarkovMonitor
 {
-    public class JsonEventArgs : EventArgs
+    public class JsonLogContent
     {
         public string type { get; set; }
         public string eventId { get; set; }
     }
-    public class GroupMatchUserLeaveEventArgs : JsonEventArgs
+    public class GroupMatchUserLeaveLogContent : JsonLogContent
     {
         public string Nickname { get; set; } = "You";
     }
-    public class GroupEventArgs : JsonEventArgs
+    public class GroupLogContent : JsonLogContent
     {
         public PlayerInfo Info { get; set; }
         public bool isLeader { get; set; }
     }
-    public class GroupMatchRaidReadyEventArgs : JsonEventArgs
+    public class GroupMatchRaidReadyLogContent : JsonLogContent
     {
         public ExtendedProfile extendedProfile { get; set; }
         public override string ToString()
@@ -138,7 +138,7 @@ namespace TarkovMonitor
         public string Feet { get; set; }
         public string Hands { get; set; }
     }
-    public class GroupRaidSettingsEventArgs : JsonEventArgs
+    public class GroupRaidSettingsLogContent : JsonLogContent
     {
         public string Map
         {
@@ -178,7 +178,7 @@ namespace TarkovMonitor
             public string side { get; set; }
         }
     }
-    public class ChatMessageEventArgs : JsonEventArgs
+    public class ChatMessageLogContent : JsonLogContent
     {
         public ChatMessage message { get; set; }
     }
@@ -192,7 +192,7 @@ namespace TarkovMonitor
     {
         public string templateId { get; set; }
     }
-    public class SystemChatMessageEventArgs : ChatMessageEventArgs
+    public class SystemChatMessageLogContent : ChatMessageLogContent
     {
         public new SystemChatMessage message { get; set; }
     }
@@ -214,7 +214,7 @@ namespace TarkovMonitor
         public string soldItem { get; set; }
         public int itemCount { get; set; }
     }
-    public class FleaSoldMessageEventArgs: SystemChatMessageEventArgs
+    public class FleaSoldMessageLogContent : SystemChatMessageLogContent
     {
         public string Buyer
         {
@@ -258,7 +258,7 @@ namespace TarkovMonitor
         }
         public new FleaMarketSoldChatMessage message { get; set; }
     }
-    public class FleaExpiredeMessageEventArgs: JsonEventArgs
+    public class FleaExpiredeMessageLogContent : JsonLogContent
     {
         public string ItemId
         {
@@ -276,7 +276,7 @@ namespace TarkovMonitor
         }
         public SystemChatMessageWithItems message { get; set; }
     }
-    public class TaskStatusMessageEventArgs : ChatMessageEventArgs
+    public class TaskStatusMessageLogContent : ChatMessageLogContent
     {
         public string TaskId
         {

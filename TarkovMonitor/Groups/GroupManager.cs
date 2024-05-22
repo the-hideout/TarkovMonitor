@@ -27,7 +27,7 @@ namespace TarkovMonitor.GroupLoadout
             GroupMemberChanged(this, new GroupMemberChangedArgs());
         }
 
-        public void UpdateGroupMember(GroupMatchRaidReadyEventArgs member)
+        public void UpdateGroupMember(GroupMatchRaidReadyLogContent member)
         {
             if (Stale && GroupMembers.Count > 0) ClearGroup();
             GroupMembers[member.extendedProfile.Info.Nickname] = new(member);
