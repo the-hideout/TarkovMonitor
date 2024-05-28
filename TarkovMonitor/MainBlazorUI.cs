@@ -77,7 +77,7 @@ namespace TarkovMonitor
                     try {
                         TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
                     } catch (Exception ex) {
-                        messageLog.AddMessage($"Error starting game watcher: {ex.Message} {ex.StackTrace}", "exception");
+                        messageLog.AddMessage($"Error setting token from previously saved settings {ex.Message}", "exception");
                     }
 
                     Properties.Settings.Default.tarkovTrackerToken = "";
