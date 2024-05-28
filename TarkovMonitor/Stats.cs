@@ -97,7 +97,7 @@ namespace TarkovMonitor
 		}
         public static void AddRaid(RaidInfoEventArgs e)
         {
-            var sql = "INSERT INTO raids(map, raid_type, queue_time, raid_id) VALUES (@map, @raid_type, @queue_time, @raid_id);";
+            var sql = "INSERT INTO raids(profile_id, map, raid_type, queue_time, raid_id) VALUES (@profile_id, @map, @raid_type, @queue_time, @raid_id);";
             var parameters = new Dictionary<string, object> {
                 {
                     "profile_id", e.Profile.Id
