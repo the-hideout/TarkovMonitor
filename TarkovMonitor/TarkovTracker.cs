@@ -35,9 +35,11 @@ namespace TarkovMonitor
             {
                 AuthorizationHeaderValueGetter = (rq, cr) => {
                     return Task.Run<string>(() => {
-                        string token = null;
-                        tokens.TryGetValue(currentProfile, out token);
-                        return token;
+                        if (tokens == null || !tokens.ContainsKey(currentProfile)) {
+                            throw new Exception("No PVE or PVP profile could be found, launch tarkov first");
+                        }
+                        
+                        return tokens[currentProfile];
                     });
                 },
             }
@@ -70,7 +72,7 @@ namespace TarkovMonitor
         {
             if (profileId == "")
             {
-                return;
+                throw new Exception("No PVP or PVE profile initialised, please launch Escape from Tarkov first");
             }
             tokens[profileId] = token;
             Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
@@ -79,6 +81,10 @@ namespace TarkovMonitor
 
         public static async Task<ProgressResponse> SetProfile(string profileId)
         {
+            if (profileId == "") {
+                throw new Exception("Can't set PVP or PVE profile, please launch Escape from Tarkov and then restart this application");
+            }
+
             if (currentProfile == profileId)
             {
                 return Progress;
