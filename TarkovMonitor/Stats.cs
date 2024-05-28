@@ -58,7 +58,7 @@ namespace TarkovMonitor
 
         public static void AddFleaSale(FleaSoldMessageLogContent e, Profile profile)
         {
-            var sql = "INSERT INTO flea_sales(profile_id, item_id, buyer, count, currency, price) VALUES(@item_id, @buyer, @count, @currency, @price);";
+            var sql = "INSERT INTO flea_sales(profile_id, item_id, buyer, count, currency, price) VALUES(@profile_id, @item_id, @buyer, @count, @currency, @price);";
             var parameters = new Dictionary<string, object>
             {
                 {
