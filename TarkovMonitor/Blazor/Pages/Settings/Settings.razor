@@ -417,6 +417,18 @@
         }
     }
 
+    public string ProfileId
+    {
+        get
+        {
+            return eft.CurrentProfile.Id;
+        }
+        set
+        {
+            eft.CurrentProfile.Id = value;
+        }
+    }
+
     void TokenShowClick()
     {
         if (tokenShow)
@@ -442,7 +454,7 @@
         } else {
             try
             {
-                var tokenResponse = await TarkovTracker.TestToken(TarkovTrackerToken);
+                var tokenResponse = await TarkovTracker.TestToken(ProfileId, TarkovTrackerToken);
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     messageLog.AddMessage("You do not have write permissions with this token.", "warning");

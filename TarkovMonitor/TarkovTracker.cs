@@ -15,7 +15,7 @@ namespace TarkovMonitor
 
             [Get("/token")]
             [Headers("Authorization: Bearer {token}")]
-            Task<TokenResponse> TestToken(string token);
+            Task<TokenResponse> TestToken(string profileId, string token);
 
             [Get("/progress")]
             [Headers("Authorization: Bearer")]
@@ -35,7 +35,9 @@ namespace TarkovMonitor
             {
                 AuthorizationHeaderValueGetter = (rq, cr) => {
                     return Task.Run<string>(() => {
-                        return tokens[currentProfile];
+                        string token = null;
+                        tokens.TryGetValue(currentProfile, out token);
+                        return token;
                     });
                 },
             }
@@ -94,7 +96,7 @@ namespace TarkovMonitor
                 Progress = new();
                 return Progress;
             }
-            await TestToken(newToken);
+            await TestToken(profileId, newToken);
             return Progress;
         }
 
@@ -285,11 +287,11 @@ namespace TarkovMonitor
             }
         }
 
-        public static async Task<TokenResponse> TestToken(string apiToken)
+        public static async Task<TokenResponse> TestToken(string profileId, string apiToken)
         {
             try
             {
-                var response = await api.TestToken(apiToken);
+                var response = await api.TestToken(profileId, apiToken);
                 if (response.permissions.Contains("WP"))
                 {
                     ValidToken = true;
