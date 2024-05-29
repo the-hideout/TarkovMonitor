@@ -482,7 +482,7 @@ namespace TarkovMonitor
             }
             try
             {
-                var tokenResponse = await TarkovTracker.TestToken(eft.CurrentProfile.Id, TarkovTracker.GetToken(eft.CurrentProfile.Id));
+                var tokenResponse = await TarkovTracker.TestToken(TarkovTracker.GetToken(eft.CurrentProfile.Id));
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     messageLog.AddMessage("Your Tarkov Tracker token is missing the required write permissions");
