@@ -35,11 +35,12 @@ namespace TarkovMonitor
             {
                 AuthorizationHeaderValueGetter = (rq, cr) => {
                     return Task.Run<string>(() => {
-                        if (tokens == null || !tokens.ContainsKey(currentProfile)) {
+                        string token = GetToken(currentProfile);
+                        if (token == "") {
                             throw new Exception("No PVE or PVP profile could be found, launch tarkov first");
                         }
                         
-                        return tokens[currentProfile];
+                        return token;
                     });
                 },
             }
