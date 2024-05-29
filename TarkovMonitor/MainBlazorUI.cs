@@ -74,7 +74,12 @@ namespace TarkovMonitor
             {
                 if (Properties.Settings.Default.tarkovTrackerToken != "")
                 {
-                    TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
+                    try {
+                        TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
+                    } catch (Exception ex) {
+                        messageLog.AddMessage($"Error setting token from previously saved settings {ex.Message}", "exception");
+                    }
+
                     Properties.Settings.Default.tarkovTrackerToken = "";
                     Properties.Settings.Default.Save();
                 }
@@ -460,20 +465,20 @@ namespace TarkovMonitor
 
         private async Task InitializeProgress()
         {
+            try
+            {
+                await TarkovTracker.SetProfile(eft.CurrentProfile.Id);
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Profile does not exist: {ex.Message}");
+                return;
+            }
+            messageLog.AddMessage($"Using {eft.CurrentProfile.Type} profile");
             if (TarkovTracker.GetToken(eft.CurrentProfile.Id) == "")
             {
                 messageLog.AddMessage("To automatically track task progress, set your Tarkov Tracker token in Settings");
                 return;
-            }
-            messageLog.AddMessage($"Using {eft.CurrentProfile.Type} profile");
-            try
-            {
-                await TarkovTracker.SetProfile(eft.CurrentProfile.Id);
-                return;
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error getting Tarkov Tracker progress: {ex.Message}");
             }
             try
             {
@@ -486,6 +491,7 @@ namespace TarkovMonitor
             catch (Exception ex)
             {
                 messageLog.AddMessage($"Error updating progress: {ex.Message}");
+                return;
             }
         }
 
