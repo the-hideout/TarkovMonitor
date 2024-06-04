@@ -202,7 +202,7 @@ namespace TarkovMonitor
                 {
                     raid = new()
                     {
-                        Map = Properties.Settings.Default.customMap
+                        Map = Properties.Settings.Default.customMap,
                     };
                 }
                 if (raid.Map == "")
@@ -279,6 +279,7 @@ namespace TarkovMonitor
                             continue;
                         }
                         CurrentProfile.Type = Enum.Parse<ProfileType>(modeMatch.Groups["mode"].Value, true);
+                        raidInfo.ProfileType = CurrentProfile.Type;
                         continue;
                     }
                     if (eventLine.Contains("SelectProfile ProfileId:"))
@@ -344,7 +345,8 @@ namespace TarkovMonitor
 						// The map has been loaded and the game is searching for a match
 						raidInfo = new()
 						{
-							MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.,]+ real:(?<loadTime>[0-9.,]+)").Groups["loadTime"].Value.Replace(",", "."), CultureInfo.InvariantCulture)
+							MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.,]+ real:(?<loadTime>[0-9.,]+)").Groups["loadTime"].Value.Replace(",", "."), CultureInfo.InvariantCulture),
+                            ProfileType = CurrentProfile.Type,
 						};
 						MatchingStarted?.Invoke(this, new(raidInfo, CurrentProfile));
 					}
@@ -403,12 +405,18 @@ namespace TarkovMonitor
                     {
                         // User cancelled matching
                         MatchingAborted?.Invoke(this, new(raidInfo, CurrentProfile));
-                        raidInfo = new();
+                        raidInfo = new()
+                        {
+                            ProfileType = CurrentProfile.Type,
+                        };
                     }
                     if (eventLine.Contains("Got notification | UserMatchOver"))
                     {
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode?["location"]?.ToString() ?? throw new Exception("Error parsing raid location"), RaidId = jsonNode?["shortId"]?.ToString() });
-                        raidInfo = new();
+                        raidInfo = new()
+                        {
+                            ProfileType = CurrentProfile.Type,
+                        };
                     }
                     if (eventLine.Contains("application|SelectProfile ProfileId:"))
                     {
@@ -422,7 +430,10 @@ namespace TarkovMonitor
                         if (raidInfo.EndedTime != null)
                         {
                             ExitedPostRaidMenus?.Invoke(this, new(raidInfo, CurrentProfile));
-                            raidInfo = new();
+                            raidInfo = new()
+                            {
+                                ProfileType = CurrentProfile.Type,
+                            };
                         }
                     }
                     if (eventLine.Contains("Got notification | ChatMessageReceived"))
@@ -746,7 +757,7 @@ namespace TarkovMonitor
                         monitorsCompletedInitialRead++;
                         break;
                     }
-                    monitor.InitialReadComplete += (object sender, EventArgs e) => {
+                    monitor.InitialReadComplete += (object? sender, EventArgs e) => {
                         monitorsCompletedInitialRead++;
                         if (monitorsCompletedInitialRead == monitorsStarted)
                         {
@@ -822,7 +833,8 @@ namespace TarkovMonitor
 	{
 		Unknown,
 		PMC,
-		Scav
+		Scav,
+        PVE,
 	}
 	public enum GroupInviteType
 	{
@@ -840,6 +852,10 @@ namespace TarkovMonitor
         public RaidType RaidType { 
             get
             {
+                if (this.ProfileType == ProfileType.PVE)
+                {
+                    return RaidType.PVE;
+                }
                 // if raid hasn't started, we don't have enough info to know what type it is
                 if (StartedTime == null)
                 {
@@ -861,6 +877,7 @@ namespace TarkovMonitor
         public DateTime? StartedTime { get; set; }
         public DateTime? EndedTime { get; set; }
         public List<string> Screenshots { get; set; } = new();
+        public ProfileType ProfileType { get; set; } = ProfileType.Regular;
         public RaidInfo()
         {
             Map = "";

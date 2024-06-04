@@ -21,27 +21,27 @@
                 </MudSelect>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@RaidStartSwitch" Label="Raid Starting Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@RaidStartSwitch" Label="Raid Starting Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRaidStart" Class="d-inline-flex mt-1" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@MatchFoundSwitch" Label="Match Found Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@MatchFoundSwitch" Label="Match Found Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayMatchFound" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@RestartTaskSwitch" Label="Restart Tasks Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@RestartTaskSwitch" Label="Restart Tasks Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@RunthroughSwitch" Label="Runthrough Period Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@RunthroughSwitch" Label="Runthrough Period Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRunthrough" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Checked="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
                 <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="Scav Karma" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
                     @if (TraderFence != null)
@@ -60,16 +60,16 @@
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Window" Class="mr-2"/>Window Behavior</MudText>
             <div>
-                <MudSwitch @bind-Checked="@MinimizeAtStartupSwitch" Label="Start Tarkov Monitor Minimized" Color="Color.Info" />
+                <MudSwitch @bind-Value="@MinimizeAtStartupSwitch" Label="Start Tarkov Monitor Minimized" Color="Color.Info" />
             </div>
             <div>
-                <MudSwitch @bind-Checked="@MinimizeToTraySwitch" Label="Minimize to System Tray" Color="Color.Info" />
+                <MudSwitch @bind-Value="@MinimizeToTraySwitch" Label="Minimize to System Tray" Color="Color.Info" />
             </div>
             <div>
-                <MudSwitch @bind-Checked="@StayOnTopSwitch" Label="Stay on Top" Color="Color.Info" />
+                <MudSwitch @bind-Value="@StayOnTopSwitch" Label="Stay on Top" Color="Color.Info" />
             </div>
             <div>
-                <MudSwitch @bind-Checked="@SkipSplashSwitch" Label="Skip Tarkov.dev Splash Logo" Color="Color.Info" />
+                <MudSwitch @bind-Value="@SkipSplashSwitch" Label="Skip Tarkov.dev Splash Logo" Color="Color.Info" />
             </div>
         </MudPaper>
 	</MudItem>
@@ -77,7 +77,7 @@
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Handshake" Class="mr-2"/>Data Collection</MudText>
-            <MudSwitch @bind-Checked="@SubmitQueueTimeSwitch" Label="Submit Queue Time Data" Color="Color.Info" />
+            <MudSwitch @bind-Value="@SubmitQueueTimeSwitch" Label="Submit Queue Time Data" Color="Color.Info" />
         </MudPaper>
 	</MudItem>
 
@@ -94,10 +94,10 @@
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsRemote" Class="mr-2" /><MudButton @onclick="VisitWebsite" Variant="Variant.Text">Tarkov.dev Website Remote</MudButton></MudText>
             <MudTextField @bind-Value="@RemoteID" MaxLength="4" Label="Remote ID" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentPaste" OnAdornmentClick="PasteRemoteClick"></MudTextField>
             <div>
-                <MudSwitch @bind-Checked="@NavigateMapSwitch" Label="Switch to Tarkov.dev map on raid load" Color="Color.Info" />
+                <MudSwitch @bind-Value="@NavigateMapSwitch" Label="Switch to Tarkov.dev map on raid load" Color="Color.Info" />
             </div>
             <div>
-                <MudSwitch @bind-Checked="@NavigateMapOnPositionUpdateSwitch" Label="Switch to Tarkov.dev map on position update (via screenshot)" Color="Color.Info" />
+                <MudSwitch @bind-Value="@NavigateMapOnPositionUpdateSwitch" Label="Switch to Tarkov.dev map on position update (via screenshot)" Color="Color.Info" />
             </div>
             <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="Offline Map" ShrinkLabel="true" HelperText="Map to use for offline raids" AnchorOrigin="Origin.BottomCenter" xs="3">
                 <MudSelectItem T="string" Value="@string.Empty">None</MudSelectItem>

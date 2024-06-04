@@ -312,12 +312,12 @@ namespace TarkovMonitor
 
         private void UpdateCheck_NewVersion(object? sender, NewVersionEventArgs e)
         {
-            messageLog.AddMessage($"New TarkovMonitor version available ({e.Version})!", null, e.Uri.ToString());
+            messageLog.AddMessage($"New TarkovMonitor version available ({e.Version})! Click here to open the download page. Please update to this new version before reporting any bugs.", null, e.Uri.ToString());
         }
 
         private async void Eft_MapLoading(object? sender, EventArgs e)
         {
-            if (TarkovTracker.Progress == null)
+            if (TarkovTracker.Progress?.data?.tasksProgress == null)
             {
                 return;
             }

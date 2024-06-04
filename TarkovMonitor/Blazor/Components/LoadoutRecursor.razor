@@ -29,9 +29,9 @@
 
     private int imgWidth => devItem != null ? (devItem.width * 31) + 1 : 96;
     private int imgHeight => devItem != null ? (devItem.height * 31) + 1 : 96;
-    private string itemImageURL => devItem?.gridImageLink;
-    private string itemLink => devItem?.link;
-    private string itemName => devItem?.name;
+    private string itemImageURL => devItem?.gridImageLink ?? "";
+    private string itemLink => devItem?.link ?? "";
+    private string itemName => devItem?.name ?? "";
 
     protected override void OnInitialized()
     {

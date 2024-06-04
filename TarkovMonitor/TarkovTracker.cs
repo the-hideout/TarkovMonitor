@@ -35,7 +35,7 @@ namespace TarkovMonitor
             {
                 AuthorizationHeaderValueGetter = (rq, cr) => {
                     return Task.Run<string>(() => {
-                        return GetToken(currentProfile);
+                        return GetToken(currentProfile ?? "");
                     });
                 },
             }
@@ -362,14 +362,14 @@ namespace TarkovMonitor
 
         public class ProgressResponse
         {
-            public ProgressResponseData data { get; set; }
-            public ProgressResponseMeta meta { get; set; }
+            public ProgressResponseData data { get; set; } = new();
+            public ProgressResponseMeta meta { get; set; } = new();
         }
 
         public class ProgressResponseData
         {
-            public List<ProgressResponseTask> tasksProgress { get; set; }
-            public List<ProgressResponseHideoutModules> hideoutModulesProgress { get; set; }
+            public List<ProgressResponseTask> tasksProgress { get; set; } = new();
+            public List<ProgressResponseHideoutModules> hideoutModulesProgress { get; set; } = new();
             public string? displayName { get; set; }
             public string userId { get; set; }
             public int playerLevel { get; set; }

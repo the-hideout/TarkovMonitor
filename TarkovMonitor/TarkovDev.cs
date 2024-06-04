@@ -266,6 +266,10 @@ namespace TarkovMonitor
                 {
                     throw new Exception(profile.errmsg);
                 }
+                if (profile?.Info == null)
+                {
+                    return 0;
+                }
                 return profile.Info.experience;
             }
             catch (ApiException ex)

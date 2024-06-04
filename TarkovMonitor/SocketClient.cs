@@ -22,7 +22,7 @@ namespace TarkovMonitor
         {
             if (socket != null && socket.IsRunning)
             {
-                socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+                socket.Stop(WebSocketCloseStatus.NormalClosure, "Application closed");
             }
         }
 
@@ -50,11 +50,11 @@ namespace TarkovMonitor
 
                     if (socket.IsRunning)
                     {
-                        await socket.Stop(WebSocketCloseStatus.NormalClosure, null);
+                        await socket.Stop(WebSocketCloseStatus.NormalClosure, "Reconnecting");
                     }
                     socket.Dispose();
                 } 
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // don't error on stopping old client
                 }
@@ -69,8 +69,16 @@ namespace TarkovMonitor
                 //source.CancelAfter(5000);
                 socket = new(new Uri(wsUrl+$"?sessionid={remoteId}-tm"));
                 socket.MessageReceived.Subscribe(msg => {
+                    if (msg.Text == null)
+                    {
+                        return;
+                    }
                     var message = JsonNode.Parse(msg.Text);
-                    if (message["type"].ToString() == "ping")
+                    if (message == null)
+                    {
+                        return;
+                    }
+                    if (message["type"]?.ToString() == "ping")
                     {
                         socket.Send(new JsonObject
                         {
