@@ -292,7 +292,15 @@ namespace TarkovMonitor
                         CurrentProfile.Id = profileIdMatch.Groups["profileId"].Value;
                         if (!e.InitialRead)
                         {
-                            ProfileChanged?.Invoke(this, new(CurrentProfile));
+                            if (raidInfo.StartedTime != null && raidInfo.EndedTime == null)
+                            {
+                                raidInfo.EndedTime = eventDate;
+                                RaidEnded?.Invoke(this, new(raidInfo, CurrentProfile));
+                            }
+                            else
+                            {
+                                ProfileChanged?.Invoke(this, new(CurrentProfile));
+                            }
                         }
                         continue;
                     }
@@ -417,13 +425,6 @@ namespace TarkovMonitor
                         {
                             ProfileType = CurrentProfile.Type,
                         };
-                    }
-                    if (eventLine.Contains("application|SelectProfile ProfileId:"))
-                    {
-                        if (raidInfo.StartedTime != null && raidInfo.EndedTime == null) {
-                            raidInfo.EndedTime = eventDate;
-                            RaidEnded?.Invoke(this, new(raidInfo, CurrentProfile));
-                        }
                     }
                     if (eventLine.Contains("application|Init: pstrGameVersion: "))
                     {

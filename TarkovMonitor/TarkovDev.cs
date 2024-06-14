@@ -1,8 +1,6 @@
 ﻿using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.SystemTextJson;
 using Refit;
-using System.Security.Policy;
-using static TarkovMonitor.TarkovTracker;
 
 namespace TarkovMonitor
 {
@@ -199,6 +197,17 @@ namespace TarkovMonitor
             Stations = response.Data.hideoutStations;
             return Stations;
         }
+        public async static System.Threading.Tasks.Task UpdateApiData()
+        {
+            List<System.Threading.Tasks.Task> tasks = new() { 
+                GetTasks(),
+                GetMaps(),
+                GetItems(),
+                GetTraders(),
+                GetHideout(),
+            };
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+        }
         public async static Task<List<PlayerLevel>> GetPlayerLevels()
         {
             var request = new GraphQL.GraphQLRequest()
@@ -317,10 +326,7 @@ namespace TarkovMonitor
 
         private static void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            GetTasks();
-            GetMaps();
-            GetItems();
-            GetTraders();
+            UpdateApiData();
         }
 
         public class TasksResponse

@@ -114,11 +114,7 @@ namespace TarkovMonitor
             SocketClient.ExceptionThrown += SocketClient_ExceptionThrown;
 
             // Update tarkov.dev Repository data
-            UpdateItems();
-            UpdateTasks();
-            UpdateMaps();
-            UpdateTraders();
-            UpdateHideoutStations();
+            UpdateTarkovDevApiData();
             TarkovDev.StartAutoUpdates();
 
             UpdateCheck.CheckForNewVersion();
@@ -228,14 +224,15 @@ namespace TarkovMonitor
                             File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
                         }
                         //e.RaidInfo.Screenshots.Clear();
-                        monMessage.Buttons.Remove(screenshotButton);
                         messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
                     }
                     catch (Exception ex)
                     {
                         messageLog.AddMessage($"Error deleting screenshot: {ex.Message} {ex.StackTrace}", "exception");
                     }
+                    monMessage.Buttons.Remove(screenshotButton);
                 };
+                screenshotButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
                 monMessage.Buttons.Add(screenshotButton);
             }
             messageLog.AddMessage(monMessage);
@@ -398,68 +395,16 @@ namespace TarkovMonitor
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
         }
 
-        private async Task UpdateItems()
+        private async Task UpdateTarkovDevApiData()
         {
             try
             {
-                await TarkovDev.GetItems();
-                messageLog.AddMessage($"Retrieved {String.Format("{0:n0}", TarkovDev.Items.Count)} items from tarkov.dev", "update");
+                await TarkovDev.UpdateApiData();
+                messageLog.AddMessage($"Retrieved {String.Format("{0:n0}", TarkovDev.Items.Count)} items, {TarkovDev.Maps.Count} maps, {TarkovDev.Traders.Count} traders, {TarkovDev.Tasks.Count} tasks, and {TarkovDev.Stations.Count} hideout stations from tarkov.dev", "update");
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage($"Error updating items: {ex.Message}");
-            }
-        }
-
-        private async Task UpdateTasks()
-        {
-            try
-            {
-                await TarkovDev.GetTasks();
-                messageLog.AddMessage($"Retrieved {TarkovDev.Tasks.Count} tasks from tarkov.dev", "update");
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error updating tasks: {ex.Message}");
-            }
-        }
-
-        private async Task UpdateMaps()
-        {
-            try
-            {
-                await TarkovDev.GetMaps();
-                messageLog.AddMessage($"Retrieved {TarkovDev.Maps.Count} maps from tarkov.dev", "update");
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error updating maps: {ex.Message}");
-            }
-        }
-
-        private async Task UpdateTraders()
-        {
-            try
-            {
-                await TarkovDev.GetTraders();
-                messageLog.AddMessage($"Retrieved {TarkovDev.Traders.Count} traders from tarkov.dev", "update");
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error updating traders: {ex.Message}");
-            }
-        }
-
-        private async Task UpdateHideoutStations()
-        {
-            try
-            {
-                await TarkovDev.GetHideout();
-                messageLog.AddMessage($"Retrieved {TarkovDev.Stations.Count} hideout stations from tarkov.dev", "update");
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error updating hideout stations: {ex.Message}");
+                messageLog.AddMessage($"Error updating tarkov.dev API data: {ex.Message}");
             }
         }
 
@@ -690,18 +635,19 @@ namespace TarkovMonitor
                         try
                         {
                             await TarkovDev.PostGoonsSighting(e.RaidInfo.Map, (DateTime)e.RaidInfo.StartedTime, eft.AccountId);
-                            monMessage.Buttons.Remove(goonsButton);
                             messageLog.AddMessage($"Goons reported on {mapName}", "info");
                         }
                         catch (Exception ex) {
                             messageLog.AddMessage($"Error reporting goons: {ex.Message} {ex.StackTrace}", "exception");
                         }
+                        monMessage.Buttons.Remove(goonsButton);
                     };
                     goonsButton.Confirm = new(
                         $"Report Goons on {mapName}",
                         "<p>Please only submit a report if you saw the goons in this raid.</p><p><strong>Notice:</strong> By submitting a goons report, you consent to collection of your IP address and EFT account id for report verification purposes.</p>",
                         "Submit report", "Cancel"
                     );
+                    goonsButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
                     monMessage.Buttons.Add(goonsButton);
                 }
                 messageLog.AddMessage(monMessage);
