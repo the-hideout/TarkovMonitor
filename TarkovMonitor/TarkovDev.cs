@@ -226,11 +226,11 @@ namespace TarkovMonitor
             return PlayerLevels;
         }
 
-        public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type)
+        public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type, ProfileType gameMode)
         {
             try
             {
-                return await api.SubmitQueueTime(new QueueTimeBody() { map = mapNameId, time = queueTime, type = type });
+                return await api.SubmitQueueTime(new QueueTimeBody() { map = mapNameId, time = queueTime, type = type, gameMode = gameMode.ToString().ToLower() });
             }
             catch (ApiException ex)
             {
@@ -246,11 +246,11 @@ namespace TarkovMonitor
             }
         }
 
-        public async static Task<DataSubmissionResponse> PostGoonsSighting(string mapNameId, DateTime date, int accountId)
+        public async static Task<DataSubmissionResponse> PostGoonsSighting(string mapNameId, DateTime date, int accountId, ProfileType profileType)
         {
             try
             {
-                return await api.SubmitGoonsSighting(new GoonsBody() { map = mapNameId, timestamp = ((DateTimeOffset)date).ToUnixTimeMilliseconds(), accountId = accountId });
+                return await api.SubmitGoonsSighting(new GoonsBody() { map = mapNameId, gameMode = profileType.ToString().ToLower(), timestamp = ((DateTimeOffset)date).ToUnixTimeMilliseconds(), accountId = accountId });
             }
             catch (ApiException ex)
             {
@@ -471,6 +471,7 @@ namespace TarkovMonitor
             public string map { get; set; }
             public int time { get; set; }
             public string type { get; set; }
+            public string gameMode { get; set; }
         }
 
         public class DataSubmissionResponse
@@ -481,6 +482,7 @@ namespace TarkovMonitor
         public class GoonsBody
         {
             public string map { get; set; }
+            public string gameMode { get; set; }
             public long timestamp { get; set; }
             public int accountId { get; set; }
         }

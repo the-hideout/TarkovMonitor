@@ -22,6 +22,16 @@
                             </span>
                         </div>
                         <div class="d-flex align-center">
+                            @foreach (MonitorMessageSelect select in message.Selects)
+                            {
+
+                                <MudSelect T="MonitorMessageSelectOption" Placeholder="@select.Placeholder" SelectedValuesChanged="@((e) => MessageSelectChanged(select, e) )">
+                                    @foreach (MonitorMessageSelectOption option in select.Options)
+                                    {
+                                        <MudSelectItem Value="@option">@option.Text</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
                             @foreach (MonitorMessageButton button in message.Buttons)
                             {
                                 <MudButton Variant="Variant.Filled" Color="@button.Color" StartIcon="@button.Icon" OnClick="@((e) => MessageButtonClick(button) )">@button.Text</MudButton>
@@ -38,8 +48,8 @@
     
 </MudStack>
 
-@code {
-    // Force refresh every minute to update timestamps
+        @code {
+        // Force refresh every minute to update timestamps
     Timer? timer;  
 
     protected override void OnInitialized()
@@ -159,6 +169,18 @@
         catch (Exception ex)
         {
             messageLog.AddMessage($"Error in message button: ${ex.Message} {ex.StackTrace}", "exception");
+        }
+    }
+
+    private async void MessageSelectChanged(MonitorMessageSelect select, IEnumerable<MonitorMessageSelectOption> selected)
+    {
+        try
+        {
+            select.ChangeSelection(selected.First());
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Error in message select: ${ex.Message} {ex.StackTrace}", "exception");
         }
     }
 }

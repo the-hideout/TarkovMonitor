@@ -32,7 +32,7 @@ namespace TarkovMonitor
             string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
             Random r = new Random();
-            int rInt = r.Next(0, characters.Length);
+            //int rInt = r.Next(0, characters.Length);
 
             for (int i = 0; i < length; i++)
             {
@@ -100,7 +100,6 @@ namespace TarkovMonitor
             catch (Exception ex) {
                 ExceptionThrown?.Invoke(null, new(ex, $"Connecting with id {Properties.Settings.Default.remoteId}"));
             }
-            
         }
 
         private static void SettingChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

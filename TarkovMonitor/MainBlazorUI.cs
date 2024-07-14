@@ -237,7 +237,7 @@ namespace TarkovMonitor
             }
             messageLog.AddMessage(monMessage);
             runthroughTimer.Stop();
-            if (e.RaidInfo.RaidType == RaidType.Scav && Properties.Settings.Default.scavCooldownAlert)
+            if (Properties.Settings.Default.scavCooldownAlert && (e.RaidInfo.RaidType == RaidType.Scav || e.RaidInfo.RaidType == RaidType.PVE))
             {
                 scavCooldownTimer.Stop();
                 scavCooldownTimer.Interval = TimeSpan.FromSeconds(TarkovDev.ResetScavCoolDown()).TotalMilliseconds;
@@ -630,25 +630,40 @@ namespace TarkovMonitor
                 MonitorMessage monMessage = new($"Starting {e.RaidInfo.RaidType} raid on {mapName}");
                 if (map != null && e.RaidInfo.StartedTime != null && map.HasGoons())
                 {
-                    MonitorMessageButton goonsButton = new($"Report Goons", Icons.Material.Filled.Groups);
-                    goonsButton.OnClick = async () => {
-                        try
+                    AddGoonsButton(monMessage, e.RaidInfo);
+                }
+                else if (map == null)
+                {
+                    monMessage.Message = $"Starting {e.RaidInfo.RaidType} raid on:";
+                    MonitorMessageSelect select = new();
+                    foreach (var gameMap in TarkovDev.Maps)
+                    {
+                        select.Options.Add(new(gameMap.name, gameMap.nameId));
+                    }
+                    select.Placeholder = "Select map";
+                    monMessage.Selects.Add(select);
+                    MonitorMessageButton mapButton = new("Set map", Icons.Material.Filled.Map);
+                    mapButton.OnClick += () => {
+                        if (select.Selected == null)
                         {
-                            await TarkovDev.PostGoonsSighting(e.RaidInfo.Map, (DateTime)e.RaidInfo.StartedTime, eft.AccountId);
-                            messageLog.AddMessage($"Goons reported on {mapName}", "info");
+                            return;
                         }
-                        catch (Exception ex) {
-                            messageLog.AddMessage($"Error reporting goons: {ex.Message} {ex.StackTrace}", "exception");
+                        e.RaidInfo.Map = select.Selected.Value;
+                        monMessage.Message = $"Starting {e.RaidInfo.RaidType} raid on {select.Selected.Text}";
+                        monMessage.Buttons.Clear();
+                        monMessage.Selects.Clear();
+                        //AddGoonsButton(monMessage, e.RaidInfo); // offline raids have goons on all goons maps
+                        if (Properties.Settings.Default.autoNavigateMap)
+                        {
+                            var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
+                            if (map == null)
+                            {
+                                return;
+                            }
+                            SocketClient.NavigateToMap(map);
                         }
-                        monMessage.Buttons.Remove(goonsButton);
                     };
-                    goonsButton.Confirm = new(
-                        $"Report Goons on {mapName}",
-                        "<p>Please only submit a report if you saw the goons in this raid.</p><p><strong>Notice:</strong> By submitting a goons report, you consent to collection of your IP address and EFT account id for report verification purposes.</p>",
-                        "Submit report", "Cancel"
-                    );
-                    goonsButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
-                    monMessage.Buttons.Add(goonsButton);
+                    monMessage.Buttons.Add(mapButton);
                 }
                 messageLog.AddMessage(monMessage);
                 if (Properties.Settings.Default.raidStartAlert && e.RaidInfo.StartingTime == null)
@@ -661,26 +676,51 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Re-entering raid on {mapName}");
             }
-            if (e.RaidInfo.Reconnected || !e.RaidInfo.Online || e.RaidInfo.QueueTime == 0 || e.RaidInfo.RaidType == RaidType.Unknown)
-            {
-                return;
-            }
-            if (Properties.Settings.Default.runthroughAlert && e.RaidInfo.RaidType == RaidType.PMC)
+            if (Properties.Settings.Default.runthroughAlert && !e.RaidInfo.Reconnected && (e.RaidInfo.RaidType == RaidType.PMC || e.RaidInfo.RaidType == RaidType.PVE))
             {
                 runthroughTimer.Stop();
                 runthroughTimer.Start();
             }
-            if (!Properties.Settings.Default.submitQueueTime || e.Profile.Type == ProfileType.PVE)
+            if (Properties.Settings.Default.submitQueueTime && e.RaidInfo.QueueTime > 0 && e.RaidInfo.RaidType != RaidType.Unknown)
             {
-                return;
+                try
+                {
+                    await TarkovDev.PostQueueTime(e.RaidInfo.Map, (int)Math.Round(e.RaidInfo.QueueTime), e.RaidInfo.RaidType.ToString().ToLower(), eft.CurrentProfile.Type);
+                }
+                catch (Exception ex)
+                {
+                    messageLog.AddMessage($"Error submitting queue time: {ex.Message}", "exception");
+                }
             }
-            try
+        }
+
+        private void AddGoonsButton(MonitorMessage monMessage, RaidInfo raidInfo)
+        {
+            var mapName = raidInfo.Map;
+            var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
+            if (map != null) mapName = map.name;
+            if (map != null && raidInfo.StartedTime != null && map.HasGoons())
             {
-                await TarkovDev.PostQueueTime(e.RaidInfo.Map, (int)Math.Round(e.RaidInfo.QueueTime), e.RaidInfo.RaidType.ToString().ToLower());
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error submitting queue time: {ex.Message}", "exception");
+                MonitorMessageButton goonsButton = new($"Report Goons", Icons.Material.Filled.Groups);
+                goonsButton.OnClick = async () => {
+                    try
+                    {
+                        await TarkovDev.PostGoonsSighting(raidInfo.Map, (DateTime)raidInfo.StartedTime, eft.AccountId, eft.CurrentProfile.Type);
+                        messageLog.AddMessage($"Goons reported on {mapName}", "info");
+                    }
+                    catch (Exception ex)
+                    {
+                        messageLog.AddMessage($"Error reporting goons: {ex.Message} {ex.StackTrace}", "exception");
+                    }
+                    monMessage.Buttons.Remove(goonsButton);
+                };
+                goonsButton.Confirm = new(
+                    $"Report Goons on {mapName}",
+                    "<p>Please only submit a report if you saw the goons in this raid.</p><p><strong>Notice:</strong> By submitting a goons report, you consent to collection of your IP address and EFT account id for report verification purposes.</p>",
+                    "Submit report", "Cancel"
+                );
+                goonsButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
+                monMessage.Buttons.Add(goonsButton);
             }
         }
 

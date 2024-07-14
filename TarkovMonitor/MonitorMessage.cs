@@ -14,6 +14,7 @@ namespace TarkovMonitor
         public string Url { get; set; } = "";
         public Action? OnClick { get; set; } = null;
         public ObservableCollection<MonitorMessageButton> Buttons { get; set; } = new();
+        public ObservableCollection<MonitorMessageSelect> Selects { get; set; } = new();
         public MonitorMessage(string message)
         {
             Message = message;
@@ -141,5 +142,38 @@ namespace TarkovMonitor
             YesText = yesText;
             CancelText = cancelText;
         }
+    }
+
+    public class MonitorMessageSelect
+    {
+        public List<MonitorMessageSelectOption> Options { get; set; } = new();
+        public event EventHandler<MonitorMessageSelectChangedEventArgs>? SelectionChanged;
+        public MonitorMessageSelectOption? Selected { get; private set; }
+        public string Placeholder { get; set; } = "";
+        public void ChangeSelection(MonitorMessageSelectOption selected)
+        {
+            Selected = selected;
+            SelectionChanged?.Invoke(this, new MonitorMessageSelectChangedEventArgs() { Selected = selected });
+        }
+    }
+    
+    public class MonitorMessageSelectOption
+    {
+        public string Text { get; set; }
+        public string Value { get; set; }
+        override public string ToString()
+        {
+            return Text;
+        }
+        public MonitorMessageSelectOption(string text, string value)
+        {
+            Text = text;
+            Value = value;
+        }
+    }
+
+    public class MonitorMessageSelectChangedEventArgs : EventArgs
+    {
+        public MonitorMessageSelectOption Selected { get; set; }
     }
 }
