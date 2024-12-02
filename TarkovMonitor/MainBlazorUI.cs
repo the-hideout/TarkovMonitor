@@ -146,29 +146,6 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
-
-            Task.Run(async () => {
-                /*try
-                {
-                    await TarkovDev.GetPlayerLevels();
-                    if (TarkovTracker.ValidToken)
-                    {
-                        await UpdatePlayerLevel();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error checking player level: ${ex}", "exception");
-                }*/
-                try
-                {
-                    await SocketClient.Connect();
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error connecting to websocket server: ${ex}", "exception");
-                }
-            });
         }
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
@@ -287,15 +264,16 @@ namespace TarkovMonitor
             SocketClient.NavigateToMap(map);
         }
 
-        private void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
+        private async void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
         {
             var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
             if (map == null)
             {
+                messageLog.AddMessage($"Could not find map {e.RaidInfo.Map}");
                 return;
             }
             messageLog.AddMessage($"Player position on {map.name}: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
-            SocketClient.UpdatePlayerPosition(e);
+            await SocketClient.UpdatePlayerPosition(e);
             if (Properties.Settings.Default.navigateMapOnPositionUpdate)
             {
                 SocketClient.NavigateToMap(map);
@@ -416,7 +394,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage($"Profile does not exist: {ex.Message}");
+                messageLog.AddMessage($"Error retrieving Tarkov Tracker profile: {ex.Message}");
                 return;
             }
             messageLog.AddMessage($"Using {eft.CurrentProfile.Type} profile");
@@ -425,7 +403,7 @@ namespace TarkovMonitor
                 messageLog.AddMessage("To automatically track task progress, set your Tarkov Tracker token in Settings");
                 return;
             }
-            try
+            /*try
             {
                 var tokenResponse = await TarkovTracker.TestToken(TarkovTracker.GetToken(eft.CurrentProfile.Id));
                 if (!tokenResponse.permissions.Contains("WP"))
@@ -437,7 +415,7 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Error updating progress: {ex.Message}");
                 return;
-            }
+            }*/
         }
 
         private void Eft_MatchFound(object? sender, RaidInfoEventArgs e)
