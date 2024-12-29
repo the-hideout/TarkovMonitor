@@ -99,6 +99,9 @@
             <div>
                 <MudSwitch @bind-Value="@NavigateMapOnPositionUpdateSwitch" Label="Switch to Tarkov.dev map on position update (via screenshot)" Color="Color.Info" />
             </div>
+            <div>
+                <MudSwitch @bind-Value="@AutomaticallyDeleteScreenshotsAfterRaid" Label="Automatically delete taken screenshots after raid" Color="Color.Info" />
+            </div>
             <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="Offline Map" ShrinkLabel="true" HelperText="Map to use for offline raids" AnchorOrigin="Origin.BottomCenter" xs="3">
                 <MudSelectItem T="string" Value="@string.Empty">None</MudSelectItem>
                 @foreach (var map in TarkovDev.Maps)
@@ -534,6 +537,19 @@
         set
         {
             Properties.Settings.Default.navigateMapOnPositionUpdate = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool AutomaticallyDeleteScreenshotsAfterRaid
+    {
+        get
+        {
+            return Properties.Settings.Default.automaticallyDeleteScreenshotsAfterRaid;
+        }
+        set
+        {
+            Properties.Settings.Default.automaticallyDeleteScreenshotsAfterRaid = value;
             Properties.Settings.Default.Save();
         }
     }

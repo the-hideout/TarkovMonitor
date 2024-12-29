@@ -183,6 +183,47 @@ namespace TarkovMonitor
             }
         }
 
+        private void Delete_Screenshots(RaidInfoEventArgs e, MonitorMessage? monMessage = null, MonitorMessageButton? screenshotButton = null)
+        {
+            try
+            {
+                foreach (var filename in e.RaidInfo.Screenshots)
+                {
+                    File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
+                }
+                messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error deleting screenshot: {ex.Message} {ex.StackTrace}", "exception");
+            }
+
+            if (monMessage is null || screenshotButton is null)
+            {
+                return;
+            }
+
+            monMessage.Buttons.Remove(screenshotButton);
+        }
+
+        private void Handle_Screenshots(RaidInfoEventArgs e, MonitorMessage monMessage)
+        {
+            var automaticallyDelete = Properties.Settings.Default.automaticallyDeleteScreenshotsAfterRaid;
+            if (automaticallyDelete)
+            {
+                Delete_Screenshots(e);
+                return;
+            }
+
+            MonitorMessageButton screenshotButton = new($"Delete {e.RaidInfo.Screenshots.Count} Screenshots", Icons.Material.Filled.Delete);
+            screenshotButton.OnClick = () =>
+            {
+                Delete_Screenshots(e, monMessage, screenshotButton);
+            };
+            screenshotButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
+            monMessage.Buttons.Add(screenshotButton);
+        }
+
         private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
             groupManager.Stale = true;
@@ -190,28 +231,11 @@ namespace TarkovMonitor
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
             MonitorMessage monMessage = new($"Ended {mapName} raid");
+
             if (e.RaidInfo.Screenshots.Count > 0) {
-                MonitorMessageButton screenshotButton = new($"Delete {e.RaidInfo.Screenshots.Count} Screenshots", Icons.Material.Filled.Delete);
-                screenshotButton.OnClick = () =>
-                {
-                    try
-                    {
-                        foreach (var filename in e.RaidInfo.Screenshots)
-                        {
-                            File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
-                        }
-                        //e.RaidInfo.Screenshots.Clear();
-                        messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
-                    }
-                    catch (Exception ex)
-                    {
-                        messageLog.AddMessage($"Error deleting screenshot: {ex.Message} {ex.StackTrace}", "exception");
-                    }
-                    monMessage.Buttons.Remove(screenshotButton);
-                };
-                screenshotButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
-                monMessage.Buttons.Add(screenshotButton);
+                Handle_Screenshots(e, monMessage);
             }
+
             messageLog.AddMessage(monMessage);
             runthroughTimer.Stop();
             if (Properties.Settings.Default.scavCooldownAlert && (e.RaidInfo.RaidType == RaidType.Scav || e.RaidInfo.RaidType == RaidType.PVE))
