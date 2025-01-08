@@ -178,7 +178,22 @@ namespace TarkovMonitor.Properties {
                 this["navigateMapOnPositionUpdate"] = value;
             }
         }
-        
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool automaticallyDeleteScreenshotsAfterRaid
+        {
+            get
+            {
+                return ((bool)(this["automaticallyDeleteScreenshotsAfterRaid"]));
+            }
+            set
+            {
+                this["automaticallyDeleteScreenshotsAfterRaid"] = value;
+            }
+        }        
+
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
