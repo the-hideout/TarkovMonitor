@@ -93,7 +93,7 @@ namespace TarkovMonitor
                         return;
                     }
                     //ExceptionThrown?.Invoke(socket, new(new("Map remote control connection closed unexpectedly"), "running"));
-                    Connect();
+                    //Connect();
                 });
                 await socket.Start();
             }
@@ -108,7 +108,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            Connect();
+            //Connect();
         }
 
         public static async Task Send(JsonObject message)
@@ -118,12 +118,10 @@ namespace TarkovMonitor
             {
                 return;
             }
-            if (socket == null || !socket.IsRunning)
-            {
-                return;
-            }
             message["sessionID"] = remoteid;
-            await Task.Run(() => socket.Send(message.ToJsonString()));
+            await Connect();
+            await socket.SendInstant(message.ToJsonString());
+            socket.Dispose();
         }
 
         public static async Task UpdatePlayerPosition(PlayerPositionEventArgs e)

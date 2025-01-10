@@ -146,29 +146,6 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
-
-            Task.Run(async () => {
-                /*try
-                {
-                    await TarkovDev.GetPlayerLevels();
-                    if (TarkovTracker.ValidToken)
-                    {
-                        await UpdatePlayerLevel();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error checking player level: ${ex}", "exception");
-                }*/
-                try
-                {
-                    await SocketClient.Connect();
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error connecting to websocket server: ${ex}", "exception");
-                }
-            });
         }
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
@@ -206,6 +183,47 @@ namespace TarkovMonitor
             }
         }
 
+        private void Delete_Screenshots(RaidInfoEventArgs e, MonitorMessage? monMessage = null, MonitorMessageButton? screenshotButton = null)
+        {
+            try
+            {
+                foreach (var filename in e.RaidInfo.Screenshots)
+                {
+                    File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
+                }
+                messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error deleting screenshot: {ex.Message} {ex.StackTrace}", "exception");
+            }
+
+            if (monMessage is null || screenshotButton is null)
+            {
+                return;
+            }
+
+            monMessage.Buttons.Remove(screenshotButton);
+        }
+
+        private void Handle_Screenshots(RaidInfoEventArgs e, MonitorMessage monMessage)
+        {
+            var automaticallyDelete = Properties.Settings.Default.automaticallyDeleteScreenshotsAfterRaid;
+            if (automaticallyDelete)
+            {
+                Delete_Screenshots(e);
+                return;
+            }
+
+            MonitorMessageButton screenshotButton = new($"Delete {e.RaidInfo.Screenshots.Count} Screenshots", Icons.Material.Filled.Delete);
+            screenshotButton.OnClick = () =>
+            {
+                Delete_Screenshots(e, monMessage, screenshotButton);
+            };
+            screenshotButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
+            monMessage.Buttons.Add(screenshotButton);
+        }
+
         private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
             groupManager.Stale = true;
@@ -213,28 +231,11 @@ namespace TarkovMonitor
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
             MonitorMessage monMessage = new($"Ended {mapName} raid");
+
             if (e.RaidInfo.Screenshots.Count > 0) {
-                MonitorMessageButton screenshotButton = new($"Delete {e.RaidInfo.Screenshots.Count} Screenshots", Icons.Material.Filled.Delete);
-                screenshotButton.OnClick = () =>
-                {
-                    try
-                    {
-                        foreach (var filename in e.RaidInfo.Screenshots)
-                        {
-                            File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
-                        }
-                        //e.RaidInfo.Screenshots.Clear();
-                        messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
-                    }
-                    catch (Exception ex)
-                    {
-                        messageLog.AddMessage($"Error deleting screenshot: {ex.Message} {ex.StackTrace}", "exception");
-                    }
-                    monMessage.Buttons.Remove(screenshotButton);
-                };
-                screenshotButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
-                monMessage.Buttons.Add(screenshotButton);
+                Handle_Screenshots(e, monMessage);
             }
+
             messageLog.AddMessage(monMessage);
             runthroughTimer.Stop();
             if (Properties.Settings.Default.scavCooldownAlert && (e.RaidInfo.RaidType == RaidType.Scav || e.RaidInfo.RaidType == RaidType.PVE))
@@ -287,15 +288,16 @@ namespace TarkovMonitor
             SocketClient.NavigateToMap(map);
         }
 
-        private void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
+        private async void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
         {
             var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
             if (map == null)
             {
+                messageLog.AddMessage($"Could not find map {e.RaidInfo.Map}");
                 return;
             }
             messageLog.AddMessage($"Player position on {map.name}: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
-            SocketClient.UpdatePlayerPosition(e);
+            await SocketClient.UpdatePlayerPosition(e);
             if (Properties.Settings.Default.navigateMapOnPositionUpdate)
             {
                 SocketClient.NavigateToMap(map);
@@ -416,7 +418,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage($"Profile does not exist: {ex.Message}");
+                messageLog.AddMessage($"Error retrieving Tarkov Tracker profile: {ex.Message}");
                 return;
             }
             messageLog.AddMessage($"Using {eft.CurrentProfile.Type} profile");
@@ -425,7 +427,7 @@ namespace TarkovMonitor
                 messageLog.AddMessage("To automatically track task progress, set your Tarkov Tracker token in Settings");
                 return;
             }
-            try
+            /*try
             {
                 var tokenResponse = await TarkovTracker.TestToken(TarkovTracker.GetToken(eft.CurrentProfile.Id));
                 if (!tokenResponse.permissions.Contains("WP"))
@@ -437,7 +439,7 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Error updating progress: {ex.Message}");
                 return;
-            }
+            }*/
         }
 
         private void Eft_MatchFound(object? sender, RaidInfoEventArgs e)
