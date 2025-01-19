@@ -180,6 +180,7 @@ namespace TarkovMonitor
             if (Properties.Settings.Default.runthroughAlert)
             {
                 Sound.Play("runthrough_over");
+                messageLog.AddMessage("Runthrough period over", "info");
             }
         }
 
