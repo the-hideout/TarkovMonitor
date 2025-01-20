@@ -9,7 +9,7 @@
 @implements IDisposable
 
 <MudGrid Class="pa-0" Spacing="0">
-	<MudItem xs="12">
+    <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2" />Notifications</MudText>
             <div>
@@ -53,6 +53,9 @@
                     }
                 </MudSelect>
             </div>
+            <div>
+                <MudTextField @bind-Value="@RunthroughTime" Label="Runthrough Time (HH:MM:SS)" Class="d-inline-flex" sx="3" />
+            </div>
         </MudPaper>
     </MudItem>
 
@@ -72,14 +75,14 @@
                 <MudSwitch @bind-Value="@SkipSplashSwitch" Label="Skip Tarkov.dev Splash Logo" Color="Color.Info" />
             </div>
         </MudPaper>
-	</MudItem>
+    </MudItem>
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Handshake" Class="mr-2"/>Data Collection</MudText>
             <MudSwitch @bind-Value="@SubmitQueueTimeSwitch" Label="Submit Queue Time Data" Color="Color.Info" />
         </MudPaper>
-	</MudItem>
+    </MudItem>
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
@@ -395,6 +398,19 @@
         set
         {
 
+        }
+    }
+
+    public TimeSpan RunthroughTime
+    {
+        get
+        {
+            return Properties.Settings.Default.runthroughTime;
+        }
+        set
+        {
+            Properties.Settings.Default.runthroughTime = value;
+            Properties.Settings.Default.Save();
         }
     }
 

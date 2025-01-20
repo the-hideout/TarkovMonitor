@@ -134,7 +134,7 @@ namespace TarkovMonitor
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
 
-            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds + TimeSpan.FromSeconds(10).TotalMilliseconds)
+            runthroughTimer = new System.Timers.Timer(Properties.Settings.Default.runthroughTime.TotalMilliseconds)
             {
                 AutoReset = false,
                 Enabled = false
