@@ -263,9 +263,13 @@ namespace TarkovMonitor
                 //var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
-                /*Debug.WriteLine("===log chunk start===");
-                Debug.WriteLine(e.NewMessage);
-                Debug.WriteLine("===log chunk end===");*/
+
+#if DEBUG                
+                Debug.WriteLine("===log chunk start===");
+                Debug.WriteLine(e.Data);
+                Debug.WriteLine("===log chunk end===");
+#endif
+
                 foreach (Match logMessage in logMessages)
                 {
                     var eventDate = new DateTime();
