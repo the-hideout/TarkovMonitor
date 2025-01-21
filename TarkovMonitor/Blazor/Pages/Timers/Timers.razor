@@ -1,0 +1,155 @@
+﻿@page "/timers"
+@using System.Diagnostics
+@inject GameWatcher eft
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-0" Spacing="0">
+    <MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Timer" Class="mr-2" />Timers</MudText>
+            <MudList T="string">
+                <MudListItem>Time In Raid: @TimeInRaidTime</MudListItem>
+                <MudListItem>Runthrough Period: @RunThroughRemainingTime</MudListItem>
+                <MudListItem>Scav Cooldown: @ScavCooldownTime</MudListItem>
+            </MudList>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+
+    private TimeSpan RunThroughRemainingTime;
+    private TimeSpan TimeInRaidTime;
+    private TimeSpan ScavCooldownTime;
+    private DateTime? RaidStartTime;
+    private System.Timers.Timer timerRaid;
+    private System.Timers.Timer timerRunThrough;
+    private System.Timers.Timer timerScavCooldown;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        RunThroughRemainingTime = Properties.Settings.Default.runthroughTime;
+        ScavCooldownTime = TimeSpan.FromSeconds(TarkovDev.ScavCooldownSeconds());
+
+        eft.RaidStarted += Eft_RaidStarted;
+        eft.RaidEnded += Eft_RaidEnded;
+
+        timerRaid = new System.Timers.Timer(TimeSpan.FromSeconds(1).TotalMilliseconds)
+            {
+                AutoReset = true,
+                Enabled = false
+            };
+        timerRaid.Elapsed += TimerRaid_Elapsed;
+
+        timerRunThrough = new System.Timers.Timer(TimeSpan.FromSeconds(1).TotalMilliseconds)
+            {
+                AutoReset = true,
+                Enabled = false
+            };
+        timerRunThrough.Elapsed += TimerRunThrough_Elapsed;
+
+        timerScavCooldown = new System.Timers.Timer(TimeSpan.FromSeconds(TarkovDev.ScavCooldownSeconds()).TotalMilliseconds)
+            {
+                AutoReset = true,
+                Enabled = false
+            };
+        timerScavCooldown.Elapsed += timerScanCooldown_Elapsed;
+    }
+
+    private async void Eft_RaidStarted(object? sender, RaidInfoEventArgs e)
+    {
+        Debug.Write(e.RaidInfo.StartedTime);
+        TimeInRaidTime = TimeSpan.Zero;
+        RunThroughRemainingTime = Properties.Settings.Default.runthroughTime;
+
+        timerRaid.Start();
+        timerRunThrough.Start();
+
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    private async void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
+    {
+        RunThroughRemainingTime = TimeSpan.Zero;
+        timerRunThrough.Stop();
+        timerRaid.Stop();
+
+        Debug.WriteLine(e.RaidInfo.RaidType);
+
+        if (e.RaidInfo.RaidType == RaidType.Scav || e.RaidInfo.RaidType == RaidType.PVE)
+        {
+            timerScavCooldown.Stop();
+            timerScavCooldown.Interval = TimeSpan.FromSeconds(1).TotalMilliseconds;
+            timerScavCooldown.Start();
+        }
+
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    private async void TimerRaid_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        TimeInRaidTime += TimeSpan.FromSeconds(1);
+
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    private async void TimerRunThrough_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (RunThroughRemainingTime > TimeSpan.Zero)
+        {
+            RunThroughRemainingTime = RunThroughRemainingTime.Subtract(TimeSpan.FromSeconds(1));
+        }
+        else
+        {
+            timerRunThrough.Stop();
+        }
+
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    private async void timerScanCooldown_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (ScavCooldownTime > TimeSpan.Zero)
+        {
+            ScavCooldownTime = ScavCooldownTime.Subtract(TimeSpan.FromSeconds(1));
+        }
+        else
+        {
+            timerScavCooldown.Stop();
+        }
+
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    // Clean Up Events
+    public void Dispose()
+    {
+        eft.RaidStarted -= Eft_RaidStarted;
+        eft.RaidEnded -= Eft_RaidEnded;
+
+        if (timerRunThrough != null)
+        {
+            timerRunThrough.Stop();
+            timerRunThrough.Elapsed -= TimerRunThrough_Elapsed;
+            timerRunThrough.Dispose();
+        }
+
+        if (timerRaid != null)
+        {
+            timerRaid.Stop();
+            timerRaid.Elapsed -= TimerRaid_Elapsed;
+            timerRaid.Dispose();
+        }
+
+        if (timerScavCooldown != null)
+        {
+            timerScavCooldown.Stop();
+            timerScavCooldown.Elapsed -= timerScanCooldown_Elapsed;
+            timerScavCooldown.Dispose();
+        }
+    }
+
+}
