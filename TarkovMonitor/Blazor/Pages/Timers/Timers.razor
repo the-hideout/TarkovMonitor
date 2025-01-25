@@ -1,6 +1,6 @@
 ﻿@page "/timers"
 @using System.Diagnostics
-@inject GameWatcher eft
+@inject TimersManager timersManager
 @layout AppLayout
 @implements IDisposable
 
@@ -25,25 +25,34 @@
     private TimeSpan RunThroughRemainingTime;
     private TimeSpan TimeInRaidTime;
     private TimeSpan ScavCooldownTime;
-    private DateTime? RaidStartTime;
-    private System.Threading.Timer timerRaid;
-    private System.Threading.Timer timerRunThrough;
-    private System.Threading.Timer timerScavCooldown;
-    private CancellationTokenSource cancellationTokenSource = new();
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        RunThroughRemainingTime = Properties.Settings.Default.runthroughTime;
+        timersManager.RaidTimerChanged += TimersManager_RaidTimerChanged;
+        timersManager.RunThroughTimerChanged += TimersManager_RunThroughTimerChanged;
+        timersManager.ScavCooldownTimerChanged += TimersManager_ScavCooldownTimerChanged;
+
         ScavCooldownTime = TimeSpan.FromSeconds(TarkovDev.ScavCooldownSeconds());
+    }
 
-        eft.RaidStarted += Eft_RaidStarted;
-        eft.RaidEnded += Eft_RaidEnded;
+    private async void TimersManager_RaidTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        TimeInRaidTime = e.TimerValue;
+        await InvokeAsync(() => StateHasChanged());
+    }
 
-        timerRaid = new System.Threading.Timer(TimerRaid_Elapsed, null, Timeout.Infinite, 1000);
-        timerRunThrough = new System.Threading.Timer(TimerRunThrough_Elapsed, null, Timeout.Infinite, 1000);
-        timerScavCooldown = new System.Threading.Timer(timerScanCooldown_Elapsed, null, Timeout.Infinite, 1000);
+    private async void TimersManager_RunThroughTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        RunThroughRemainingTime = e.TimerValue;
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    private async void TimersManager_ScavCooldownTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        ScavCooldownTime = e.TimerValue;
+        await InvokeAsync(() => StateHasChanged());
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -55,100 +64,11 @@
         }
     }
 
-    private async void Eft_RaidStarted(object? sender, RaidInfoEventArgs e)
-    {
-        if (e.RaidInfo.Reconnected)
-            return;
-
-        TimeInRaidTime = TimeSpan.Zero;
-        RunThroughRemainingTime = Properties.Settings.Default.runthroughTime;
-
-        timerRaid.Change(0, 1000);
-        timerRunThrough.Change(0, 1000);
-
-        await InvokeAsync(() => StateHasChanged());
-    }
-
-    private async void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
-    {
-        RunThroughRemainingTime = TimeSpan.Zero;
-        timerRunThrough.Change(Timeout.Infinite, Timeout.Infinite);
-        timerRaid.Change(Timeout.Infinite, Timeout.Infinite);
-
-        if (!e.RaidInfo.Reconnected && (e.RaidInfo.RaidType == RaidType.Scav || e.RaidInfo.RaidType == RaidType.PVE))
-        {
-            timerScavCooldown.Change(0, 1000);
-        }
-
-        await InvokeAsync(() => StateHasChanged());
-    }
-
-    private async void TimerRaid_Elapsed(object state)
-    {
-        if (cancellationTokenSource.IsCancellationRequested)
-            return;
-
-        TimeInRaidTime += TimeSpan.FromSeconds(1);
-
-        await InvokeAsync(() => StateHasChanged());
-    }
-
-    private async void TimerRunThrough_Elapsed(object state)
-    {
-        if (cancellationTokenSource.IsCancellationRequested)
-            return;
-
-        if (RunThroughRemainingTime > TimeSpan.Zero)
-        {
-            RunThroughRemainingTime -= TimeSpan.FromSeconds(1);
-        }
-        else
-        {
-            timerRunThrough.Change(Timeout.Infinite, Timeout.Infinite);
-        }
-
-        await InvokeAsync(() => StateHasChanged());
-    }
-
-    private async void timerScanCooldown_Elapsed(object state)
-    {
-        if (cancellationTokenSource.IsCancellationRequested)
-            return;
-
-        if (ScavCooldownTime > TimeSpan.Zero)
-        {
-            ScavCooldownTime -= TimeSpan.FromSeconds(1);
-        }
-        else
-        {
-            timerScavCooldown.Change(Timeout.Infinite, Timeout.Infinite);
-        }
-
-        await InvokeAsync(() => StateHasChanged());
-    }
-
-    // Clean Up Events
+     // Clean Up Events
     public void Dispose()
     {
-        cancellationTokenSource.Cancel();
-        cancellationTokenSource.Dispose();
-
-        eft.RaidStarted -= Eft_RaidStarted;
-        eft.RaidEnded -= Eft_RaidEnded;
-
-        DisposeTimer(timerRunThrough);
-        DisposeTimer(timerRaid);
-        DisposeTimer(timerScavCooldown);
-
+        timersManager.RaidTimerChanged -= TimersManager_RaidTimerChanged;
+        timersManager.RunThroughTimerChanged -= TimersManager_RunThroughTimerChanged;
+        timersManager.ScavCooldownTimerChanged -= TimersManager_ScavCooldownTimerChanged;
     }
-
-    private void DisposeTimer(System.Threading.Timer timer)
-    {
-        if (timer != null)
-        {
-            timer.Change(Timeout.Infinite, Timeout.Infinite);
-            timer.Dispose();
-        }
-    }
-
 }
