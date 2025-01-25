@@ -178,6 +178,7 @@ namespace TarkovMonitor
                         hideoutStations {
                             id
                             name
+                            normalizedName
                             levels {
                                 id
                                 level
