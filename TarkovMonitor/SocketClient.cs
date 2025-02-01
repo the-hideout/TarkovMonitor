@@ -9,107 +9,7 @@ namespace TarkovMonitor
         public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
         private static readonly string wsUrl = "wss://socket.tarkov.dev";
         //private static readonly string wsUrl = "ws://localhost:8080";
-        private static WebsocketClient? socket;
-
-        static SocketClient()
-        {
-            Properties.Settings.Default.PropertyChanged += SettingChanged;
-
-            Application.ApplicationExit += Application_ApplicationExit;
-        }
-
-        private static void Application_ApplicationExit(object? sender, EventArgs e)
-        {
-            if (socket != null && socket.IsRunning)
-            {
-                socket.Stop(WebSocketCloseStatus.NormalClosure, "Application closed");
-            }
-        }
-
-        private static string GetId(int length)
-        {
-            string result = "";
-            string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-            Random r = new Random();
-            //int rInt = r.Next(0, characters.Length);
-
-            for (int i = 0; i < length; i++)
-            {
-                result += characters.Substring(r.Next(0, characters.Length), 1);
-            }
-            return result;
-        }
-
-        public static async Task Connect()
-        {
-            if (socket != null)
-            {
-                try
-                {
-
-                    if (socket.IsRunning)
-                    {
-                        await socket.Stop(WebSocketCloseStatus.NormalClosure, "Reconnecting");
-                    }
-                    socket.Dispose();
-                } 
-                catch (Exception)
-                {
-                    // don't error on stopping old client
-                }
-            }
-            try {
-                var remoteId = Properties.Settings.Default.remoteId;
-                if (remoteId?.Length != 4)
-                {
-                    return;
-                }
-                //var source = new CancellationTokenSource();
-                //source.CancelAfter(5000);
-                socket = new(new Uri(wsUrl+$"?sessionid={remoteId}-tm"));
-                socket.MessageReceived.Subscribe(msg => {
-                    if (msg.Text == null)
-                    {
-                        return;
-                    }
-                    var message = JsonNode.Parse(msg.Text);
-                    if (message == null)
-                    {
-                        return;
-                    }
-                    if (message["type"]?.ToString() == "ping")
-                    {
-                        socket.Send(new JsonObject
-                        {
-                            ["type"] = "pong"
-                        }.ToJsonString());
-                    }
-                });
-                socket.DisconnectionHappened.Subscribe(disconnectionInfo =>
-                {
-                    if (disconnectionInfo.CloseStatus == WebSocketCloseStatus.NormalClosure)
-                    {
-                        return;
-                    }
-                    //ExceptionThrown?.Invoke(socket, new(new("Map remote control connection closed unexpectedly"), "running"));
-                    //Connect();
-                });
-                await socket.Start();
-            }
-            catch (Exception ex) {
-                ExceptionThrown?.Invoke(null, new(ex, $"Connecting with id {Properties.Settings.Default.remoteId}"));
-            }
-        }
-
-        private static void SettingChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName != "remoteId")
-            {
-                return;
-            }
-            //Connect();
-        }
+        //private static WebsocketClient? socket;
 
         public static async Task Send(JsonObject message)
         {
@@ -119,9 +19,38 @@ namespace TarkovMonitor
                 return;
             }
             message["sessionID"] = remoteid;
-            await Connect();
-            await socket.SendInstant(message.ToJsonString());
-            socket.Dispose();
+            WebsocketClient socket = new(new Uri(wsUrl + $"?sessionid={remoteid}-tm"));
+            /*socket.MessageReceived.Subscribe(msg => {
+                if (msg.Text == null)
+                {
+                    return;
+                }
+                var message = JsonNode.Parse(msg.Text);
+                if (message == null)
+                {
+                    return;
+                }
+                if (message["type"]?.ToString() == "ping")
+                {
+                    socket.Send(new JsonObject
+                    {
+                        ["type"] = "pong"
+                    }.ToJsonString());
+                }
+            });*/
+            await socket.Start();
+            try
+            {
+                await socket.SendInstant(message.ToJsonString());
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                socket.Dispose();
+            }            
         }
 
         public static async Task UpdatePlayerPosition(PlayerPositionEventArgs e)
