@@ -202,7 +202,7 @@ namespace TarkovMonitor
             return await SetTaskStatus(questId, TaskStatus.Failed);
         }
 
-        public static async Task<string> SetTaskUncomplete(string questId)
+        public static async Task<string> SetTaskStarted(string questId)
         {
             foreach (var taskStatus in Progress.data.tasksProgress)
             {
@@ -212,7 +212,7 @@ namespace TarkovMonitor
                 }
                 if (taskStatus.failed)
                 {
-                    return await SetTaskStatus(questId, TaskStatus.None);
+                    return await SetTaskStatus(questId, TaskStatus.Started);
                 }
                 break;
             }
