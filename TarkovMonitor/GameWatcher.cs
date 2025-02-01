@@ -198,14 +198,14 @@ namespace TarkovMonitor
                     return;
                 }
                 var raid = raidInfo;
-                if (raid.Map == "" && Properties.Settings.Default.customMap != "")
+                if (raid.Map == null && Properties.Settings.Default.customMap != "")
                 {
                     raid = new()
                     {
                         Map = Properties.Settings.Default.customMap,
                     };
                 }
-                if (raid.Map == "")
+                if (raid.Map == null)
                 {
                     return;
                 }

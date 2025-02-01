@@ -539,7 +539,7 @@ namespace TarkovMonitor
             }
             try
             {
-                await TarkovTracker.SetTaskUncomplete(e.LogContent.TaskId);
+                await TarkovTracker.SetTaskStarted(e.LogContent.TaskId);
             }
             catch (Exception ex)
             {
