@@ -1,0 +1,74 @@
+﻿@page "/timers"
+@using System.Diagnostics
+@inject TimersManager timersManager
+@layout AppLayout
+@implements IDisposable
+
+<MudGrid Class="pa-0" Spacing="0">
+    <MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Timer" Class="mr-2" />Timers</MudText>
+            <MudList T="string">
+                <MudListItem>Time In Raid: @TimeInRaidTime</MudListItem>
+                <MudListItem>Runthrough Period: @RunThroughRemainingTime</MudListItem>
+                <MudListItem>Scav Cooldown: @ScavCooldownTime</MudListItem>
+            </MudList>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+
+    [CascadingParameter(Name = "AppLayout")]
+    public AppLayout AppLayout { get; set; }
+
+    private TimeSpan RunThroughRemainingTime;
+    private TimeSpan TimeInRaidTime;
+    private TimeSpan ScavCooldownTime;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        timersManager.RaidTimerChanged += TimersManager_RaidTimerChanged;
+        timersManager.RunThroughTimerChanged += TimersManager_RunThroughTimerChanged;
+        timersManager.ScavCooldownTimerChanged += TimersManager_ScavCooldownTimerChanged;
+
+        ScavCooldownTime = TimeSpan.FromSeconds(TarkovDev.ScavCooldownSeconds());
+    }
+
+    private async void TimersManager_RaidTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        TimeInRaidTime = e.TimerValue;
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    private async void TimersManager_RunThroughTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        RunThroughRemainingTime = e.TimerValue;
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    private async void TimersManager_ScavCooldownTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        ScavCooldownTime = e.TimerValue;
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        if (firstRender)
+        {
+            AppLayout.SetTitle("Timers");
+        }
+    }
+
+     // Clean Up Events
+    public void Dispose()
+    {
+        timersManager.RaidTimerChanged -= TimersManager_RaidTimerChanged;
+        timersManager.RunThroughTimerChanged -= TimersManager_RunThroughTimerChanged;
+        timersManager.ScavCooldownTimerChanged -= TimersManager_ScavCooldownTimerChanged;
+    }
+}

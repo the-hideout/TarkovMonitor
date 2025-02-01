@@ -16,6 +16,7 @@ namespace TarkovMonitor
         private readonly MessageLog messageLog;
         private readonly LogRepository logRepository;
         private readonly GroupManager groupManager;
+        private readonly TimersManager timersManager;
         private readonly System.Timers.Timer runthroughTimer;
         private readonly System.Timers.Timer scavCooldownTimer;
 
@@ -119,6 +120,8 @@ namespace TarkovMonitor
 
             UpdateCheck.CheckForNewVersion();
 
+            timersManager = new TimersManager(eft);
+
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
             var services = new ServiceCollection();
             services.AddWindowsFormsBlazorWebView();
@@ -127,6 +130,7 @@ namespace TarkovMonitor
             services.AddSingleton<MessageLog>(messageLog);
             services.AddSingleton<LogRepository>(logRepository);
             services.AddSingleton<GroupManager>(groupManager);
+            services.AddSingleton<TimersManager>(timersManager);
             //services.AddSingleton<TarkovDevRepository>(tarkovdevRepository);
             blazorWebView1.HostPage = "wwwroot\\index.html";
             blazorWebView1.Services = services.BuildServiceProvider();
@@ -134,7 +138,7 @@ namespace TarkovMonitor
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
 
-            runthroughTimer = new System.Timers.Timer(TimeSpan.FromMinutes(7).TotalMilliseconds + TimeSpan.FromSeconds(10).TotalMilliseconds)
+            runthroughTimer = new System.Timers.Timer(Properties.Settings.Default.runthroughTime.TotalMilliseconds)
             {
                 AutoReset = false,
                 Enabled = false
@@ -180,6 +184,7 @@ namespace TarkovMonitor
             if (Properties.Settings.Default.runthroughAlert)
             {
                 Sound.Play("runthrough_over");
+                messageLog.AddMessage("Runthrough period over", "info");
             }
         }
 

@@ -65,5 +65,11 @@
     <Setting Name="tarkovTrackerTokens" Type="System.String" Scope="User">
       <Value Profile="(Default)">{}</Value>
     </Setting>
+    <Setting Name="runthroughTime" Type="System.TimeSpan" Scope="User">
+      <Value Profile="(Default)">00:07:10</Value>
+    </Setting>
+    <Setting Name="automaticallyDeleteScreenshotsAfterRaid" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
