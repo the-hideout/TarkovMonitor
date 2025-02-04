@@ -17,6 +17,7 @@ TarkovMonitor is an Escape from Tarkov companion application that provides usefu
     - Runthrough time elapsed
     - Turn air filter on/off
     - Scav cooldown
+    - Quest Items Reminder (does not check for actual quest items, just a friendly reminder to allow you to back out of matching)
     - Customizable sounds for all of the above
 - Goon tracking
     - Submit reports when you see the Goons to help other players find them
