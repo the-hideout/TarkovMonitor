@@ -71,6 +71,7 @@ namespace TarkovMonitor
             eft.MapLoaded += Eft_MapLoaded;
             eft.PlayerPosition += Eft_PlayerPosition;
             eft.ProfileChanged += Eft_ProfileChanged;
+
             eft.InitialReadComplete += (object? sender, ProfileEventArgs e) =>
             {
                 if (Properties.Settings.Default.tarkovTrackerToken != "")
@@ -345,6 +346,14 @@ namespace TarkovMonitor
                         failedTasks.Add(task);
                     }
                 }
+                if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
+                {
+                    Sound.Play("air_filter_on");
+                }
+                if (Properties.Settings.Default.questItemsAlert)
+                {
+                    await Sound.Play("quest_items");
+                }
                 if (failedTasks.Count == 0)
                 {
                     return;
@@ -356,10 +365,6 @@ namespace TarkovMonitor
                 if (Properties.Settings.Default.restartTaskAlert)
                 {
                     await Sound.Play("restart_failed_tasks");
-                }
-                if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
-                {
-                    Sound.Play("air_filter_on");
                 }
             }
             catch (Exception ex)
