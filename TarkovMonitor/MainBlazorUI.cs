@@ -348,7 +348,7 @@ namespace TarkovMonitor
                 }
                 if (Properties.Settings.Default.airFilterAlert && TarkovTracker.HasAirFilter())
                 {
-                    Sound.Play("air_filter_on");
+                    await Sound.Play("air_filter_on");
                 }
                 if (Properties.Settings.Default.questItemsAlert)
                 {
