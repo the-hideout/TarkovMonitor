@@ -41,6 +41,10 @@
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
+                <MudSwitch @bind-Value="@QuestItemsSwitch" Label="Quest Item Reminder Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayQuestItems" Class="d-inline-flex mt-1" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
+            </div>
+            <div>
                 <MudSwitch @bind-Value="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
                 <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="Scav Karma" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
@@ -205,6 +209,11 @@
     public void PlayScavAvailable()
     {
         Sound.Play("scav_available");
+    }
+
+    public void PlayQuestItems()
+    {
+        Sound.Play("quest_items");
     }
 
     public DialogOptions diagOptions = new DialogOptions { CloseOnEscapeKey = true };
@@ -410,6 +419,19 @@
         set
         {
             Properties.Settings.Default.runthroughTime = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool QuestItemsSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.questItemsAlert;
+        }
+        set
+        {
+            Properties.Settings.Default.questItemsAlert = value;
             Properties.Settings.Default.Save();
         }
     }

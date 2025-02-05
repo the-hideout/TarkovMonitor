@@ -298,5 +298,17 @@ namespace TarkovMonitor.Properties {
                 this["automaticallyDeleteScreenshotsAfterRaid"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool questItemsAlert {
+            get {
+                return ((bool)(this["questItemsAlert"]));
+            }
+            set {
+                this["questItemsAlert"] = value;
+            }
+        }
     }
 }
