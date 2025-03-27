@@ -192,7 +192,7 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d.]+), (?<y>-?[\d.]+), (?<z>-?[\d.]+)_.*");
+                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d.]+), (?<y>-?[\d.]+), (?<z>-?[\d.]+)_(?<rx>-?[\d.]+), (?<ry>-?[\d.]+), (?<rz>-?[\d.]+), (?<rw>-?[\d.]+).*");
                 if (!position.Success)
                 {
                     return;
@@ -209,12 +209,46 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                PlayerPosition?.Invoke(this, new(raid, CurrentProfile, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), filename));
+
+                var rotation = QuarternionsToYaw(float.Parse(position.Groups["rx"].Value), float.Parse(position.Groups["ry"].Value), float.Parse(position.Groups["rz"].Value), float.Parse(position.Groups["rw"].Value));
+
+                PlayerPosition?.Invoke(this, new(raid, CurrentProfile, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), rotation, filename));
                 raid.Screenshots.Add(filename);
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing screenshot {e.Name}"));
             }
+        }
+
+        private float QuarternionsToYaw(float x, float z, float y, float w)
+        {
+            // Calculate singularity test
+            // Roll (x-axis rotation)
+            /*float sinr_cosp = 2.0f * (w * x + y * z);
+            float cosr_cosp = 1.0f - 2.0f * (x * x + y * y);
+            float roll = (float)Math.Atan2(sinr_cosp, cosr_cosp);
+
+            // Pitch (y-axis rotation)
+            float sinp = 2.0f * (w * y - z * x);
+            float pitch;
+            if (Math.Abs(sinp) >= 1)
+                pitch = Math.Sign(sinp) * (float)Math.PI / 2;  // Pitch is 90 degrees if out of range
+            else
+                pitch = (float)Math.Asin(sinp);*/
+
+            // Yaw (z-axis rotation)
+            float siny_cosp = 2.0f * (w * z + x * y);
+            float cosy_cosp = 1.0f - 2.0f * (y * y + z * z);
+            float yaw = (float)Math.Atan2(siny_cosp, cosy_cosp);
+
+            // Convert radians to degrees
+            //roll *= (180f / (float)Math.PI);
+            //pitch *= (180f / (float)Math.PI);
+            yaw *= (180f / (float)Math.PI);
+
+            //System.Diagnostics.Debug.WriteLine($"roll: {roll}, pitch: {pitch}, yaw: {yaw}");
+
+            return yaw;
         }
 
         public void Start()
@@ -948,10 +982,12 @@ namespace TarkovMonitor
     public class PlayerPositionEventArgs : RaidInfoEventArgs
     {
         public Position Position { get; set; }
+        public float Rotation { get; set; }
         public string Filename { get; set; }
-        public PlayerPositionEventArgs(RaidInfo raidInfo, Profile profile, Position position, string filename) : base(raidInfo, profile)
+        public PlayerPositionEventArgs(RaidInfo raidInfo, Profile profile, Position position, float rotation, string filename) : base(raidInfo, profile)
         {
             this.Position = position;
+            this.Rotation = rotation;
             this.Filename = filename;
         }
     }
