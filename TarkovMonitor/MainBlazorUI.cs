@@ -598,7 +598,7 @@ namespace TarkovMonitor
             messageLog.AddMessage($"{e.LogContent.Buyer} purchased {String.Format("{0:n0}", e.LogContent.SoldItemCount)} {soldItem.name} for {String.Join(", ", received.ToArray())}", "flea", soldItem.link);
         }
 
-        private void Eft_FleaOfferExpired(object? sender, LogContentEventArgs<FleaExpiredeMessageLogContent> e)
+        private void Eft_FleaOfferExpired(object? sender, LogContentEventArgs<FleaExpiredMessageLogContent> e)
         {
             if (TarkovDev.Items == null)
             {

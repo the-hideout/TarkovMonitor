@@ -258,7 +258,7 @@ namespace TarkovMonitor
         }
         public new FleaMarketSoldChatMessage message { get; set; }
     }
-    public class FleaExpiredeMessageLogContent : JsonLogContent
+    public class FleaExpiredMessageLogContent : JsonLogContent
     {
         public string ItemId
         {

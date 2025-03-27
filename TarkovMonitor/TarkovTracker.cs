@@ -68,7 +68,7 @@ namespace TarkovMonitor
         {
             if (profileId == "")
             {
-                throw new Exception("No PVP or PVE profile initialised, please launch Escape from Tarkov first");
+                throw new Exception("No PVP or PVE profile initialized, please launch Escape from Tarkov first");
             }
             tokens[profileId] = token;
             Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
