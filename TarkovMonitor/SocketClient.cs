@@ -71,8 +71,9 @@ namespace TarkovMonitor
                     {
                         ["x"] = e.Position.X,
                         ["y"] = e.Position.Y,
-                        ["z"] = e.Position.Z
-                    }
+                        ["z"] = e.Position.Z,
+                    },
+                    ["rotation"] = e.Rotation,
                 }
             };
             try
