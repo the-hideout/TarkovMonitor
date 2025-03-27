@@ -120,7 +120,7 @@ namespace TarkovMonitor
         public event EventHandler<LogContentEventArgs<TaskStatusMessageLogContent>>? TaskFailed;
         public event EventHandler<LogContentEventArgs<TaskStatusMessageLogContent>>? TaskFinished;
         public event EventHandler<LogContentEventArgs<FleaSoldMessageLogContent>>? FleaSold;
-        public event EventHandler<LogContentEventArgs<FleaExpiredeMessageLogContent>>? FleaOfferExpired;
+        public event EventHandler<LogContentEventArgs<FleaExpiredMessageLogContent>>? FleaOfferExpired;
         public event EventHandler<PlayerPositionEventArgs>? PlayerPosition;
         public event EventHandler<ProfileEventArgs> ProfileChanged;
         public event EventHandler<ProfileEventArgs> InitialReadComplete;
@@ -171,7 +171,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "initialzing screenshot watcher"));
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "initializing screenshot watcher"));
             }
         }
 
@@ -458,7 +458,7 @@ namespace TarkovMonitor
 							}
 							if (systemMessageEvent.message.templateId == "5bdabfe486f7743e1665df6e 0")
 							{
-								FleaOfferExpired?.Invoke(this, new LogContentEventArgs<FleaExpiredeMessageLogContent>() { LogContent = jsonNode?.AsObject().Deserialize<FleaExpiredeMessageLogContent>() ?? throw new Exception("Error parsing FleaExpiredeMessageLogContent"), Profile = CurrentProfile });
+								FleaOfferExpired?.Invoke(this, new LogContentEventArgs<FleaExpiredMessageLogContent>() { LogContent = jsonNode?.AsObject().Deserialize<FleaExpiredMessageLogContent>() ?? throw new Exception("Error parsing FleaExpiredMessageLogContent"), Profile = CurrentProfile });
 								continue;
 							}
 						}
@@ -664,20 +664,20 @@ namespace TarkovMonitor
             // For each log folder, get the details
             foreach (string folderName in logFolders)
             {
-                var deets = GetLogDetails(folderName);
-                if (deets.Count == 0)
+                var details = GetLogDetails(folderName);
+                if (details.Count == 0)
                 {
                     continue;
                 }
-                if (!deets.Any(d => d.Profile.Id == breakpoint.Profile.Id))
+                if (!details.Any(d => d.Profile.Id == breakpoint.Profile.Id))
                 {
                     continue;
                 }
-                if (!deets.Any(d => d.Date >= breakpoint.Date))
+                if (!details.Any(d => d.Date >= breakpoint.Date))
                 {
                     continue;
                 }
-                logDetails.Add(deets);
+                logDetails.Add(details);
             }
             logDetails = logDetails.OrderBy(det => det[0].Date).ToList();
             foreach (var details in logDetails)
