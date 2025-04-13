@@ -3,7 +3,7 @@
 namespace TarkovMonitor
 {
     /// <summary>
-    /// To add new text to speech voices, leverage the site "https://ttsmp3.com/" and use "British English / Brian" for resutls that match existing voices.
+    /// To add new text to speech voices, leverage the site "https://ttsmp3.com/" and use "British English / Brian" for results that match existing voices.
     /// </summary>
     internal class Sound
     {
