@@ -187,12 +187,12 @@ namespace TarkovMonitor
             try
             {
                 string filename = e.Name ?? "";
-                var match = Regex.Match(filename, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_(?<position>.+) \(\d\)\.png");
+                var match = Regex.Match(filename, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_?(?<position>.+) \(\d\)\.png");
                 if (!match.Success)
                 {
                     return;
                 }
-                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d.]+), (?<y>-?[\d.]+), (?<z>-?[\d.]+)_(?<rx>-?[\d.]+), (?<ry>-?[\d.]+), (?<rz>-?[\d.]+), (?<rw>-?[\d.]+).*");
+                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d]+\.[\d]{2}), (?<y>-?[\d]+\.[\d]{2}), (?<z>-?[\d]+\.[\d]{2})_?(?<rx>-?[\d.]{1}\.[\d]{1,5}), (?<ry>-?[\d.]{1}\.[\d]{1,5}), (?<rz>-?[\d.]{1}\.[\d]{1,5}), (?<rw>-?[\d.]{1}\.[\d]{1,5}).*");
                 if (!position.Success)
                 {
                     return;
