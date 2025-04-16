@@ -192,7 +192,7 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d]+\.[\d]{2}), (?<y>-?[\d]+\.[\d]{2}), (?<z>-?[\d]+\.[\d]{2})_?(?<rx>-?[\d.]{1}\.[\d]{1,5}), (?<ry>-?[\d.]{1}\.[\d]{1,5}), (?<rz>-?[\d.]{1}\.[\d]{1,5}), (?<rw>-?[\d.]{1}\.[\d]{1,5}).*");
+                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d]+\.[\d]{2}), (?<y>-?[\d]+\.[\d]{2}), (?<z>-?[\d]+\.[\d]{2})_?(?<rx>-?[\d.]{1}\.[\d]{1,5}), (?<ry>-?[\d.]{1}\.[\d]{1,5}), (?<rz>-?[\d.]{1}\.[\d]{1,5}), (?<rw>-?[\d.]{1}\.[\d]{1,5})");
                 if (!position.Success)
                 {
                     return;
@@ -211,7 +211,7 @@ namespace TarkovMonitor
                 }
 
                 var rotation = QuarternionsToYaw(float.Parse(position.Groups["rx"].Value), float.Parse(position.Groups["ry"].Value), float.Parse(position.Groups["rz"].Value), float.Parse(position.Groups["rw"].Value));
-
+                DebugMessage?.Invoke(this, new($"rx: {position.Groups["rx"].Value}, ry: {position.Groups["ry"].Value}, rz: {position.Groups["rz"].Value}, rw: {position.Groups["rw"].Value}"));
                 PlayerPosition?.Invoke(this, new(raid, CurrentProfile, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), rotation, filename));
                 raid.Screenshots.Add(filename);
             } catch (Exception ex)
