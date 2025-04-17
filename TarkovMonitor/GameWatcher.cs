@@ -210,8 +210,7 @@ namespace TarkovMonitor
                     return;
                 }
 
-                DebugMessage?.Invoke(this, new($"rx: {position.Groups["rx"].Value}, ry: {position.Groups["ry"].Value}, rz: {position.Groups["rz"].Value}, rw: {position.Groups["rw"].Value}"));
-                var rotation = QuarternionsToYaw(float.Parse(position.Groups["rx"].Value), float.Parse(position.Groups["ry"].Value), float.Parse(position.Groups["rz"].Value), float.Parse(position.Groups["rw"].Value));
+                var rotation = QuarternionsToYaw(float.Parse(position.Groups["rx"].Value, CultureInfo.InvariantCulture), float.Parse(position.Groups["ry"].Value, CultureInfo.InvariantCulture), float.Parse(position.Groups["rz"].Value, CultureInfo.InvariantCulture), float.Parse(position.Groups["rw"].Value, CultureInfo.InvariantCulture));
                 PlayerPosition?.Invoke(this, new(raid, CurrentProfile, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), rotation, filename));
                 raid.Screenshots.Add(filename);
             } catch (Exception ex)
