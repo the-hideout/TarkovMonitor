@@ -93,6 +93,11 @@
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@trackerIcon" Class="mr-2"/>TarkovTracker</MudText>
             <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">Get A Token</MudButton><MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">Test Token</MudButton>
             <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="API Token" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
+            <MudSwitch @bind-Value="@TarkovTrackerCustomURL" Label="Use Custom URL instead of tarkovtracker.io" Color="Color.Info" />
+            @if (Properties.Settings.Default.useCustomTarkovTrackerULR)
+            {
+                <MudTextField @bind-Value="@TarkovTrackerURL" Immediate="true" Label="E.g. tarkovtracker.org" Variant="Variant.Outlined" Margin="Margin.Dense"></MudTextField>
+            }
         </MudPaper>
     </MudItem>
 
@@ -458,6 +463,36 @@
         }
     }
 
+    public Boolean TarkovTrackerCustomURL
+    {
+        get
+        {
+            return Properties.Settings.Default.useCustomTarkovTrackerURL;
+        }
+        set
+        {
+            Properties.Settings.Default.useCustomTarkovTrackerURL = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public String TarkovTrackerURL
+    {
+        get
+        {
+            if (TarkovTrackerCustomURL)
+            {
+                return Properties.Settings.Default.tarkovTrackerURL;
+            }
+                return "tarkovtracker.io"
+        }
+        set
+        {
+            Properties.Settings.Default.tarkovTrackerURL = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
     void TokenShowClick()
     {
         if (tokenShow)
@@ -500,7 +535,7 @@
     }
 
     private void OpenTrackerSettings() {
-        OpenURL("https://tarkovtracker.io/settings/");
+        OpenURL("https://" + Properties.Settings.tarkovTrackerURL + "/settings/");
     }
 
     private void OpenURL(string url)

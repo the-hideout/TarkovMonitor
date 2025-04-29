@@ -30,7 +30,7 @@ namespace TarkovMonitor
             Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
         }
 
-        private static ITarkovTrackerAPI api = RestService.For<ITarkovTrackerAPI>("https://tarkovtracker.io/api/v2",
+        private static ITarkovTrackerAPI api = RestService.For<ITarkovTrackerAPI>("https://" + Properties.Settings.Default.tarkovTrackerURL + "/api/v2",
             new RefitSettings
             {
                 AuthorizationHeaderValueGetter = (rq, cr) => {
