@@ -38,6 +38,30 @@ namespace TarkovMonitor.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool tarkovTrackerUseCustomUrl {
+            get {
+                return ((bool)(this["tarkovTrackerUseCustomUrl"]));
+            }
+            set {
+                this["tarkovTrackerUseCustomUrl"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://tarkovtracker.io/api/v2")]
+        public string tarkovTrackerUrl {
+            get {
+                return ((string)(this["tarkovTrackerUrl"]));
+            }
+            set {
+                this["tarkovTrackerUrl"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool submitQueueTime {
             get {
                 return ((bool)(this["submitQueueTime"]));
