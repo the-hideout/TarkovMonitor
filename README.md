@@ -27,7 +27,7 @@ TarkovMonitor is an Escape from Tarkov companion application that provides usefu
 - Connect to Tarkov Tracker via API token
     - Automatically mark quests as complete as you complete them
 - Statistics (all stored locally on your computer)
-    - Track the your total sales on the flea market
+    - Track your total sales on the flea market
     - Track how many times you play on each map
 - Visual Timers (have that friend that never heard the audio and asks "has the runthrough timer happened yet?")
    - Displays "Time in Raid"
