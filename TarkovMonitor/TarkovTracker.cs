@@ -41,6 +41,10 @@ namespace TarkovMonitor
         public static event EventHandler<EventArgs>? TokenValidated;
         public static event EventHandler<EventArgs>? TokenInvalid;
         public static event EventHandler<EventArgs>? ProgressRetrieved;
+        public static Dictionary<string, string> Domains = new() {
+            { "tarkovtracker.io", "TarkovTracker.io" },
+            { "tarkovtracker.org", "TarkovTracker.org" },
+        };
 
         static TarkovTracker() {
             tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
@@ -48,7 +52,7 @@ namespace TarkovMonitor
 
         public static ITarkovTrackerAPI InitAPI()
         {
-            return api = RestService.For<ITarkovTrackerAPI>(Properties.Settings.Default.tarkovTrackerUrl,
+            return api = RestService.For<ITarkovTrackerAPI>($"https://{Properties.Settings.Default.tarkovTrackerDomain}/api/v2",
                 new RefitSettings {
                     AuthorizationHeaderValueGetter = (rq, cr) => {
                         return Task.Run<string>(() => {
