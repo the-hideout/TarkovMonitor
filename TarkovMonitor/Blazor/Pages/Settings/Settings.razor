@@ -477,9 +477,9 @@
                 return;
             }
             Properties.Settings.Default.tarkovTrackerDomain = value;
+            TarkovTrackerToken = "";
             TarkovTracker.InitAPI();
             Properties.Settings.Default.Save();
-            TarkovTrackerToken = "";
         }
     }
 
