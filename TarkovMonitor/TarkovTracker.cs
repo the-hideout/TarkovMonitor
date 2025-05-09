@@ -30,16 +30,7 @@ namespace TarkovMonitor
             Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
         }
 
-        private static ITarkovTrackerAPI api = RestService.For<ITarkovTrackerAPI>("https://tarkovtracker.io/api/v2",
-            new RefitSettings
-            {
-                AuthorizationHeaderValueGetter = (rq, cr) => {
-                    return Task.Run<string>(() => {
-                        return GetToken(currentProfile ?? "");
-                    });
-                },
-            }
-        );
+        private static ITarkovTrackerAPI api = InitAPI();
 
         public static ProgressResponse Progress { get; private set; } = new();
         public static bool ValidToken { get; private set; } = false;
@@ -50,9 +41,26 @@ namespace TarkovMonitor
         public static event EventHandler<EventArgs>? TokenValidated;
         public static event EventHandler<EventArgs>? TokenInvalid;
         public static event EventHandler<EventArgs>? ProgressRetrieved;
+        public static Dictionary<string, string> Domains = new() {
+            { "tarkovtracker.io", "TarkovTracker.io" },
+            { "tarkovtracker.org", "TarkovTracker.org" },
+        };
 
         static TarkovTracker() {
             tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
+        }
+
+        public static ITarkovTrackerAPI InitAPI()
+        {
+            return api = RestService.For<ITarkovTrackerAPI>($"https://{Properties.Settings.Default.tarkovTrackerDomain}/api/v2",
+                new RefitSettings {
+                    AuthorizationHeaderValueGetter = (rq, cr) => {
+                        return Task.Run<string>(() => {
+                            return GetToken(currentProfile ?? "");
+                        });
+                    },
+                }
+            );
         }
 
         public static string GetToken(string profileId)

@@ -5,6 +5,9 @@
     <Setting Name="tarkovTrackerToken" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="tarkovTrackerDomain" Type="System.String" Scope="User">
+      <Value Profile="(Default)">tarkovtracker.io</Value>
+    </Setting>
     <Setting Name="submitQueueTime" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
