@@ -5,6 +5,12 @@
     <Setting Name="tarkovTrackerToken" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="tarkovTrackerUseCustomUrl" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="tarkovTrackerUrl" Type="System.String" Scope="User">
+      <Value Profile="(Default)">https://tarkovtracker.io/api/v2</Value>
+    </Setting>
     <Setting Name="submitQueueTime" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
