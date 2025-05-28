@@ -52,7 +52,7 @@ namespace TarkovMonitor
 
         public static ITarkovTrackerAPI InitAPI()
         {
-            return api = RestService.For<ITarkovTrackerAPI>($"https://{Properties.Settings.Default.tarkovTrackerDomain}/api/v2",
+            api = RestService.For<ITarkovTrackerAPI>($"https://{Properties.Settings.Default.tarkovTrackerDomain}/api/v2",
                 new RefitSettings {
                     AuthorizationHeaderValueGetter = (rq, cr) => {
                         return Task.Run<string>(() => {
@@ -61,6 +61,8 @@ namespace TarkovMonitor
                     },
                 }
             );
+            api.Client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            return api;
         }
 
         public static string GetToken(string profileId)

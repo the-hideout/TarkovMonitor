@@ -466,6 +466,7 @@ namespace TarkovMonitor
 
         private void Eft_NewLogData(object? sender, NewLogDataEventArgs e)
         {
+            TarkovDev.LastActivity = DateTime.Now;
             try
             {
                 //Debug.WriteLine($"MainBlazorUI {e.Type} NewLogData");

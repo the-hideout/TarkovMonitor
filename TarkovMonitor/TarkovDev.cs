@@ -39,6 +39,12 @@ namespace TarkovMonitor
         public static List<HideoutStation> Stations { get; private set; } = new();
         public static List<PlayerLevel> PlayerLevels { get; private set; } = new();
         public static DateTime ScavAvailableTime { get; set; } = DateTime.Now;
+        public static DateTime LastActivity { get; set; } = DateTime.MinValue;
+
+        static TarkovDev()
+        {
+            client.HttpClient.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+        }
 
         public async static Task<List<Task>> GetTasks()
         {
@@ -327,6 +333,10 @@ namespace TarkovMonitor
 
         private static void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
+            if (DateTime.Now.Subtract(LastActivity).TotalMinutes > 5)
+            {
+                return;
+            }
             UpdateApiData();
         }
 
