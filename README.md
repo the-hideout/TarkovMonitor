@@ -66,6 +66,10 @@ Unfortunately, there are no log events for when you build hideout stations, so T
 
 PMC level information is not logged by the game, so Tarkov Monitor cannot update it in Tarkov Tracker.
 
+### What is the "Tarkov.dev Website Remote" option for?
+
+The Tarkov.dev website has a feature that allows the user to "control" the website using another device. The typical use case is for someone to have the Tarkov.dev website loaded in a browser on their second monitor and then use their phone as the second device to load pages on the website without having to alt+tab out of the game. TarkovMonitor can act as the remote device and do things like load the Tarkov.dev map page for the map you're loading into a raid on. Linking the remote also enables showing your position on the Tarkov.dev map when you take a screenshot. To get the remote code for Tarkov.dev, just open the Tarkov.dev website in your browser, click the "Click to connect" box in the lower left, and then copy and paste that code into the Remote ID setting box in Tarkov Monitor.
+
 ### What is the "Submit Queue Time Data" option for?
 
 When enabled, TarkovMonitor will submit the amount of time it takes to queue for a raid to Tarkov.dev. The information is sent anonymously and only the following pieces of information are sent and saved: the map, the time it took to find a raid, and whether the raid was for PMC or scav.
