@@ -42,6 +42,22 @@ Head on over to the [latest release](https://github.com/the-hideout/TarkovMonito
 
 Once downloaded, extract the zip and run the `TarkovMonitor.exe` executable included within the bundle. Enjoy!
 
+## Setup
+
+On its own, TarkovMonitor will play audio notifications (e.g., when you match into a raid and when the raid begins). But its most useful features are unlocked when used in conjunction with other tools.
+
+### Quest Tracking with TarkovTracker
+
+[Tarkov Tracker](https://tarkovtracker.io) is a free website that allows you to track your quest progress. Once you log in to create a Tarkov Tracker account, you can share your quest progress with other tools (including TarkovMonitor) by creating an API token. Navigate to the [Tarkov Tracker settings page](https://tarkovtracker.io/settings), click the `create a token` button, and create a token that has permissions to `get progression` and `write progression`. You can give the token any name you want, but if you're creating it for Tarkov Monitor, it makes sense to name it `Tarkov Monitor`. Then click the `create token` button and click the token's copy button. Do not try to manually highlight the displayed token and copy it; some of the displayed token's characters are obfuscated with asterisks (*). Once you've copied the token, paste it in the Tarkov Tracker API token box in Tarkov Monitor settings and click the `Test Token` button. If you see a pop up indicating success, Tarkov Tracker is ready to start automatically updating your progress on Tarkov Tracker.
+
+Tarkov Tracker only automatically marks a quest as complete if it's running when the quest is completed. If you already completed a bunch of quests prior to running Tarkov Monitor, see [the below section on how to read past progress](#ive-installed-and-run-tarkovmonitor-why-hasnt-it-marked-all-my-completed-quests-as-complete).
+
+### Tarkov.dev Website Integration
+
+The [Tarkov.dev website](https://tarkov.dev) has a "remote control" feature that allows the user to navigate to different pages in a browser window by using a different device. The original use case for this was to have the Tarkov.dev website open on a second monitor as you're playing the game and then using your cellphone as the remote control to load different pages on the website shown on the monitor without having to alt+tab out of the game.
+
+TarkovMonitor can act as the "control" device, which allows it to do things like opening the corresponding map page on the website when you're loading into a raid and show your position (and rotation) on the map when you take a screenshot. To enable this integration, open the Tarkov.dev website, click the `Click to connect` button in the lower left, copy the `ID for remote control` shown in that box, and paste it in the Tarkov Monitor remote id settings. If you keep your browser window open, Tarkov Monitor should be set to control the Tarkov.dev site. Note that if you reload the Tarkov.dev site (including by restarting your browser), you'll need to click the `Click to connect` button again, but the remote code should remain the same.
+
 ## FAQ
 
 ### How does TarkovMonitor work?
@@ -52,7 +68,7 @@ TarkovMonitor simply watches the log files that the game creates as it's running
 
 TarkovMonitor only monitors new logs as they are being written while the app is running. Therefore, it doesn't automatically update quest progress that was made prior to the app running. It will, however, still mark quests as complete going forward while the app is running.
 
-If you want to automatically update your progress from previous logs, open the Settings page, scroll down to the First Time Setup section, and click the Read Past Logs button. Tarkov Monitor will then present you with a list of breakpoints to choose the starting point to read logs from. The breakpoints are determined by the game's version number and your player profile id as written into each set of logs. Select the breakpoint corresponding with the start of the wipe for the correct account, click OK, and Tarkov Monitor will process all logs from that point forward for the selected profile and update your quest progress accordingly.
+If you want to automatically update your progress from previous logs, open the Settings page, scroll down to the Initial Setup section, and click the Read Past Logs button. Tarkov Monitor will then present you with a list of breakpoints to choose the starting point to read logs from. The breakpoints are determined by the game's version number and your player profile id as written into each set of logs. Select the breakpoint corresponding with the start of the wipe for the correct account, click OK, and Tarkov Monitor will process all logs starting from that point through the present for the selected profile and update your quest progress accordingly.
 
 ### Is TarkovMonitor a cheat?
 
@@ -65,6 +81,10 @@ Unfortunately, there are no log events for when you build hideout stations, so T
 ### Does TarkovMonitor update my PMC level on Tarkov Tracker?
 
 PMC level information is not logged by the game, so Tarkov Monitor cannot update it in Tarkov Tracker.
+
+### What is the "Tarkov.dev Website Remote" option for?
+
+The Tarkov.dev website has a feature that allows the user to "control" the website using another device. The typical use case is for someone to have the Tarkov.dev website loaded in a browser on their second monitor and then use their phone as the second device to load pages on the website without having to alt+tab out of the game. TarkovMonitor can act as the remote device and do things like load the Tarkov.dev map page for the map you're loading into a raid on. Linking the remote also enables showing your position on the Tarkov.dev map when you take a screenshot. To get the remote code for Tarkov.dev, just open the Tarkov.dev website in your browser, click the "Click to connect" box in the lower left, and then copy and paste that code into the Remote ID setting box in Tarkov Monitor.
 
 ### What is the "Submit Queue Time Data" option for?
 
