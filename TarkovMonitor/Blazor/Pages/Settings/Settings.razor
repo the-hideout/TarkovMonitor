@@ -116,6 +116,16 @@
             <div>
                 <MudSwitch @bind-Value="@AutomaticallyDeleteScreenshotsAfterRaid" Label="Automatically delete taken screenshots after raid" Color="Color.Info" />
             </div>
+            <div>
+                <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Folder" Class="mr-2" />Screenshot Folder</MudText>
+                <MudTextField T="string" @bind-Value="@CustomScreenShotFolder" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FolderOpen" OnAdornmentClick="CustomScreenShotFolderClick"></MudTextField>
+                @if (Properties.Settings.Default.customScreenShotPath != null && Properties.Settings.Default.customScreenShotPath != "")
+                {
+                    <div>
+                        <MudButton @onclick="SetDefaultScreenShotFolder" VaLogFolderriant="Variant.Text">Reset to Default</MudButton>
+                    </div>
+                }
+            </div>
             <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="Offline Map" ShrinkLabel="true" HelperText="Map to use for offline raids" AnchorOrigin="Origin.BottomCenter" xs="3">
                 <MudSelectItem T="string" Value="@string.Empty">None</MudSelectItem>
                 @foreach (var map in TarkovDev.Maps)
@@ -642,6 +652,30 @@
         }
     }
 
+    public string CustomScreenShotFolder
+    {
+        get
+        {
+            if (Properties.Settings.Default.customScreenShotPath != null && Properties.Settings.Default.customScreenShotPath != "")
+                return Properties.Settings.Default.customScreenShotPath;
+            try
+            {
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Escape From Tarkov", "Screenshots");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error getting default screenshot folder: {ex.Message}", "exception");
+            }
+
+            return "";
+        }
+        set
+        {
+            Properties.Settings.Default.customScreenShotPath = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
     void CustomLogsFolderClick()
     {
         using CommonOpenFileDialog dialog = new CommonOpenFileDialog();
@@ -653,7 +687,19 @@
         }
     }
 
+    void CustomScreenShotFolderClick()
+    {
+        var dialog = new CommonOpenFileDialog();
+        dialog.InitialDirectory = CustomScreenShotFolder;
+        dialog.IsFolderPicker = true;
+        if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+            CustomScreenShotFolder = dialog.FileName;
+    }
+
     void SetDefaultLogFolder() {
         CustomLogsFolder = "";
     }
+
+    void SetDefaultScreenShotFolder()
+        => CustomScreenShotFolder = "";
 }

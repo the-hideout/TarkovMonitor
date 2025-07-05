@@ -62,6 +62,9 @@
     <Setting Name="customLogsPath" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="customScreenShotPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
     <Setting Name="customMap" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
