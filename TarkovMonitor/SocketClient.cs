@@ -1,5 +1,4 @@
-﻿using System.Net.WebSockets;
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 using Websocket.Client;
 
 namespace TarkovMonitor
@@ -19,7 +18,7 @@ namespace TarkovMonitor
                 return;
             }
             message["sessionID"] = remoteid;
-            WebsocketClient socket = new(new Uri(wsUrl + $"?sessionid={remoteid}-tm"));
+            using WebsocketClient socket = new(new Uri(wsUrl + $"?sessionid={remoteid}-tm"));
             /*socket.MessageReceived.Subscribe(msg => {
                 if (msg.Text == null)
                 {
@@ -39,18 +38,7 @@ namespace TarkovMonitor
                 }
             });*/
             await socket.Start();
-            try
-            {
-                await socket.SendInstant(message.ToJsonString());
-            }
-            catch
-            {
-                throw;
-            }
-            finally
-            {
-                socket.Dispose();
-            }            
+            await socket.SendInstant(message.ToJsonString());          
         }
 
         public static async Task UpdatePlayerPosition(PlayerPositionEventArgs e)

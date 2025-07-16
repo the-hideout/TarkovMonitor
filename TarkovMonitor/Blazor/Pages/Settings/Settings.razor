@@ -56,6 +56,10 @@
                         }
                     }
                 </MudSelect>
+                <MudSelect @bind-Value="@ScavCooldownSelect" T="int" Label="Scav Cooldown Base Seconds" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
+                    <MudSelectItem Value="2700">2700 (PVP default)</MudSelectItem>
+                    <MudSelectItem Value="1500">1500 (PVE default)</MudSelectItem>
+                </MudSelect>
             </div>
             <div>
                 <MudTextField @bind-Value="@RunthroughTime" Label="Runthrough Time (HH:MM:SS)" Class="d-inline-flex" sx="3" />
@@ -310,6 +314,19 @@
         set
         {
             Properties.Settings.Default.scavKarma = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public int ScavCooldownSelect
+    {
+        get
+        {
+            return Properties.Settings.Default.scavCooldownBase;
+        }
+        set
+        {
+            Properties.Settings.Default.scavCooldownBase = value;
             Properties.Settings.Default.Save();
         }
     }

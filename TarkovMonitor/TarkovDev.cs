@@ -523,7 +523,7 @@ namespace TarkovMonitor
 
         public static int ScavCooldownSeconds()
         {
-            decimal baseTimer = 1500;
+            decimal baseTimer = Convert.ToDecimal(Properties.Settings.Default.scavCooldownBase);
 
             decimal hideoutBonus = 0;
             foreach (var station in Stations)
