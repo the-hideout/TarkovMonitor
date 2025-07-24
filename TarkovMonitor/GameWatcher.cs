@@ -155,11 +155,11 @@ namespace TarkovMonitor
                 bool screensPathExists = Directory.Exists(ScreenshotsPath);
                 if (!screensPathExists)
                 {
-                    DebugMessage?.Invoke(this, new($"EFT screenshots folder not found; {ScreenshotsPath}"));
+                    //DebugMessage?.Invoke(this, new($"EFT screenshots folder not found; {ScreenshotsPath}"));
                 }
                 else
                 {
-                    DebugMessage?.Invoke(this, new($"Watching EFT screenshots folder: {ScreenshotsPath}"));
+                    //DebugMessage?.Invoke(this, new($"Watching EFT screenshots folder: {ScreenshotsPath}"));
                 }
                 string watchPath = screensPathExists ? ScreenshotsPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 screenshotWatcher.Path = watchPath;
