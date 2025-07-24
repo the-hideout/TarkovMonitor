@@ -523,7 +523,11 @@ namespace TarkovMonitor
 
         public static int ScavCooldownSeconds()
         {
-            decimal baseTimer = Convert.ToDecimal(Properties.Settings.Default.scavCooldownBase);
+            Dictionary<ProfileType, int> ScavCooldownBaseValues = new() {
+                { ProfileType.Regular, 2700 },
+                { ProfileType.PVE, 1500 },
+            };
+            decimal baseTimer = Convert.ToDecimal(ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type]);
 
             decimal hideoutBonus = 0;
             foreach (var station in Stations)

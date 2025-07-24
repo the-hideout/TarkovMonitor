@@ -322,17 +322,5 @@ namespace TarkovMonitor.Properties {
                 this["questItemsAlert"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("1500")]
-        public int scavCooldownBase {
-            get {
-                return ((int)(this["scavCooldownBase"]));
-            }
-            set {
-                this["scavCooldownBase"] = value;
-            }
-        }
     }
 }

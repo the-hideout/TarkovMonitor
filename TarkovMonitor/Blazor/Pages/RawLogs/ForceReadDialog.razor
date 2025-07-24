@@ -6,7 +6,7 @@
 <MudDialog>
     <DialogContent>
         <MudText>
-            Current profile: @eft.CurrentProfile.Id (@eft.CurrentProfile.Type)
+            Current profile: @GameWatcher.CurrentProfile.Id (@GameWatcher.CurrentProfile.Type)
         </MudText>
         <MudText>
             If you want to update progress for a different profile, activate that profile in the game.
@@ -65,7 +65,7 @@
 
     private void GetBreakPoints()
     {
-        breakpoints = customWatcher.GetLogBreakpoints(eft.CurrentProfile.Id);
+        breakpoints = customWatcher.GetLogBreakpoints(GameWatcher.CurrentProfile.Id);
         InvokeAsync(() => StateHasChanged());
     }
 

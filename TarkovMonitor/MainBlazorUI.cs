@@ -424,15 +424,15 @@ namespace TarkovMonitor
         {
             try
             {
-                await TarkovTracker.SetProfile(eft.CurrentProfile.Id);
+                await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
             }
             catch (Exception ex)
             {
                 messageLog.AddMessage($"Error retrieving Tarkov Tracker profile: {ex.Message}");
                 return;
             }
-            messageLog.AddMessage($"Using {eft.CurrentProfile.Type} profile");
-            if (TarkovTracker.GetToken(eft.CurrentProfile.Id) == "")
+            messageLog.AddMessage($"Using {GameWatcher.CurrentProfile.Type} profile");
+            if (TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id) == "")
             {
                 messageLog.AddMessage("To automatically track task progress, set your Tarkov Tracker token in Settings");
                 return;
@@ -698,7 +698,7 @@ namespace TarkovMonitor
             {
                 try
                 {
-                    await TarkovDev.PostQueueTime(e.RaidInfo.Map, (int)Math.Round(e.RaidInfo.QueueTime), e.RaidInfo.RaidType.ToString().ToLower(), eft.CurrentProfile.Type);
+                    await TarkovDev.PostQueueTime(e.RaidInfo.Map, (int)Math.Round(e.RaidInfo.QueueTime), e.RaidInfo.RaidType.ToString().ToLower(), GameWatcher.CurrentProfile.Type);
                 }
                 catch (Exception ex)
                 {
@@ -718,7 +718,7 @@ namespace TarkovMonitor
                 goonsButton.OnClick = async () => {
                     try
                     {
-                        await TarkovDev.PostGoonsSighting(raidInfo.Map, (DateTime)raidInfo.StartedTime, eft.AccountId, eft.CurrentProfile.Type);
+                        await TarkovDev.PostGoonsSighting(raidInfo.Map, (DateTime)raidInfo.StartedTime, eft.AccountId, GameWatcher.CurrentProfile.Type);
                         messageLog.AddMessage($"Goons reported on {mapName}", "info");
                     }
                     catch (Exception ex)

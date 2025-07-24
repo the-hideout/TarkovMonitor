@@ -56,10 +56,6 @@
                         }
                     }
                 </MudSelect>
-                <MudSelect @bind-Value="@ScavCooldownSelect" T="int" Label="Scav Cooldown Base Seconds" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
-                    <MudSelectItem Value="2700">2700 (PVP default)</MudSelectItem>
-                    <MudSelectItem Value="1500">1500 (PVE default)</MudSelectItem>
-                </MudSelect>
             </div>
             <div>
                 <MudTextField @bind-Value="@RunthroughTime" Label="Runthrough Time (HH:MM:SS)" Class="d-inline-flex" sx="3" />
@@ -318,19 +314,6 @@
         }
     }
 
-    public int ScavCooldownSelect
-    {
-        get
-        {
-            return Properties.Settings.Default.scavCooldownBase;
-        }
-        set
-        {
-            Properties.Settings.Default.scavCooldownBase = value;
-            Properties.Settings.Default.Save();
-        }
-    }
-
     public int AudioOutputDeviceSelect
     {
         get
@@ -426,7 +409,7 @@
     {
         get
         {
-            return TarkovTracker.GetToken(eft.CurrentProfile.Id).Length != 22;
+            return TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id).Length != 22;
         }
         set
         {
@@ -474,11 +457,11 @@
     {
         get
         {
-            return TarkovTracker.GetToken(eft.CurrentProfile.Id);
+            return TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id);
         }
         set
         {
-            TarkovTracker.SetToken(eft.CurrentProfile.Id, value);
+            TarkovTracker.SetToken(GameWatcher.CurrentProfile.Id, value);
         }
     }
     public string TarkovTrackerDomain

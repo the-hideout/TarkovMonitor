@@ -15,7 +15,7 @@ namespace TarkovMonitor
         private readonly FileSystemWatcher logFileCreateWatcher;
         private readonly FileSystemWatcher screenshotWatcher;
         private string _logsPath = "";
-        public Profile CurrentProfile { get; set; } = new();
+        public static Profile CurrentProfile { get; set; } = new();
         public bool InitialLogsRead { get; private set; } = false;
         public string LogsPath { 
             get
@@ -153,11 +153,20 @@ namespace TarkovMonitor
             try
             {
                 bool screensPathExists = Directory.Exists(ScreenshotsPath);
+                if (!screensPathExists)
+                {
+                    DebugMessage?.Invoke(this, new($"EFT screenshots folder not found; {ScreenshotsPath}"));
+                }
+                else
+                {
+                    DebugMessage?.Invoke(this, new($"Watching EFT screenshots folder: {ScreenshotsPath}"));
+                }
                 string watchPath = screensPathExists ? ScreenshotsPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 screenshotWatcher.Path = watchPath;
                 screenshotWatcher.IncludeSubdirectories = !screensPathExists;
                 screenshotWatcher.Created -= ScreenshotWatcher_Created;
                 screenshotWatcher.Created -= ScreenshotWatcher_FolderCreated;
+                screenshotWatcher.Renamed -= ScreenshotWatcher_FolderCreated;
                 if (screensPathExists)
                 {
                     screenshotWatcher.Filter = "*.png";
@@ -166,6 +175,7 @@ namespace TarkovMonitor
                 else
                 {
                     screenshotWatcher.Created += ScreenshotWatcher_FolderCreated;
+                    screenshotWatcher.Renamed += ScreenshotWatcher_FolderCreated;
                 }
                 screenshotWatcher.EnableRaisingEvents = true;
             }
@@ -177,7 +187,7 @@ namespace TarkovMonitor
 
         private void ScreenshotWatcher_FolderCreated(object sender, FileSystemEventArgs e)
         {
-            if (e.FullPath == ScreenshotsPath)
+            if (e.FullPath.ToLower() == ScreenshotsPath.ToLower())
             {
                 SetupScreenshotWatcher();
             }
@@ -198,7 +208,7 @@ namespace TarkovMonitor
                     return;
                 }
                 var raid = raidInfo;
-                if (raid.Map == null && Properties.Settings.Default.customMap != "")
+                if ((raid.Map == null || raid.Map == "") && Properties.Settings.Default.customMap != "")
                 {
                     raid = new()
                     {
