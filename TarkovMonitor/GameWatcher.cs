@@ -105,8 +105,8 @@ namespace TarkovMonitor
         public event EventHandler<LogContentEventArgs<GroupMatchRaidReadyLogContent>>? GroupMemberReady;
         public event EventHandler? GroupDisbanded;
         public event EventHandler<LogContentEventArgs<GroupMatchUserLeaveLogContent>>? GroupUserLeave;
-        public event EventHandler? MapLoading;
-        public event EventHandler<RaidInfoEventArgs>? MatchingStarted;
+        public event EventHandler<RaidInfoEventArgs>? MapLoading;
+        //public event EventHandler<RaidInfoEventArgs>? MatchingStarted;
         public event EventHandler<RaidInfoEventArgs>? MatchFound; // only fires on initial load into a raid
         public event EventHandler<RaidInfoEventArgs>? MapLoaded; // fires on initial and subsequent loads into a raid
         public event EventHandler<RaidInfoEventArgs>? MatchingAborted;
@@ -130,6 +130,22 @@ namespace TarkovMonitor
             using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov") ?? throw new Exception("EFT install registry entry not found");
             return Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
         }
+
+        public static Dictionary<string, string> MapBundles = new() {
+            { "city_preset", "TarkovStreets" },
+            { "customs_preset", "bigmap" },
+            { "factory_day_preset", "factory4_day" },
+            { "factory_night_preset", "factory4_night" },
+            { "laboratory_preset", "laboratory" },
+            { "labyrinth_preset", "Labyrinth" },
+            { "lighthouse_preset", "Lighthouse" },
+            { "rezerv_base_preset", "ReservBase" },
+            { "sandbox_preset", "Sandbox" },
+            { "sandbox_high_preset", "Sandbox_high" },
+            { "shopping_mall", "Interchange" },
+            { "shoreline_preset", "Shoreline" },
+            { "woods_preset", "Woods" },
+        };
 
         public GameWatcher()
 		{
@@ -391,19 +407,33 @@ namespace TarkovMonitor
                         // Occurs for each other member of the group when ready
                         GroupMemberReady?.Invoke(this, new LogContentEventArgs<GroupMatchRaidReadyLogContent>() { LogContent = jsonNode?.AsObject().Deserialize<GroupMatchRaidReadyLogContent>() ?? throw new Exception("Error parsing GroupMatchRaidReadyEventArgs"), Profile = CurrentProfile });
                     }
-                    if (eventLine.Contains("application|Matching with group id"))
+                    /*if (eventLine.Contains("application|Matching with group id"))
                     {
                         MapLoading?.Invoke(this, new());
+                    }*/
+                    if (eventLine.Contains("application|scene preset path:"))
+                    {
+                        raidInfo = new()
+                        {
+                            ProfileType = CurrentProfile.Type,
+                        };
+                        var bundleMatch = Regex.Match(eventLine, @"scene preset path:maps\/(?<mapBundleName>[a-zA-Z0-9_]+)\.bundle");
+                        if (bundleMatch.Success)
+                        {
+                            var mapBundle = bundleMatch.Groups["mapBundleName"].Value;
+                            if (MapBundles.ContainsKey(mapBundle))
+                            {
+                                string mapId = MapBundles[mapBundle];
+                                raidInfo.Map = mapId;
+                                MapLoading?.Invoke(this, new(raidInfo, CurrentProfile));
+                            }
+                        }
                     }
                     if (eventLine.Contains("application|LocationLoaded"))
                     {
-						// The map has been loaded and the game is searching for a match
-						raidInfo = new()
-						{
-							MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.,]+ real:(?<loadTime>[0-9.,]+)").Groups["loadTime"].Value.Replace(",", "."), CultureInfo.InvariantCulture),
-                            ProfileType = CurrentProfile.Type,
-						};
-						MatchingStarted?.Invoke(this, new(raidInfo, CurrentProfile));
+                        // The map has been loaded and the game is searching for a match
+                        raidInfo.MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.,]+ real:(?<loadTime>[0-9.,]+)").Groups["loadTime"].Value.Replace(",", "."), CultureInfo.InvariantCulture);
+						//MatchingStarted?.Invoke(this, new(raidInfo, CurrentProfile));
 					}
 					if (eventLine.Contains("application|MatchingCompleted"))
 					{
@@ -418,6 +448,7 @@ namespace TarkovMonitor
                     {
                         // Immediately after matching is complete
                         // Sufficient information is available to raise the MatchFound event
+                        var mapUnknown = raidInfo.Map == "" || raidInfo.Map == null;
                         raidInfo.Map = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
@@ -433,6 +464,10 @@ namespace TarkovMonitor
                         {
                             // Raise the MatchFound event only if we queued; not if we are re-loading back into a raid
                             MatchFound?.Invoke(this, new(raidInfo, CurrentProfile));
+                        }
+                        if (mapUnknown)
+                        {
+                            MapLoading?.Invoke(this, new(raidInfo, CurrentProfile));
                         }
                         MapLoaded?.Invoke(this, new(raidInfo, CurrentProfile));
                     }

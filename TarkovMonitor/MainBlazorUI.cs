@@ -67,8 +67,8 @@ namespace TarkovMonitor
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.MapLoading += Eft_MapLoading;
+            eft.MapLoading += Eft_MapLoading_NavigateToMap;
             eft.MatchFound += Eft_MatchFound;
-            eft.MapLoaded += Eft_MapLoaded;
             eft.PlayerPosition += Eft_PlayerPosition;
             eft.ProfileChanged += Eft_ProfileChanged;
 
@@ -280,20 +280,6 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_MapLoaded(object? sender, RaidInfoEventArgs e)
-        {
-            if (!Properties.Settings.Default.autoNavigateMap)
-            {
-                return;
-            }
-            var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
-            if (map == null)
-            {
-                return;
-            }
-            SocketClient.NavigateToMap(map);
-        }
-
         private async void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
         {
             var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
@@ -371,6 +357,20 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Error on matching started: {ex.Message}");
             }
+        }
+
+        private void Eft_MapLoading_NavigateToMap(object? sender, RaidInfoEventArgs e)
+        {
+            if (!Properties.Settings.Default.autoNavigateMap)
+            {
+                return;
+            }
+            var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map);
+            if (map == null)
+            {
+                return;
+            }
+            SocketClient.NavigateToMap(map);
         }
 
         private void Eft_GroupUserLeave(object? sender, LogContentEventArgs<GroupMatchUserLeaveLogContent> e)
