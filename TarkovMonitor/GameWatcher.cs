@@ -139,7 +139,7 @@ namespace TarkovMonitor
             { "laboratory_preset", "laboratory" },
             { "labyrinth_preset", "Labyrinth" },
             { "lighthouse_preset", "Lighthouse" },
-            { "rezerv_base_preset", "ReservBase" },
+            { "rezerv_base_preset", "RezervBase" },
             { "sandbox_preset", "Sandbox" },
             { "sandbox_high_preset", "Sandbox_high" },
             { "shopping_mall", "Interchange" },
@@ -413,6 +413,7 @@ namespace TarkovMonitor
                     }*/
                     if (eventLine.Contains("application|scene preset path:"))
                     {
+                        // When a map starts loading
                         raidInfo = new()
                         {
                             ProfileType = CurrentProfile.Type,
