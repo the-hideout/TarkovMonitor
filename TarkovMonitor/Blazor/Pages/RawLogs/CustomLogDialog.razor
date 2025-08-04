@@ -1,4 +1,5 @@
 ﻿@inject GameWatcher eft
+@inject LocalizationService LocalizationService
 
 <MudDialog>
     <DialogContent>
@@ -11,8 +12,8 @@
         <MudTextField Immediate="true" @bind-Value="@sampleText" T="string" Label="Log Data" Variant="Variant.Outlined" Lines="5" Class="mt-4"/>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">Submit</MudButton>
+        <MudButton OnClick="Cancel">@LocalizationService.GetString("Cancel")</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">@LocalizationService.GetString("Submit")</MudButton>
     </DialogActions>
 </MudDialog>
 @code {

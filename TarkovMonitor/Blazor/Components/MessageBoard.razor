@@ -5,10 +5,11 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager NavManager
+@inject LocalizationService LocalizationService
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
     @if (messageLog.Messages.Count == 0)
     {
-        <MudAlert Severity="Severity.Info">There aren't any messages yet.</MudAlert>
+        <MudAlert Severity="Severity.Info">@LocalizationService.GetString("ThereArentAnyMessagesYet")</MudAlert>
     }else{
         @foreach (MonitorMessage message in messageLog.Messages.ToList())
         {
@@ -83,16 +84,16 @@
     {
         switch (type)
         {
-            case "flea":
-                return "Flea Market Sale";
-            case "debug":
-                return "Debug";
-            case "exception":
-                return "Error";
-            case "update":
-                return "Update";
-            case "quest":
-                return "Quest";
+                    case "flea":
+            return LocalizationService.GetString("FleaMarketSale");
+                    case "debug":
+            return LocalizationService.GetString("Debug");
+                    case "exception":
+            return LocalizationService.GetString("Error");
+                    case "update":
+            return LocalizationService.GetString("Update");
+                    case "quest":
+            return LocalizationService.GetString("Quest");
             default:
                 return "Info";
         }
