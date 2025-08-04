@@ -151,6 +151,13 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
+            /*messageLog.AddMessage(Environment.GetEnvironmentVariable("OneDriveConsumer"));
+            var backupFolders = OneDriveBackupChecker.GetOneDriveBackupFolders();
+            messageLog.AddMessage("Folders backed up to OneDrive:");
+            foreach (var folder in backupFolders)
+            {
+                messageLog.AddMessage($"  - {folder}");
+            }*/
         }
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
