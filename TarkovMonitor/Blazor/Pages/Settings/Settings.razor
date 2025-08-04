@@ -5,15 +5,16 @@
 @inject GameWatcher eft
 @inject MessageLog messageLog
 @inject IDialogService DialogService
+@inject LocalizationService LocalizationService
 @layout AppLayout
 @implements IDisposable
 
 <MudGrid Class="pa-0" Spacing="0">
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2" />Notifications</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Notifications" Class="mr-2" />@LocalizationService.GetString("Notifications")</MudText>
             <div>
-                <MudSelect @bind-Value="@AudioOutputDeviceSelect" T="int" Label="Notifications playback device" AnchorOrigin="Origin.BottomCenter" xs="3">
+                <MudSelect @bind-Value="@AudioOutputDeviceSelect" T="int" Label="@LocalizationService.GetString("NotificationsPlaybackDevice")" AnchorOrigin="Origin.BottomCenter" xs="3">
                     @foreach (var device in PlaybackDevices)
                     {
                         <MudSelectItem T="int" Value="@device.Key">@device.Value</MudSelectItem>
@@ -21,33 +22,33 @@
                 </MudSelect>
             </div>
             <div>
-                <MudSwitch @bind-Value="@RaidStartSwitch" Label="Raid Starting Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@RaidStartSwitch" Label="@LocalizationService.GetString("RaidStartingAudioNotification")" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRaidStart" Class="d-inline-flex mt-1" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Value="@MatchFoundSwitch" Label="Match Found Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@MatchFoundSwitch" Label="@LocalizationService.GetString("MatchFoundAudioNotification")" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayMatchFound" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Value="@RestartTaskSwitch" Label="Restart Tasks Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@RestartTaskSwitch" Label="@LocalizationService.GetString("RestartTasksAudioReminder")" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRestartTask" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Value="@RunthroughSwitch" Label="Runthrough Period Audio Reminder" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@RunthroughSwitch" Label="@LocalizationService.GetString("RunthroughPeriodAudioReminder")" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayRunthrough" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Value="@AirFilterSwitch" Label="Air Filter Audio Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@AirFilterSwitch" Label="@LocalizationService.GetString("AirFilterAudioReminders")" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayAirFilters" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Value="@QuestItemsSwitch" Label="Quest Item Reminder Audio Notification" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@QuestItemsSwitch" Label="@LocalizationService.GetString("QuestItemReminderAudioNotification")" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayQuestItems" Class="d-inline-flex mt-1" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
             </div>
             <div>
-                <MudSwitch @bind-Value="@ScavCooldownSwitch" Label="Scav Cooldown Reminders" Color="Color.Info" Class="d-inline-flex" xs="3" />
+                <MudSwitch @bind-Value="@ScavCooldownSwitch" Label="@LocalizationService.GetString("ScavCooldownReminders")" Color="Color.Info" Class="d-inline-flex" xs="3" />
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Info" @onclick="PlayScavAvailable" Class="d-inline-flex" xs="3"><MudIcon Icon="@Icons.Material.Filled.Audiotrack" Size="Size.Small" /></MudButton>
-                <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="Scav Karma" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
+                <MudSelect @bind-Value="@ScavKarmaSelect" T="int" Label="@LocalizationService.GetString("ScavKarma")" AnchorOrigin="Origin.BottomCenter" Class="d-inline-flex" xs="3">
                     @if (TraderFence != null)
                     {
                         @foreach (TarkovDev.TraderReputationLevel lvl in TraderFence.reputationLevels)
@@ -58,43 +59,57 @@
                 </MudSelect>
             </div>
             <div>
-                <MudTextField @bind-Value="@RunthroughTime" Label="Runthrough Time (HH:MM:SS)" Class="d-inline-flex" sx="3" />
+                <MudTextField @bind-Value="@RunthroughTime" Label="@LocalizationService.GetString("RunthroughTime")" Class="d-inline-flex" sx="3" />
             </div>
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Window" Class="mr-2"/>Window Behavior</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Language" Class="mr-2"/>@LocalizationService.GetString("Language")</MudText>
             <div>
-                <MudSwitch @bind-Value="@MinimizeAtStartupSwitch" Label="Start Tarkov Monitor Minimized" Color="Color.Info" />
-            </div>
-            <div>
-                <MudSwitch @bind-Value="@MinimizeToTraySwitch" Label="Minimize to System Tray" Color="Color.Info" />
-            </div>
-            <div>
-                <MudSwitch @bind-Value="@StayOnTopSwitch" Label="Stay on Top" Color="Color.Info" />
-            </div>
-            <div>
-                <MudSwitch @bind-Value="@SkipSplashSwitch" Label="Skip Tarkov.dev Splash Logo" Color="Color.Info" />
+                <MudSelect @bind-Value="@SelectedLanguage" T="string" Label="@LocalizationService.GetString("SelectLanguage")" AnchorOrigin="Origin.BottomCenter" xs="6">
+                    @foreach (var language in AvailableLanguages)
+                    {
+                        <MudSelectItem T="string" Value="@language.Code">@language.Name</MudSelectItem>
+                    }
+                </MudSelect>
             </div>
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Handshake" Class="mr-2"/>Data Collection</MudText>
-            <MudSwitch @bind-Value="@SubmitQueueTimeSwitch" Label="Submit Queue Time Data" Color="Color.Info" />
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Window" Class="mr-2"/>@LocalizationService.GetString("WindowBehavior")</MudText>
+            <div>
+                <MudSwitch @bind-Value="@MinimizeAtStartupSwitch" Label="@LocalizationService.GetString("StartTarkovMonitorMinimized")" Color="Color.Info" />
+            </div>
+            <div>
+                <MudSwitch @bind-Value="@MinimizeToTraySwitch" Label="@LocalizationService.GetString("MinimizeToSystemTray")" Color="Color.Info" />
+            </div>
+            <div>
+                <MudSwitch @bind-Value="@StayOnTopSwitch" Label="@LocalizationService.GetString("StayOnTop")" Color="Color.Info" />
+            </div>
+            <div>
+                <MudSwitch @bind-Value="@SkipSplashSwitch" Label="@LocalizationService.GetString("SkipTarkovDevSplashLogo")" Color="Color.Info" />
+            </div>
         </MudPaper>
     </MudItem>
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@trackerIcon" Class="mr-2"/>TarkovTracker</MudText>
-            <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">Get A Token</MudButton>
-            <MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">Test Token</MudButton>
-            <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="API Token" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
-            <MudSelect @bind-Value="@TarkovTrackerDomain" T="string" Label="Tarkov Tracker Service" ShrinkLabel="true" HelperText="Tarkov Tracker service to use" AnchorOrigin="Origin.BottomCenter" xs="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Handshake" Class="mr-2"/>@LocalizationService.GetString("DataCollection")</MudText>
+            <MudSwitch @bind-Value="@SubmitQueueTimeSwitch" Label="@LocalizationService.GetString("SubmitQueueTimeData")" Color="Color.Info" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@trackerIcon" Class="mr-2"/>@LocalizationService.GetString("TarkovTracker")</MudText>
+            <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
+            <MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
+            <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
+            <MudSelect @bind-Value="@TarkovTrackerDomain" T="string" Label="@LocalizationService.GetString("TarkovTrackerService")" ShrinkLabel="true" HelperText="@LocalizationService.GetString("TarkovTrackerServiceHelperText")" AnchorOrigin="Origin.BottomCenter" xs="3">
                 @foreach (var pair in TarkovTracker.Domains)
                 {
                     <MudSelectItem T="string" Value="@pair.Key">@pair.Value</MudSelectItem>
@@ -105,19 +120,19 @@
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsRemote" Class="mr-2" /><MudButton @onclick="VisitWebsite" Variant="Variant.Text">Tarkov.dev Website Remote</MudButton></MudText>
-            <MudTextField @bind-Value="@RemoteID" MaxLength="4" Label="Remote ID" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentPaste" OnAdornmentClick="PasteRemoteClick"></MudTextField>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsRemote" Class="mr-2" /><MudButton @onclick="VisitWebsite" Variant="Variant.Text">@LocalizationService.GetString("TarkovDevWebsiteRemote")</MudButton></MudText>
+            <MudTextField @bind-Value="@RemoteID" MaxLength="4" Label="@LocalizationService.GetString("RemoteID")" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentPaste" OnAdornmentClick="PasteRemoteClick"></MudTextField>
             <div>
-                <MudSwitch @bind-Value="@NavigateMapSwitch" Label="Switch to Tarkov.dev map on raid load" Color="Color.Info" />
+                <MudSwitch @bind-Value="@NavigateMapSwitch" Label="@LocalizationService.GetString("SwitchToTarkovDevMapOnRaidLoad")" Color="Color.Info" />
             </div>
             <div>
-                <MudSwitch @bind-Value="@NavigateMapOnPositionUpdateSwitch" Label="Switch to Tarkov.dev map on position update (via screenshot)" Color="Color.Info" />
+                <MudSwitch @bind-Value="@NavigateMapOnPositionUpdateSwitch" Label="@LocalizationService.GetString("SwitchToTarkovDevMapOnPositionUpdate")" Color="Color.Info" />
             </div>
             <div>
-                <MudSwitch @bind-Value="@AutomaticallyDeleteScreenshotsAfterRaid" Label="Automatically delete taken screenshots after raid" Color="Color.Info" />
+                <MudSwitch @bind-Value="@AutomaticallyDeleteScreenshotsAfterRaid" Label="@LocalizationService.GetString("AutomaticallyDeleteScreenshotsAfterRaid")" Color="Color.Info" />
             </div>
-            <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="Offline Map" ShrinkLabel="true" HelperText="Map to use for offline raids" AnchorOrigin="Origin.BottomCenter" xs="3">
-                <MudSelectItem T="string" Value="@string.Empty">None</MudSelectItem>
+            <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="@LocalizationService.GetString("OfflineMap")" ShrinkLabel="true" HelperText="@LocalizationService.GetString("MapToUseForOfflineRaids")" AnchorOrigin="Origin.BottomCenter" xs="3">
+                <MudSelectItem T="string" Value="@string.Empty">@LocalizationService.GetString("None")</MudSelectItem>
                 @foreach (var map in TarkovDev.Maps)
                 {
                     <MudSelectItem T="string" Value="@map.nameId">@map.name</MudSelectItem>
@@ -128,12 +143,12 @@
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Folder" Class="mr-2" />Logs Folder</MudText><MudText>Don't change this unless you really know what you're doing.</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Folder" Class="mr-2" />@LocalizationService.GetString("LogsFolder")</MudText><MudText>@LocalizationService.GetString("DontChangeThisUnlessYouReallyKnowWhatYoureDoing")</MudText>
             <MudTextField @bind-Value="@CustomLogsFolder" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.FolderOpen" OnAdornmentClick="CustomLogsFolderClick"></MudTextField>
             @if (Properties.Settings.Default.customLogsPath != null && Properties.Settings.Default.customLogsPath != "")
             {
                 <div>
-                    <MudButton @onclick="SetDefaultLogFolder" Variant="Variant.Text">Reset to Default</MudButton>
+                    <MudButton @onclick="SetDefaultLogFolder" Variant="Variant.Text">@LocalizationService.GetString("ResetToDefault")</MudButton>
                 </div>
             }
         </MudPaper>
@@ -141,9 +156,9 @@
 
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsSuggest" Class="mr-2" />Initial Setup</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsSuggest" Class="mr-2" />@LocalizationService.GetString("InitialSetup")</MudText>
             <div>
-                <MudButton @onclick="ReadPastLogs" Variant="Variant.Text" Color="Color.Info">Read Past Logs</MudButton>
+                <MudButton @onclick="ReadPastLogs" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("ReadPastLogs")</MudButton>
             </div>
         </MudPaper>
     </MudItem>
@@ -155,6 +170,7 @@
     public AppLayout AppLayout { get; set; }
 
     private Dictionary<int, string> PlaybackDevices;
+    private List<(string Code, string Name)> AvailableLanguages = new();
     private TarkovDev.Trader? TraderFence
     {
         get
@@ -167,6 +183,8 @@
     {
         base.OnInitialized();
         PlaybackDevices = Sound.GetPlaybackDevices();
+        AvailableLanguages = LocalizationService.GetAvailableLanguages();
+        LocalizationService.LanguageChanged += OnLanguageChanged;
     }
 
     protected override void OnParametersSet()
@@ -179,12 +197,37 @@
         base.OnAfterRender(firstRender);
         if (firstRender)
         {
-            AppLayout.SetTitle("Settings");
+            AppLayout.SetTitle(LocalizationService.GetString("Settings"));
         }
     }
 
     public void Dispose()
     {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        AvailableLanguages = LocalizationService.GetAvailableLanguages();
+        InvokeAsync(StateHasChanged);
+    }
+
+    public string SelectedLanguage
+    {
+        get
+        {
+            return Properties.Settings.Default.language;
+        }
+        set
+        {
+            if (Properties.Settings.Default.language != value)
+            {
+                LocalizationService.SetCulture(value);
+                Properties.Settings.Default.language = value;
+                Properties.Settings.Default.Save();
+                InvokeAsync(StateHasChanged);
+            }
+        }
     }
 
     public void PlayRaidStart()

@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Settings Page -->
+  <data name="Settings" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
+  <data name="Notifications" xml:space="preserve">
+    <value>Уведомления</value>
+  </data>
+  <data name="NotificationsPlaybackDevice" xml:space="preserve">
+    <value>Устройство воспроизведения уведомлений</value>
+  </data>
+  <data name="RaidStartingAudioNotification" xml:space="preserve">
+    <value>Звуковое уведомление начала рейда</value>
+  </data>
+  <data name="MatchFoundAudioNotification" xml:space="preserve">
+    <value>Звуковое уведомление найденного матча</value>
+  </data>
+  <data name="RestartTasksAudioReminder" xml:space="preserve">
+    <value>Звуковое напоминание о перезапуске заданий</value>
+  </data>
+  <data name="RunthroughPeriodAudioReminder" xml:space="preserve">
+    <value>Звуковое напоминание о периоде пробежки</value>
+  </data>
+  <data name="AirFilterAudioReminders" xml:space="preserve">
+    <value>Звуковые напоминания воздушного фильтра</value>
+  </data>
+  <data name="QuestItemReminderAudioNotification" xml:space="preserve">
+    <value>Звуковое напоминание о квестовых предметах</value>
+  </data>
+  <data name="ScavCooldownReminders" xml:space="preserve">
+    <value>Напоминания о времени восстановления скава</value>
+  </data>
+  <data name="ScavKarma" xml:space="preserve">
+    <value>Карма скава</value>
+  </data>
+  <data name="RunthroughTime" xml:space="preserve">
+    <value>Время пробежки (ЧЧ:ММ:СС)</value>
+  </data>
+  <data name="WindowBehavior" xml:space="preserve">
+    <value>Поведение окна</value>
+  </data>
+  <data name="StartTarkovMonitorMinimized" xml:space="preserve">
+    <value>Запускать Tarkov Monitor свернутым</value>
+  </data>
+  <data name="MinimizeToSystemTray" xml:space="preserve">
+    <value>Сворачивать в системный трей</value>
+  </data>
+  <data name="StayOnTop" xml:space="preserve">
+    <value>Поверх всех окон</value>
+  </data>
+  <data name="SkipTarkovDevSplashLogo" xml:space="preserve">
+    <value>Пропустить заставку Tarkov.dev</value>
+  </data>
+  <data name="DataCollection" xml:space="preserve">
+    <value>Сбор данных</value>
+  </data>
+  <data name="SubmitQueueTimeData" xml:space="preserve">
+    <value>Отправлять данные времени очереди</value>
+  </data>
+  <data name="TarkovTracker" xml:space="preserve">
+    <value>TarkovTracker</value>
+  </data>
+  <data name="GetAToken" xml:space="preserve">
+    <value>Получить токен</value>
+  </data>
+  <data name="TestToken" xml:space="preserve">
+    <value>Проверить токен</value>
+  </data>
+  <data name="APIToken" xml:space="preserve">
+    <value>API токен</value>
+  </data>
+  <data name="TarkovTrackerService" xml:space="preserve">
+    <value>Сервис Tarkov Tracker</value>
+  </data>
+  <data name="TarkovTrackerServiceHelperText" xml:space="preserve">
+    <value>Сервис Tarkov Tracker для использования</value>
+  </data>
+  <data name="TarkovDevWebsiteRemote" xml:space="preserve">
+    <value>Удаленное управление сайтом Tarkov.dev</value>
+  </data>
+  <data name="RemoteID" xml:space="preserve">
+    <value>Удаленный ID</value>
+  </data>
+  <data name="SwitchToTarkovDevMapOnRaidLoad" xml:space="preserve">
+    <value>Переключаться на карту Tarkov.dev при загрузке рейда</value>
+  </data>
+  <data name="SwitchToTarkovDevMapOnPositionUpdate" xml:space="preserve">
+    <value>Переключаться на карту Tarkov.dev при обновлении позиции (через скриншот)</value>
+  </data>
+  <data name="AutomaticallyDeleteScreenshotsAfterRaid" xml:space="preserve">
+    <value>Автоматически удалять сделанные скриншоты после рейда</value>
+  </data>
+  <data name="OfflineMap" xml:space="preserve">
+    <value>Оффлайн карта</value>
+  </data>
+  <data name="MapToUseForOfflineRaids" xml:space="preserve">
+    <value>Карта для использования в оффлайн рейдах</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>Нет</value>
+  </data>
+  <data name="LogsFolder" xml:space="preserve">
+    <value>Папка логов</value>
+  </data>
+  <data name="DontChangeThisUnlessYouReallyKnowWhatYoureDoing" xml:space="preserve">
+    <value>Не изменяйте это, если действительно не знаете, что делаете.</value>
+  </data>
+  <data name="ResetToDefault" xml:space="preserve">
+    <value>Сбросить по умолчанию</value>
+  </data>
+  <data name="InitialSetup" xml:space="preserve">
+    <value>Первоначальная настройка</value>
+  </data>
+  <data name="ReadPastLogs" xml:space="preserve">
+    <value>Прочитать старые логи</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Язык</value>
+  </data>
+  <data name="SelectLanguage" xml:space="preserve">
+    <value>Выберите язык</value>
+  </data>
+
+  <!-- Dashboard Page -->
+  <data name="Dashboard" xml:space="preserve">
+    <value>Панель управления</value>
+  </data>
+
+  <!-- Other pages -->
+  <data name="Stats" xml:space="preserve">
+    <value>Статистика</value>
+  </data>
+  <data name="Group" xml:space="preserve">
+    <value>Группа</value>
+  </data>
+  <data name="RawLogs" xml:space="preserve">
+    <value>Сырые логи</value>
+  </data>
+  <data name="Sounds" xml:space="preserve">
+    <value>Звуки</value>
+  </data>
+  <data name="Timers" xml:space="preserve">
+    <value>Таймеры</value>
+  </data>
+
+  <!-- Languages -->
+  <data name="English" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Russian" xml:space="preserve">
+    <value>Русский</value>
+  </data>
+
+  <!-- Navigation -->
+  <data name="TarkovMonitor" xml:space="preserve">
+    <value>Tarkov Monitor</value>
+  </data>
+  <data name="Messages" xml:space="preserve">
+    <value>Сообщения</value>
+  </data>
+
+  <!-- Common Actions -->
+  <data name="Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="Submit" xml:space="preserve">
+    <value>Отправить</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>ОК</value>
+  </data>
+  <data name="ClearData" xml:space="preserve">
+    <value>Очистить данные</value>
+  </data>
+
+  <!-- Stats Page -->
+  <data name="FleaMarketSales" xml:space="preserve">
+    <value>Продажи на барахолке</value>
+  </data>
+  <data name="Raids" xml:space="preserve">
+    <value>Рейды</value>
+  </data>
+
+  <!-- Raw Logs Page -->
+  <data name="CustomLogData" xml:space="preserve">
+    <value>Пользовательские данные логов</value>
+  </data>
+  <data name="ReadPreviousLogs" xml:space="preserve">
+    <value>Прочитать предыдущие логи</value>
+  </data>
+  <data name="OpenLogsFolder" xml:space="preserve">
+    <value>Открыть папку логов</value>
+  </data>
+
+  <!-- Force Read Dialog -->
+  <data name="CurrentProfile" xml:space="preserve">
+    <value>Текущий профиль</value>
+  </data>
+  <data name="IfYouWantToUpdateProgressForDifferentProfile" xml:space="preserve">
+    <value>Если вы хотите обновить прогресс для другого профиля, активируйте этот профиль в игре.</value>
+  </data>
+  <data name="ReadPreviousLogsLabel" xml:space="preserve">
+    <value>Прочитать предыдущие логи</value>
+  </data>
+  <data name="ChooseStartingPointHelperText" xml:space="preserve">
+    <value>Выберите отправную точку, с которой начать чтение логов</value>
+  </data>
+  <data name="SelectStartingPointDescription" xml:space="preserve">
+    <value>Выберите отправную точку для чтения предыдущих логов и обновления прогресса заданий. Все логи с этой точки вперед будут прочитаны, и накопленный прогресс будет синхронизирован с Tarkov Tracker.</value>
+  </data>
+  <data name="WarningMessage" xml:space="preserve">
+    <value>ВНИМАНИЕ: Вы можете испортить сохраненный прогресс заданий в Tarkov Tracker, если выберете неверную начальную дату, поэтому действуйте осторожно.</value>
+  </data>
+  <data name="CouldNotFindEFTInstallation" xml:space="preserve">
+    <value>Не удалось найти папку установки Escape From Tarkov или логи отсутствуют.</value>
+  </data>
+
+  <!-- Page Titles -->
+  <data name="NotFound" xml:space="preserve">
+    <value>Не найдено</value>
+  </data>
+  <!-- Confirm Dialog -->
+  <data name="AreYouSureYouWantToClearAllData" xml:space="preserve">
+    <value>Вы уверены, что хотите очистить все данные? Это действие нельзя отменить.</value>
+  </data>
+
+  <!-- Sounds Page -->
+  <data name="CustomRaidStartingSound" xml:space="preserve">
+    <value>Пользовательский звук начала рейда</value>
+  </data>
+  <data name="CustomMatchFoundSound" xml:space="preserve">
+    <value>Пользовательский звук поиска матча</value>
+  </data>
+  <data name="CustomRestartTasksSound" xml:space="preserve">
+    <value>Пользовательский звук перезапуска заданий</value>
+  </data>
+  <data name="CustomRunthroughPeriodSound" xml:space="preserve">
+    <value>Пользовательский звук периода рантрю</value>
+  </data>
+  <data name="CustomAirFilterOnSound" xml:space="preserve">
+    <value>Пользовательский звук включения воздушного фильтра</value>
+  </data>
+  <data name="CustomAirFilterOffSound" xml:space="preserve">
+    <value>Пользовательский звук выключения воздушного фильтра</value>
+  </data>
+  <data name="CustomScavCooldownSound" xml:space="preserve">
+    <value>Пользовательский звук отката скава</value>
+  </data>
+
+  <!-- Group Page -->
+  <data name="YouArentInAGroupOrHavePartyMembersYet" xml:space="preserve">
+    <value>Вы еще не состоите в группе или у вас нет участников группы.</value>
+  </data>
+
+  <!-- Timers Page -->
+  <data name="TimeInRaid" xml:space="preserve">
+    <value>Время в рейде</value>
+  </data>
+  <data name="RunthroughPeriod" xml:space="preserve">
+    <value>Период рантрю</value>
+  </data>
+  <data name="ScavCooldown" xml:space="preserve">
+    <value>Откат скава</value>
+  </data>
+
+  <!-- MessageBoard -->
+  <data name="ThereArentAnyMessagesYet" xml:space="preserve">
+    <value>Сообщений пока нет.</value>
+  </data>
+  <data name="FleaMarketSale" xml:space="preserve">
+    <value>Продажа на барахолке</value>
+  </data>
+  <data name="Debug" xml:space="preserve">
+    <value>Отладка</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="Update" xml:space="preserve">
+    <value>Обновление</value>
+  </data>
+  <data name="Quest" xml:space="preserve">
+    <value>Квест</value>
+  </data>
+
+  <!-- Dynamic Messages -->
+  <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
+    <value>Получено {0} предметов, {1} карт, {2} торговцев, {3} заданий и {4} станций убежища с tarkov.dev</value>
+  </data>
+  <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
+    <value>Для автоматического отслеживания прогресса заданий установите токен Tarkov Tracker в настройках</value>
+  </data>
+  <data name="UsingProfile" xml:space="preserve">
+    <value>Используется {0} профиль</value>
+  </data>
+</root>

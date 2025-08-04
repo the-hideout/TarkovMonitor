@@ -3,6 +3,7 @@
 @using System.Diagnostics
 @inject GameWatcher eft
 @inject MessageLog messageLog
+@inject LocalizationService LocalizationService
 @layout AppLayout
 @implements IDisposable
 
@@ -32,7 +33,7 @@
         base.OnAfterRender(firstRender);
         if (firstRender)
         {
-            AppLayout.SetTitle("Dashboard");
+            AppLayout.SetTitle(LocalizationService.GetString("Dashboard"));
         }
     }
 

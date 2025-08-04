@@ -29,6 +29,7 @@
     <PackageReference Include="Humanizer" Version="2.14.1" />
     <PackageReference Include="MaterialSkin.2" Version="2.3.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="6.0.424" />
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="6.0.28" />
     <PackageReference Include="MudBlazor" Version="6.19.1" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Refit" Version="7.2.22" />
@@ -54,6 +55,13 @@
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Properties\Strings.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Properties\Strings.ru.resx">
+      <DependentUpon>Strings.resx</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
 

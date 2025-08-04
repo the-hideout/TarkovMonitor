@@ -7,6 +7,7 @@ using TarkovMonitor.GroupLoadout;
 using System.Globalization;
 using System.ComponentModel;
 using MudBlazor;
+using Microsoft.Extensions.Localization;
 
 namespace TarkovMonitor
 {
@@ -19,6 +20,7 @@ namespace TarkovMonitor
         private readonly TimersManager timersManager;
         private readonly System.Timers.Timer runthroughTimer;
         private readonly System.Timers.Timer scavCooldownTimer;
+        private LocalizationService localizationService;
 
         public MainBlazorUI()
         {
@@ -127,6 +129,8 @@ namespace TarkovMonitor
             var services = new ServiceCollection();
             services.AddWindowsFormsBlazorWebView();
             services.AddMudServices();
+            services.AddLocalization();
+            services.AddSingleton<LocalizationService>();
             services.AddSingleton<GameWatcher>(eft);
             services.AddSingleton<MessageLog>(messageLog);
             services.AddSingleton<LogRepository>(logRepository);
@@ -134,7 +138,9 @@ namespace TarkovMonitor
             services.AddSingleton<TimersManager>(timersManager);
             //services.AddSingleton<TarkovDevRepository>(tarkovdevRepository);
             blazorWebView1.HostPage = "wwwroot\\index.html";
-            blazorWebView1.Services = services.BuildServiceProvider();
+            var serviceProvider = services.BuildServiceProvider();
+            blazorWebView1.Services = serviceProvider;
+            localizationService = serviceProvider.GetRequiredService<LocalizationService>();
             blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
@@ -412,7 +418,7 @@ namespace TarkovMonitor
             try
             {
                 await TarkovDev.UpdateApiData();
-                messageLog.AddMessage($"Retrieved {String.Format("{0:n0}", TarkovDev.Items.Count)} items, {TarkovDev.Maps.Count} maps, {TarkovDev.Traders.Count} traders, {TarkovDev.Tasks.Count} tasks, and {TarkovDev.Stations.Count} hideout stations from tarkov.dev", "update");
+                messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovDev"), String.Format("{0:n0}", TarkovDev.Items.Count), TarkovDev.Maps.Count, TarkovDev.Traders.Count, TarkovDev.Tasks.Count, TarkovDev.Stations.Count), "update");
             }
             catch (Exception ex)
             {
@@ -431,10 +437,10 @@ namespace TarkovMonitor
                 messageLog.AddMessage($"Error retrieving Tarkov Tracker profile: {ex.Message}");
                 return;
             }
-            messageLog.AddMessage($"Using {GameWatcher.CurrentProfile.Type} profile");
+            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), GameWatcher.CurrentProfile.Type));
             if (TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id) == "")
             {
-                messageLog.AddMessage("To automatically track task progress, set your Tarkov Tracker token in Settings");
+                messageLog.AddMessage(localizationService.GetString("ToAutomaticallyTrackTaskProgress"));
                 return;
             }
             /*try

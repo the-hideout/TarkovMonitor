@@ -2,27 +2,28 @@
 @using Humanizer
 @inject MessageLog messageLog
 @inject GameWatcher eft
+@inject LocalizationService LocalizationService
 
 <MudDialog>
     <DialogContent>
         <MudText>
-            Current profile: @GameWatcher.CurrentProfile.Id (@GameWatcher.CurrentProfile.Type)
+            @LocalizationService.GetString("CurrentProfile"): @GameWatcher.CurrentProfile.Id (@GameWatcher.CurrentProfile.Type)
         </MudText>
         <MudText>
-            If you want to update progress for a different profile, activate that profile in the game.
+            @LocalizationService.GetString("IfYouWantToUpdateProgressForDifferentProfile")
         </MudText>
         @if (customWatcher.LogsPath != "")
         {
             if (breakpoints != null)
             {
-                <MudSelect @bind-Value="selectedBreakpoint" Label="Read previous logs" HelperText="Choose the starting point from which to read logs" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
+                <MudSelect @bind-Value="selectedBreakpoint" Label="@LocalizationService.GetString("ReadPreviousLogsLabel")" HelperText="@LocalizationService.GetString("ChooseStartingPointHelperText")" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
                     @foreach (LogDetails breakpoint in breakpoints)
                     {
                         <MudSelectItem Value="@breakpoint">@breakpoint.Version | @breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()</MudSelectItem>
                     }
                 </MudSelect>
-                <p>Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same will be read and that cumulative progress will be synced to Tarkov Tracker.</p>
-                <p><strong>WARNING: </strong>You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</p>
+                <p>@LocalizationService.GetString("SelectStartingPointDescription")</p>
+                <p><strong>@LocalizationService.GetString("WarningMessage")</strong></p>
             }
             else
             {
@@ -32,12 +33,12 @@
         }
         else
         {
-            <span>Could not find the Escape From Tarkov installation location, or no logs exist.</span>
+            <span>@LocalizationService.GetString("CouldNotFindEFTInstallation")</span>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+        <MudButton OnClick="Cancel">@LocalizationService.GetString("Cancel")</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">@LocalizationService.GetString("Ok")</MudButton>
     </DialogActions>
 </MudDialog>
 @code {

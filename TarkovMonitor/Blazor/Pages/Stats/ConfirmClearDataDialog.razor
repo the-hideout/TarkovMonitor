@@ -1,12 +1,13 @@
 ﻿@inject GameWatcher eft
+@inject LocalizationService LocalizationService
 
 <MudDialog>
     <DialogContent>
-        <MudText>Are you sure you want to clear all data? This cannot be undone.</MudText>
+        <MudText>@LocalizationService.GetString("AreYouSureYouWantToClearAllData")</MudText>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">Clear Data</MudButton>
+        <MudButton OnClick="Cancel">@LocalizationService.GetString("Cancel")</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">@LocalizationService.GetString("ClearData")</MudButton>
     </DialogActions>
 </MudDialog>
 @code {
