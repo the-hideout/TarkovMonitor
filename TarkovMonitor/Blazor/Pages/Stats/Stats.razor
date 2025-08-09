@@ -4,13 +4,14 @@
 @inject GameWatcher eft
 @inject MessageLog messageLog
 @inject IDialogService DialogService
+@inject LocalizationService LocalizationService
 @layout AppLayout
 @implements IDisposable
 
 <MudGrid Class="pa-0" Spacing="0">
 	<MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.CurrencyRuble" Class="mr-2"/>Flea Market Sales</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.CurrencyRuble" Class="mr-2"/>@LocalizationService.GetString("FleaMarketSales")</MudText>
             @foreach (KeyValuePair<string, string> currency in Currencies)
             {
                 <MudText Typo="Typo.body2">@GetSales(currency.Key, currency.Value)</MudText>
@@ -19,7 +20,7 @@
 	</MudItem>
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Map" Class="mr-2" />Raids</MudText>
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Map" Class="mr-2" />@LocalizationService.GetString("Raids")</MudText>
             @foreach (var map in TarkovDev.Maps)
             {
                 <MudText Typo="Typo.body2">@map.name: @GetRaidCount(map.nameId)</MudText>
@@ -29,7 +30,7 @@
     </MudItem>
     <MudItem xs="12">
         <MudPaper Class="pa-2 ma-2 mx-4" Elevation="3">
-            <MudButton @onclick="ClearData" Variant="Variant.Text" Color="Color.Info">Clear Data</MudButton>
+            <MudButton @onclick="ClearData" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("ClearData")</MudButton>
         </MudPaper>
     </MudItem>
 </MudGrid>
@@ -60,7 +61,7 @@
         base.OnAfterRender(firstRender);
         if (firstRender)
         {
-            AppLayout.SetTitle("Stats");
+            AppLayout.SetTitle(LocalizationService.GetString("Stats"));
         }
     }
 

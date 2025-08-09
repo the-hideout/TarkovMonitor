@@ -2,6 +2,7 @@
 @using System.Diagnostics
 @inject GameWatcher eft
 @inject IDialogService DialogService
+@inject LocalizationService LocalizationService
 @layout AppLayout
 @implements IDisposable
 
@@ -21,12 +22,12 @@
                 <ChildContent>
                     @if(DebugMode())
                     {
-                        <MudMenuItem @onclick="OpenCustomDialog">Custom Log Data</MudMenuItem>
-                        <MudMenuItem @onclick="OpenForceReadDialog">Read Previous Logs</MudMenuItem>
+                        <MudMenuItem @onclick="OpenCustomDialog">@LocalizationService.GetString("CustomLogData")</MudMenuItem>
+                        <MudMenuItem @onclick="OpenForceReadDialog">@LocalizationService.GetString("ReadPreviousLogs")</MudMenuItem>
                     }
                     @if(LogsFolderSet())
                     {
-                        <MudMenuItem @onclick="OpenLogsFolder">Open Logs Folder</MudMenuItem>
+                        <MudMenuItem @onclick="OpenLogsFolder">@LocalizationService.GetString("OpenLogsFolder")</MudMenuItem>
                     }
                 </ChildContent>
             </MudMenu>
@@ -72,7 +73,7 @@
         base.OnAfterRender(firstRender);
         if (firstRender)
         {
-            AppLayout.SetTitle("Raw Logs");
+            AppLayout.SetTitle(LocalizationService.GetString("RawLogs"));
         }
     }
 

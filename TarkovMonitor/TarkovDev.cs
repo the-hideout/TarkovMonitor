@@ -50,8 +50,8 @@ namespace TarkovMonitor
         {
             var request = new GraphQL.GraphQLRequest() {
                 Query = @"
-                    query TarkovMonitorTasks {
-                        tasks {
+                    query TarkovMonitorTasks($language: LanguageCode) {
+                        tasks(lang: $language) {
                             id
                             name
                             normalizedName
@@ -67,7 +67,8 @@ namespace TarkovMonitor
                             }
                         }
                     }
-                "
+                ",
+                Variables = new { language = Properties.Settings.Default.language},
             };
             var response = await client.SendQueryAsync<TasksResponse>(request);
             Tasks = response.Data.tasks;
@@ -79,8 +80,8 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query TarkovMonitorMaps {
-                        maps {
+                    query TarkovMonitorMaps($language: LanguageCode) {
+                        maps(lang: $language) {
                             id
                             name
                             nameId
@@ -97,7 +98,8 @@ namespace TarkovMonitor
                             }
                         }
                     }
-                "
+                ",
+                Variables = new { language = Properties.Settings.Default.language },
             };
             var response = await client.SendQueryAsync<MapsResponse>(request);
             Maps = response.Data.maps;
@@ -109,8 +111,8 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query TarkovMonitorItems {
-                        items {
+                    query TarkovMonitorItems($language: LanguageCode) {
+                        items(lang: $language) {
                             id
                             name
                             width
@@ -132,8 +134,9 @@ namespace TarkovMonitor
                             }
                         }
                     }
-                "
-			};
+                ",
+                Variables = new { language = Properties.Settings.Default.language },
+            };
             var response = await client.SendQueryAsync<ItemsResponse>(request);
             Items = response.Data.items;
             foreach (var item in Items)
@@ -156,8 +159,8 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query TarkovMonitorTraders {
-                        traders {
+                    query TarkovMonitorTraders($language: LanguageCode) {
+                        traders(lang: $language) {
                             id
                             name
                             normalizedName 
@@ -169,7 +172,8 @@ namespace TarkovMonitor
                             }
                         }
                     }
-                "
+                ",
+                Variables = new { language = Properties.Settings.Default.language },
             };
             var response = await client.SendQueryAsync<TradersResponse>(request);
             Traders = response.Data.traders;
@@ -180,8 +184,8 @@ namespace TarkovMonitor
             var request = new GraphQL.GraphQLRequest()
             {
                 Query = @"
-                    query TarkovMonitorHideoutStations {
-                        hideoutStations {
+                    query TarkovMonitorHideoutStations($language: LanguageCode) {
+                        hideoutStations(lang: $language) {
                             id
                             name
                             normalizedName
@@ -198,7 +202,8 @@ namespace TarkovMonitor
                             }
                         }
                     }
-                "
+                ",
+                Variables = new { language = Properties.Settings.Default.language },
             };
             var response = await client.SendQueryAsync<HideoutResponse>(request);
             Stations = response.Data.hideoutStations;

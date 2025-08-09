@@ -3,6 +3,7 @@
 @using TarkovMonitor.GroupLoadout
 @inject GameWatcher eft
 @inject GroupManager groupManager
+@inject LocalizationService LocalizationService
 @layout AppLayout
 @implements IDisposable
 
@@ -10,7 +11,7 @@
 	<MudItem xs="12">
         @if (groupManager.GroupMembers.Count == 0)
         {
-            <MudAlert Severity="Severity.Info">You aren't in a group or have party members yet.</MudAlert>
+            <MudAlert Severity="Severity.Info">@LocalizationService.GetString("YouArentInAGroupOrHavePartyMembersYet")</MudAlert>
         }else{
             <MudTabs Elevation="3" Rounded="true" Centered="true" PanelClass="pa-3">
                 @foreach (KeyValuePair<string, GroupMember> member in groupManager.GroupMembers)
@@ -54,7 +55,7 @@
         base.OnAfterRender(firstRender);
         if (firstRender)
         {
-            AppLayout.SetTitle("Group");
+            AppLayout.SetTitle(LocalizationService.GetString("Group"));
             groupManager.GroupMemberChanged += OnGroupMemberChanged;
         }
     }
