@@ -12,7 +12,7 @@
 			@CurrentPageTitle
 			<MudSpacer/>
 		</MudAppBar>
-		<MudDrawer @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive">
+		<MudDrawer @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive" @OpenChanged="OnOpenChangedHandler">
 			<MudDrawerHeader LinkToIndex="true">
 				<div>
 					<img src="tarkov-dev-logo.svg" width="100%" style="vertical-align: middle;"/>
@@ -43,6 +43,11 @@
 
 	public string CurrentPageTitle = "TarkovMonitor";
 
+	protected override void OnInitialized()
+	{
+		LocalizationService.LanguageChanged += OnLanguageChanged;
+	}
+
 	public void SetTitle(string value) {
 		CurrentPageTitle = value;
 		StateHasChanged();
@@ -51,5 +56,15 @@
 	void ToggleDrawer()
 	{
 		drawerOpen = !drawerOpen;
+	}
+
+	private void OnLanguageChanged(object? sender, EventArgs e)
+	{
+		InvokeAsync(StateHasChanged);
+	}
+
+	private void OnOpenChangedHandler()
+	{
+		System.Diagnostics.Debug.WriteLine("OpenChanged");
 	}
 }

@@ -223,9 +223,9 @@
             if (Properties.Settings.Default.language != value)
             {
                 LocalizationService.SetCulture(value);
-                Properties.Settings.Default.language = value;
-                Properties.Settings.Default.Save();
-                InvokeAsync(StateHasChanged);
+                //Properties.Settings.Default.language = value; // handled by LocalizationService.SetCulture
+                //Properties.Settings.Default.Save();
+                //InvokeAsync(StateHasChanged); // should be unnecessary since we're handling the OnLanguageChanged event
             }
         }
     }

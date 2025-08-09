@@ -47,8 +47,29 @@ namespace TarkovMonitor
 			//tarkovdevRepository = new TarkovDevRepository();
 
 			eft = new GameWatcher();
-			// Add event watchers
-			eft.FleaSold += Eft_FleaSold;
+
+            timersManager = new TimersManager(eft);
+
+            // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
+            var services = new ServiceCollection();
+            services.AddWindowsFormsBlazorWebView();
+            services.AddMudServices();
+            services.AddLocalization();
+            services.AddSingleton<LocalizationService>();
+            services.AddSingleton<GameWatcher>(eft);
+            services.AddSingleton<MessageLog>(messageLog);
+            services.AddSingleton<LogRepository>(logRepository);
+            services.AddSingleton<GroupManager>(groupManager);
+            services.AddSingleton<TimersManager>(timersManager);
+
+            blazorWebView1.HostPage = "wwwroot\\index.html";
+            var serviceProvider = services.BuildServiceProvider();
+            blazorWebView1.Services = serviceProvider;
+            localizationService = serviceProvider.GetRequiredService<LocalizationService>();
+            blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
+            //services.AddSingleton<TarkovDevRepository>(tarkovdevRepository);
+            // Add event watchers
+            eft.FleaSold += Eft_FleaSold;
             eft.FleaOfferExpired += Eft_FleaOfferExpired;
             eft.DebugMessage += Eft_DebugMessage;
             eft.ExceptionThrown += Eft_ExceptionThrown;
@@ -117,31 +138,11 @@ namespace TarkovMonitor
 
             SocketClient.ExceptionThrown += SocketClient_ExceptionThrown;
 
-            // Update tarkov.dev Repository data
+            // Update tarkov.dev API data
             UpdateTarkovDevApiData();
             TarkovDev.StartAutoUpdates();
 
             UpdateCheck.CheckForNewVersion();
-
-            timersManager = new TimersManager(eft);
-
-            // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
-            var services = new ServiceCollection();
-            services.AddWindowsFormsBlazorWebView();
-            services.AddMudServices();
-            services.AddLocalization();
-            services.AddSingleton<LocalizationService>();
-            services.AddSingleton<GameWatcher>(eft);
-            services.AddSingleton<MessageLog>(messageLog);
-            services.AddSingleton<LogRepository>(logRepository);
-            services.AddSingleton<GroupManager>(groupManager);
-            services.AddSingleton<TimersManager>(timersManager);
-            //services.AddSingleton<TarkovDevRepository>(tarkovdevRepository);
-            blazorWebView1.HostPage = "wwwroot\\index.html";
-            var serviceProvider = services.BuildServiceProvider();
-            blazorWebView1.Services = serviceProvider;
-            localizationService = serviceProvider.GetRequiredService<LocalizationService>();
-            blazorWebView1.RootComponents.Add<TarkovMonitor.Blazor.App>("#app");
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
 
@@ -400,7 +401,7 @@ namespace TarkovMonitor
 
         private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
         {
-            messageLog.AddMessage($"Retrieved {TarkovTracker.Progress.data.displayName} level {TarkovTracker.Progress.data.playerLevel} {TarkovTracker.Progress.data.pmcFaction} progress from Tarkov Tracker", "update", "https://tarkovtracker.io");
+            messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovTracker"), TarkovTracker.Progress.data.displayName, TarkovTracker.Progress.data.playerLevel, TarkovTracker.Progress.data.pmcFaction), "update", "https://tarkovtracker.io");
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
