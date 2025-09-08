@@ -1,7 +1,6 @@
 ﻿@using System.ComponentModel
 @using Humanizer
 @inject MessageLog messageLog
-@inject GameWatcher eft
 @inject LocalizationService LocalizationService
 
 <MudDialog>
@@ -38,16 +37,28 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">@LocalizationService.GetString("Cancel")</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">@LocalizationService.GetString("Ok")</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@SubmitDisabled">@LocalizationService.GetString("Ok")</MudButton>
     </DialogActions>
 </MudDialog>
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
     internal GameWatcher customWatcher = new();
-    LogDetails? selectedBreakpoint;
+    LogDetails? _selectedBreakpoint;
+    LogDetails? selectedBreakpoint {
+        get
+        {
+            return _selectedBreakpoint;
+        }
+        set
+        {
+            SubmitDisabled = value == null;
+            _selectedBreakpoint = value;
+        }
+    }
     List<LogDetails>? breakpoints;
     Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
+    bool SubmitDisabled { get; set; } = true;
 
     protected override void OnInitialized()
     {
@@ -83,6 +94,8 @@
         {
             messageLog.AddMessage("You must have a valid Tarkov Tracker API token to read past logs.", "exception");
         }
+        SubmitDisabled = true;
+        GameWatcher.ReadingPastLogs = true;
         TaskStatuses.Clear();
         Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
         try
@@ -129,8 +142,12 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error finding task updates: {ex.Message}", "exception");
+            messageLog.AddMessage($"Error compiling task updates: {ex.Message}", "exception");
             return;
+        }
+        finally
+        {
+            GameWatcher.ReadingPastLogs = false;
         }
         try
         {

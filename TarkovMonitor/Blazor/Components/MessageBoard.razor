@@ -49,8 +49,8 @@
     
 </MudStack>
 
-        @code {
-        // Force refresh every minute to update timestamps
+@code {
+    // Force refresh every minute to update timestamps
     Timer? timer;  
 
     protected override void OnInitialized()
@@ -84,16 +84,16 @@
     {
         switch (type)
         {
-                    case "flea":
-            return LocalizationService.GetString("FleaMarketSale");
-                    case "debug":
-            return LocalizationService.GetString("Debug");
-                    case "exception":
-            return LocalizationService.GetString("Error");
-                    case "update":
-            return LocalizationService.GetString("Update");
-                    case "quest":
-            return LocalizationService.GetString("Quest");
+            case "flea":
+                return LocalizationService.GetString("FleaMarketSale");
+            case "debug":
+                return LocalizationService.GetString("Debug");
+            case "exception":
+                return LocalizationService.GetString("Error");
+            case "update":
+                return LocalizationService.GetString("Update");
+            case "quest":
+                return LocalizationService.GetString("Quest");
             default:
                 return "Info";
         }
@@ -125,6 +125,10 @@
     {
         InvokeAsync(() => StateHasChanged());
         var severity = Severity.Info;
+        if (e.Message.Type == "quest" && GameWatcher.ReadingPastLogs)
+        {
+            return;
+        }
         if (e.Message.Type == "exception")
         {
             severity = Severity.Error;

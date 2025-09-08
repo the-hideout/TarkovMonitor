@@ -223,6 +223,7 @@
             if (Properties.Settings.Default.language != value)
             {
                 LocalizationService.SetCulture(value);
+                messageLog.AddMessage("Please restart this application to complete the language change.", "warning");
                 //Properties.Settings.Default.language = value; // handled by LocalizationService.SetCulture
                 //Properties.Settings.Default.Save();
                 //InvokeAsync(StateHasChanged); // should be unnecessary since we're handling the OnLanguageChanged event

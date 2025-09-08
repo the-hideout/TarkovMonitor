@@ -12,7 +12,7 @@
 			@CurrentPageTitle
 			<MudSpacer/>
 		</MudAppBar>
-		<MudDrawer @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive" @OpenChanged="OnOpenChangedHandler">
+		<MudDrawer @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive">
 			<MudDrawerHeader LinkToIndex="true">
 				<div>
 					<img src="tarkov-dev-logo.svg" width="100%" style="vertical-align: middle;"/>
@@ -20,7 +20,7 @@
 				</div>
 			</MudDrawerHeader>
 			<MudNavMenu Color="Color.Secondary" Bordered="true">
-				                <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Message">@LocalizationService.GetString("Messages")</MudNavLink>
+				<MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Message">@LocalizationService.GetString("Messages")</MudNavLink>
                 <MudNavLink Href="/group" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Group">@LocalizationService.GetString("Group")</MudNavLink>
                 <MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">@LocalizationService.GetString("Settings")</MudNavLink>
                 <MudNavLink Href="/sounds" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Speaker">@LocalizationService.GetString("Sounds")</MudNavLink>
@@ -61,10 +61,5 @@
 	private void OnLanguageChanged(object? sender, EventArgs e)
 	{
 		InvokeAsync(StateHasChanged);
-	}
-
-	private void OnOpenChangedHandler()
-	{
-		System.Diagnostics.Debug.WriteLine("OpenChanged");
 	}
 }
