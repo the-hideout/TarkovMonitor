@@ -16,6 +16,7 @@ namespace TarkovMonitor
         private readonly FileSystemWatcher screenshotWatcher;
         private string _logsPath = "";
         public static Profile CurrentProfile { get; set; } = new();
+        public static bool ReadingPastLogs = false;
         public bool InitialLogsRead { get; private set; } = false;
         public string LogsPath { 
             get
@@ -324,9 +325,9 @@ namespace TarkovMonitor
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
 
 #if DEBUG                
-                Debug.WriteLine("===log chunk start===");
-                Debug.WriteLine(e.Data);
-                Debug.WriteLine("===log chunk end===");
+                //Debug.WriteLine("===log chunk start===");
+                //Debug.WriteLine(e.Data);
+                //Debug.WriteLine("===log chunk end===");
 #endif
 
                 foreach (Match logMessage in logMessages)
