@@ -3,6 +3,7 @@
 @layout MainLayout
 
 @inject IJSRuntime JSRuntime;
+@inject LocalizationService LocalizationService
 
 <div style="width: 100%; height: 100%" class="tarkov-dev-bg">
 	<MudLayout>
@@ -15,17 +16,17 @@
 			<MudDrawerHeader LinkToIndex="true">
 				<div>
 					<img src="tarkov-dev-logo.svg" width="100%" style="vertical-align: middle;"/>
-					<MudText Align="Align.Center" Typo="Typo.h6">Tarkov Monitor</MudText>
+					                <MudText Align="Align.Center" Typo="Typo.h6">@LocalizationService.GetString("TarkovMonitor")</MudText>
 				</div>
 			</MudDrawerHeader>
 			<MudNavMenu Color="Color.Secondary" Bordered="true">
-				<MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Message">Messages</MudNavLink>
-				<MudNavLink Href="/group" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Group">Group</MudNavLink>
-				<MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink>
-				<MudNavLink Href="/sounds" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Speaker">Sounds</MudNavLink>
-				<MudNavLink Href="/stats" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.BarChart">Stats</MudNavLink>
-				<MudNavLink Href="/raw" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.RawOn">Raw Logs</MudNavLink>
-				<MudNavLink Href="/timers" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Timer">Timers</MudNavLink>
+				<MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Message">@LocalizationService.GetString("Messages")</MudNavLink>
+                <MudNavLink Href="/group" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Group">@LocalizationService.GetString("Group")</MudNavLink>
+                <MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">@LocalizationService.GetString("Settings")</MudNavLink>
+                <MudNavLink Href="/sounds" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Speaker">@LocalizationService.GetString("Sounds")</MudNavLink>
+                <MudNavLink Href="/stats" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.BarChart">@LocalizationService.GetString("Stats")</MudNavLink>
+                <MudNavLink Href="/raw" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.RawOn">@LocalizationService.GetString("RawLogs")</MudNavLink>
+                <MudNavLink Href="/timers" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Timer">@LocalizationService.GetString("Timers")</MudNavLink>
 			</MudNavMenu>
 		</MudDrawer>
 		<MudMainContent Class="mt-2">
@@ -42,6 +43,11 @@
 
 	public string CurrentPageTitle = "TarkovMonitor";
 
+	protected override void OnInitialized()
+	{
+		LocalizationService.LanguageChanged += OnLanguageChanged;
+	}
+
 	public void SetTitle(string value) {
 		CurrentPageTitle = value;
 		StateHasChanged();
@@ -50,5 +56,10 @@
 	void ToggleDrawer()
 	{
 		drawerOpen = !drawerOpen;
+	}
+
+	private void OnLanguageChanged(object? sender, EventArgs e)
+	{
+		InvokeAsync(StateHasChanged);
 	}
 }
