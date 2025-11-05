@@ -1,64 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <!-- 
-    Microsoft ResX Schema 
-    
-    Version 2.0
-    
-    The primary goals of this format is to allow a simple XML format 
-    that is mostly human readable. The generation and parsing of the 
-    various data types are done through the TypeConverter classes 
-    associated with the data types.
-    
-    Example:
-    
-    ... ado.net/XML headers & schema ...
-    <resheader name="resmimetype">text/microsoft-resx</resheader>
-    <resheader name="version">2.0</resheader>
-    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
-    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
-    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
-    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
-    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
-        <value>[base64 mime encoded serialized .NET Framework object]</value>
-    </data>
-    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
-        <comment>This is a comment</comment>
-    </data>
-                
-    There are any number of "resheader" rows that contain simple 
-    name/value pairs.
-    
-    Each data row contains a name, and value. The row also contains a 
-    type or mimetype. Type corresponds to a .NET class that support 
-    text/value conversion through the TypeConverter architecture. 
-    Classes that don't support this are serialized and stored with the 
-    mimetype set.
-    
-    The mimetype is used for serialized objects, and tells the 
-    ResXResourceReader how to depersist the object. This is currently not 
-    extensible. For a given mimetype the value must be set accordingly:
-    
-    Note - application/x-microsoft.net.object.binary.base64 is the format 
-    that the ResXResourceWriter will generate, however the reader can 
-    read any of the formats listed below.
-    
-    mimetype: application/x-microsoft.net.object.binary.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
-            : and then encoded with base64 encoding.
-    
-    mimetype: application/x-microsoft.net.object.soap.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
-            : and then encoded with base64 encoding.
-
-    mimetype: application/x-microsoft.net.object.bytearray.base64
-    value   : The object must be serialized into a byte array 
-            : using a System.ComponentModel.TypeConverter
-            : and then encoded with base64 encoding.
-    -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -117,144 +58,152 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+
+  <!-- Settings Page -->
   <data name="Settings" xml:space="preserve">
-    <value>Settings</value>
+    <value>设置</value>
   </data>
   <data name="Notifications" xml:space="preserve">
-    <value>Notifications</value>
+    <value>通知</value>
   </data>
   <data name="NotificationsPlaybackDevice" xml:space="preserve">
-    <value>Notifications playback device</value>
+    <value>通知播放设备</value>
   </data>
   <data name="RaidStartingAudioNotification" xml:space="preserve">
-    <value>Raid Starting Audio Notification</value>
+    <value>战局开始音频通知</value>
   </data>
   <data name="MatchFoundAudioNotification" xml:space="preserve">
-    <value>Match Found Audio Notification</value>
+    <value>找到战局音频通知</value>
   </data>
   <data name="RestartTasksAudioReminder" xml:space="preserve">
-    <value>Restart Tasks Audio Reminder</value>
+    <value>重启任务音频通知</value>
   </data>
   <data name="RunthroughPeriodAudioReminder" xml:space="preserve">
-    <value>Runthrough Period Audio Reminder</value>
+    <value>匆匆撤离时段音频通知</value>
   </data>
   <data name="AirFilterAudioReminders" xml:space="preserve">
-    <value>Air Filter Audio Reminders</value>
+    <value>过滤吸收器音频通知</value>
   </data>
   <data name="QuestItemReminderAudioNotification" xml:space="preserve">
-    <value>Quest Item Reminder Audio Notification</value>
+    <value>任务物品提醒音频通知</value>
   </data>
   <data name="ScavCooldownReminders" xml:space="preserve">
-    <value>Scav Cooldown Reminders</value>
+    <value>Scav 冷却提醒</value>
   </data>
   <data name="ScavKarma" xml:space="preserve">
-    <value>Scav Karma</value>
+    <value>Scav 声望</value>
   </data>
   <data name="RunthroughTime" xml:space="preserve">
-    <value>Runthrough Time (HH:MM:SS)</value>
+    <value>匆匆撤离时间（时:分:秒）</value>
   </data>
   <data name="WindowBehavior" xml:space="preserve">
-    <value>Window Behavior</value>
+    <value>窗口行为</value>
   </data>
   <data name="StartTarkovMonitorMinimized" xml:space="preserve">
-    <value>Start Tarkov Monitor Minimized</value>
+    <value>启动 Tarkov Monitor 时最小化</value>
   </data>
   <data name="MinimizeToSystemTray" xml:space="preserve">
-    <value>Minimize to System Tray</value>
+    <value>最小化到系统托盘</value>
   </data>
   <data name="StayOnTop" xml:space="preserve">
-    <value>Stay on Top</value>
+    <value>保持置顶</value>
   </data>
   <data name="SkipTarkovDevSplashLogo" xml:space="preserve">
-    <value>Skip Tarkov.dev Splash Logo</value>
+    <value>跳过 Tarkov.dev 启动画面 Logo</value>
   </data>
   <data name="DataCollection" xml:space="preserve">
-    <value>Data Collection</value>
+    <value>数据收集</value>
   </data>
   <data name="SubmitQueueTimeData" xml:space="preserve">
-    <value>Submit Queue Time Data</value>
+    <value>提交排队时间数据</value>
   </data>
   <data name="TarkovTracker" xml:space="preserve">
     <value>TarkovTracker</value>
   </data>
   <data name="GetAToken" xml:space="preserve">
-    <value>Get A Token</value>
+    <value>获取令牌</value>
   </data>
   <data name="TestToken" xml:space="preserve">
-    <value>Test Token</value>
+    <value>测试令牌</value>
   </data>
   <data name="APIToken" xml:space="preserve">
-    <value>API Token</value>
+    <value>API 令牌</value>
   </data>
   <data name="TarkovTrackerService" xml:space="preserve">
-    <value>Tarkov Tracker Service</value>
+    <value>Tarkov Tracker 服务</value>
   </data>
   <data name="TarkovTrackerServiceHelperText" xml:space="preserve">
-    <value>Tarkov Tracker service to use</value>
+    <value>要使用的 Tarkov Tracker 服务</value>
   </data>
   <data name="TarkovDevWebsiteRemote" xml:space="preserve">
-    <value>Tarkov.dev Website Remote</value>
+    <value>Tarkov.dev 网站远程</value>
   </data>
   <data name="RemoteID" xml:space="preserve">
-    <value>Remote ID</value>
+    <value>远程 ID</value>
   </data>
   <data name="SwitchToTarkovDevMapOnRaidLoad" xml:space="preserve">
-    <value>Switch to Tarkov.dev map on raid load</value>
+    <value>在战局加载时切换到 Tarkov.dev 地图</value>
   </data>
   <data name="SwitchToTarkovDevMapOnPositionUpdate" xml:space="preserve">
-    <value>Switch to Tarkov.dev map on position update (via screenshot)</value>
+    <value>在位置更新时切换到 Tarkov.dev 地图 （通过截图）</value>
   </data>
   <data name="AutomaticallyDeleteScreenshotsAfterRaid" xml:space="preserve">
-    <value>Automatically delete taken screenshots after raid</value>
+    <value>战局结束后自动删除拍摄的截图</value>
   </data>
   <data name="OfflineMap" xml:space="preserve">
-    <value>Offline Map</value>
+    <value>离线模式地图</value>
   </data>
   <data name="MapToUseForOfflineRaids" xml:space="preserve">
-    <value>Map to use for offline raids</value>
+    <value>用于离线战局的地图</value>
   </data>
   <data name="None" xml:space="preserve">
-    <value>None</value>
+    <value>无</value>
   </data>
   <data name="LogsFolder" xml:space="preserve">
-    <value>Logs Folder</value>
+    <value>日志文件夹</value>
   </data>
   <data name="DontChangeThisUnlessYouReallyKnowWhatYoureDoing" xml:space="preserve">
-    <value>Don't change this unless you really know what you're doing.</value>
+    <value>除非你真的知道自己在做什么，否则不要更改此项。</value>
   </data>
   <data name="ResetToDefault" xml:space="preserve">
-    <value>Reset to Default</value>
+    <value>重置为默认值</value>
   </data>
   <data name="InitialSetup" xml:space="preserve">
-    <value>Initial Setup</value>
+    <value>初始设置</value>
   </data>
   <data name="ReadPastLogs" xml:space="preserve">
-    <value>Read Past Logs</value>
+    <value>读取过往日志</value>
   </data>
   <data name="Language" xml:space="preserve">
-    <value>Language</value>
+    <value>语言</value>
   </data>
   <data name="SelectLanguage" xml:space="preserve">
-    <value>Select Language</value>
+    <value>选择语言</value>
   </data>
+
+  <!-- Dashboard Page -->
   <data name="Dashboard" xml:space="preserve">
-    <value>Dashboard</value>
+    <value>仪表板</value>
   </data>
+
+  <!-- Other pages -->
   <data name="Stats" xml:space="preserve">
-    <value>Stats</value>
+    <value>统计</value>
   </data>
   <data name="Group" xml:space="preserve">
-    <value>Group</value>
+    <value>小队</value>
   </data>
   <data name="RawLogs" xml:space="preserve">
-    <value>Raw Logs</value>
+    <value>原始日志</value>
   </data>
   <data name="Sounds" xml:space="preserve">
-    <value>Sounds</value>
+    <value>声音</value>
   </data>
   <data name="Timers" xml:space="preserve">
-    <value>Timers</value>
+    <value>计时器</value>
   </data>
+
+  <!-- Languages -->
   <data name="English" xml:space="preserve">
     <value>English</value>
   </data>
@@ -264,127 +213,150 @@
   <data name="Chinese" xml:space="preserve">
     <value>中文</value>
   </data>
+
+  <!-- Navigation -->
   <data name="TarkovMonitor" xml:space="preserve">
     <value>Tarkov Monitor</value>
   </data>
   <data name="Messages" xml:space="preserve">
-    <value>Messages</value>
+    <value>消息</value>
   </data>
+
+  <!-- Common Actions -->
   <data name="Cancel" xml:space="preserve">
-    <value>Cancel</value>
+    <value>取消</value>
   </data>
   <data name="Submit" xml:space="preserve">
-    <value>Submit</value>
+    <value>提交</value>
   </data>
   <data name="Ok" xml:space="preserve">
-    <value>Ok</value>
+    <value>确定</value>
   </data>
   <data name="ClearData" xml:space="preserve">
-    <value>Clear Data</value>
+    <value>清除数据</value>
   </data>
+
+  <!-- Stats Page -->
   <data name="FleaMarketSales" xml:space="preserve">
-    <value>Flea Market Sales</value>
+    <value>跳蚤市场销售</value>
   </data>
   <data name="Raids" xml:space="preserve">
-    <value>Raids</value>
+    <value>战局</value>
   </data>
+
+  <!-- Raw Logs Page -->
   <data name="CustomLogData" xml:space="preserve">
-    <value>Custom Log Data</value>
+    <value>自定义日志数据</value>
   </data>
   <data name="ReadPreviousLogs" xml:space="preserve">
-    <value>Read Previous Logs</value>
+    <value>读取先前日志</value>
   </data>
   <data name="OpenLogsFolder" xml:space="preserve">
-    <value>Open Logs Folder</value>
+    <value>打开日志文件夹</value>
   </data>
+
+  <!-- Force Read Dialog -->
   <data name="CurrentProfile" xml:space="preserve">
-    <value>Current profile</value>
+    <value>当前档案</value>
   </data>
   <data name="IfYouWantToUpdateProgressForDifferentProfile" xml:space="preserve">
-    <value>If you want to update progress for a different profile, activate that profile in the game.</value>
+    <value>如果你想为其他档案更新进度，请在游戏中激活该档案。</value>
   </data>
   <data name="ReadPreviousLogsLabel" xml:space="preserve">
-    <value>Read previous logs</value>
+    <value>读取先前日志</value>
   </data>
   <data name="ChooseStartingPointHelperText" xml:space="preserve">
-    <value>Choose the starting point from which to read logs</value>
+    <value>选择读取日志的起始点</value>
   </data>
   <data name="SelectStartingPointDescription" xml:space="preserve">
-    <value>Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same will be read and that cumulative progress will be synced to Tarkov Tracker.</value>
+    <value>选择一个起始点来读取先前的日志并更新你的任务进度。从该点开始，相同档案的所有后续日志将被读取，并且该累积进度将同步到 Tarkov Tracker。</value>
   </data>
   <data name="WarningMessage" xml:space="preserve">
-    <value>WARNING: You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</value>
+    <value>警告：如果你选择了无效的起始日期，可能会弄乱你在 Tarkov Tracker 保存的任务进度，请谨慎操作。</value>
   </data>
   <data name="CouldNotFindEFTInstallation" xml:space="preserve">
-    <value>Could not find the Escape From Tarkov installation location, or no logs exist.</value>
+    <value>找不到《逃离塔科夫》的安装位置，或者不存在任何日志。</value>
   </data>
+
+  <!-- Page Titles -->
   <data name="NotFound" xml:space="preserve">
-    <value>Not found</value>
+    <value>未找到</value>
   </data>
+  <!-- Confirm Dialog -->
   <data name="AreYouSureYouWantToClearAllData" xml:space="preserve">
-    <value>Are you sure you want to clear all data? This cannot be undone.</value>
+    <value>确定要清除所有数据吗？此操作无法撤销。</value>
   </data>
+
+  <!-- Sounds Page -->
   <data name="CustomRaidStartingSound" xml:space="preserve">
-    <value>Custom Raid Starting Sound</value>
+    <value>自定义战局开始音效</value>
   </data>
   <data name="CustomMatchFoundSound" xml:space="preserve">
-    <value>Custom Match Found Sound</value>
+    <value>自定义找到战局音效</value>
   </data>
   <data name="CustomRestartTasksSound" xml:space="preserve">
-    <value>Custom Restart Tasks Sound</value>
+    <value>自定义重启任务音效</value>
   </data>
   <data name="CustomRunthroughPeriodSound" xml:space="preserve">
-    <value>Custom Runthrough Period Sound</value>
+    <value>自定义匆匆撤离时段音效</value>
   </data>
   <data name="CustomAirFilterOnSound" xml:space="preserve">
-    <value>Custom Air Filter On Sound</value>
+    <value>自定义过滤吸收器开启音效</value>
   </data>
   <data name="CustomAirFilterOffSound" xml:space="preserve">
-    <value>Custom Air Filter Off Sound</value>
+    <value>自定义过滤吸收器关闭音效</value>
   </data>
   <data name="CustomScavCooldownSound" xml:space="preserve">
-    <value>Custom Scav Cooldown Sound</value>
+    <value>自定义 Scav 冷却音效</value>
   </data>
+
+  <!-- Group Page -->
   <data name="YouArentInAGroupOrHavePartyMembersYet" xml:space="preserve">
-    <value>You aren't in a group or have party members yet.</value>
+    <value>你尚未加入小队，或还没有队员。</value>
   </data>
+
+  <!-- Timers Page -->
   <data name="TimeInRaid" xml:space="preserve">
-    <value>Time In Raid</value>
+    <value>战局内时间</value>
   </data>
   <data name="RunthroughPeriod" xml:space="preserve">
-    <value>Runthrough Period</value>
+    <value>匆匆撤离时段</value>
   </data>
   <data name="ScavCooldown" xml:space="preserve">
-    <value>Scav Cooldown</value>
+    <value>Scav 冷却</value>
   </data>
+
+  <!-- MessageBoard -->
   <data name="ThereArentAnyMessagesYet" xml:space="preserve">
-    <value>There aren't any messages yet.</value>
+    <value>目前没有任何消息。</value>
   </data>
   <data name="FleaMarketSale" xml:space="preserve">
-    <value>Flea Market Sale</value>
+    <value>跳蚤市场销售</value>
   </data>
   <data name="Debug" xml:space="preserve">
-    <value>Debug</value>
+    <value>调试</value>
   </data>
   <data name="Error" xml:space="preserve">
-    <value>Error</value>
+    <value>错误</value>
   </data>
   <data name="Update" xml:space="preserve">
-    <value>Update</value>
+    <value>更新</value>
   </data>
   <data name="Quest" xml:space="preserve">
-    <value>Quest</value>
+    <value>任务</value>
   </data>
+
+  <!-- Dynamic Messages -->
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from tarkov.dev</value>
+    <value>从 tarkov.dev 获取了 {0} 个物品, {1} 张地图, {2} 个商人, {3} 个任务, 和 {4} 个藏身处工作站</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>To automatically track task progress, set your Tarkov Tracker token in Settings</value>
+    <value>要自动追踪任务进度，请在设置中设置你的 Tarkov Tracker 令牌</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
-    <value>Using {0} profile</value>
+    <value>正在使用 {0} 档案</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Retrieved {0} level {1} {2} progress from Tarkov Tracker</value>
+    <value>从 Tarkov Tracker 获取了 {0} 等级 {1} {2} 进度</value>
   </data>
 </root>
