@@ -8,6 +8,7 @@ using System.Globalization;
 using System.ComponentModel;
 using MudBlazor;
 using Microsoft.Extensions.Localization;
+using System.Text.Json.Nodes;
 
 namespace TarkovMonitor
 {
@@ -94,9 +95,17 @@ namespace TarkovMonitor
             eft.MatchFound += Eft_MatchFound;
             eft.PlayerPosition += Eft_PlayerPosition;
             eft.ProfileChanged += Eft_ProfileChanged;
+            eft.ControlSettings += Eft_ControlSettings;
 
             eft.InitialReadComplete += (object? sender, ProfileEventArgs e) =>
             {
+                // Update tarkov.dev API data
+
+                UpdateTarkovDevApiData();
+                TarkovDev.StartAutoUpdates();
+                TarkovDev.UpdatePlayerNames();
+
+                // Update Tarkov Tracker
                 if (Properties.Settings.Default.tarkovTrackerToken != "")
                 {
                     try {
@@ -138,10 +147,6 @@ namespace TarkovMonitor
 
             SocketClient.ExceptionThrown += SocketClient_ExceptionThrown;
 
-            // Update tarkov.dev API data
-            UpdateTarkovDevApiData();
-            TarkovDev.StartAutoUpdates();
-
             UpdateCheck.CheckForNewVersion();
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
@@ -158,6 +163,25 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
+        }
+
+        private void Eft_ControlSettings(object? sender, ControlSettingsEventArgs e)
+        {
+            JsonArray keyBindings = e.ControlSettings["keyBindings"].AsArray();
+            foreach (var keyBinding in keyBindings)
+            {
+                System.Diagnostics.Debug.WriteLine($"keyBind {keyBinding.AsObject()["keyName"]}");
+            }
+            JsonNode screenshotBind = keyBindings.FirstOrDefault((n) => n.AsObject()["keyName"].ToString() == "MakeScreenshot");
+            if (screenshotBind != null)
+            {
+                return;
+            }
+            if (Properties.Settings.Default.remoteId == "")
+            {
+                return;
+            }
+            messageLog.AddMessage($"Screenshot key is not bound in EFT. Using this keybind is required to update tarkov.dev map position.", "info");
         }
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
@@ -296,11 +320,15 @@ namespace TarkovMonitor
                 return;
             }
             messageLog.AddMessage($"Player position on {map.name}: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
-            await SocketClient.UpdatePlayerPosition(e);
+            List<JsonObject> socketMessages = new();
+            socketMessages.Add(SocketClient.GetPlayerPositionMessage(e));
+            //await SocketClient.UpdatePlayerPosition(e);
             if (Properties.Settings.Default.navigateMapOnPositionUpdate)
             {
-                SocketClient.NavigateToMap(map);
+                //SocketClient.NavigateToMap(map);
+                socketMessages.Add(SocketClient.GetNavigateToMapMessage(map));
             }
+            SocketClient.Send(socketMessages);
         }
 
         private void UpdateCheck_Error(object? sender, ExceptionEventArgs e)

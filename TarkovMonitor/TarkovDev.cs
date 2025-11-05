@@ -26,6 +26,13 @@ namespace TarkovMonitor
         }
         private static ITarkovDevPlayersAPI playersApi = RestService.For<ITarkovDevPlayersAPI>("https://player.tarkov.dev");
 
+        internal interface ITarkovDevPlayerJsonAPI
+        {
+            [Get("/profile/index.json")]
+            Task<Dictionary<string, string>> GetPlayerNames();
+        }
+        private static ITarkovDevPlayerJsonAPI playerJsonApi = RestService.For<ITarkovDevPlayerJsonAPI>("https://players.tarkov.dev");
+
         private static readonly System.Timers.Timer updateTimer = new() {
             AutoReset = true,
             Enabled = false, 
@@ -40,6 +47,7 @@ namespace TarkovMonitor
         public static List<PlayerLevel> PlayerLevels { get; private set; } = new();
         public static DateTime ScavAvailableTime { get; set; } = DateTime.Now;
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
+        public static Dictionary<string, string> PlayerNames { get; private set; } = new();
 
         static TarkovDev()
         {
@@ -48,10 +56,11 @@ namespace TarkovMonitor
 
         public async static Task<List<Task>> GetTasks()
         {
+            System.Diagnostics.Debug.WriteLine("GetTasks " + GameWatcher.CurrentProfile.Type.ToString().ToLower());
             var request = new GraphQL.GraphQLRequest() {
                 Query = @"
-                    query TarkovMonitorTasks($language: LanguageCode) {
-                        tasks(lang: $language) {
+                    query TarkovMonitorTasks($language: LanguageCode, $gm: GameMode) {
+                        tasks(lang: $language, gameMode: $gm) {
                             id
                             name
                             normalizedName
@@ -68,7 +77,7 @@ namespace TarkovMonitor
                         }
                     }
                 ",
-                Variables = new { language = Properties.Settings.Default.language},
+                Variables = new { language = Properties.Settings.Default.language, gm = GameWatcher.CurrentProfile.Type.ToString().ToLower() },
             };
             var response = await client.SendQueryAsync<TasksResponse>(request);
             Tasks = response.Data.tasks;
@@ -276,6 +285,21 @@ namespace TarkovMonitor
             {
                 throw new Exception($"Goons API error: {ex.Message}");
             }
+        }
+
+        public async static Task<Dictionary<string, string>> UpdatePlayerNames()
+        {
+            PlayerNames = await playerJsonApi.GetPlayerNames();
+            return PlayerNames;
+        }
+
+        public static string GetPlayerName(Profile profile)
+        {
+            if (PlayerNames.ContainsKey(profile.AccountId))
+            {
+                return PlayerNames[profile.AccountId];
+            }
+            return profile.AccountId;
         }
 
         public async static Task<int> GetExperience(int accountId)

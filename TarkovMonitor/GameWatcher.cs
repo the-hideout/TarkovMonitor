@@ -125,6 +125,7 @@ namespace TarkovMonitor
         public event EventHandler<PlayerPositionEventArgs>? PlayerPosition;
         public event EventHandler<ProfileEventArgs> ProfileChanged;
         public event EventHandler<ProfileEventArgs> InitialReadComplete;
+        public event EventHandler<ControlSettingsEventArgs> ControlSettings;
 
         public static string GetDefaultLogsFolder()
         {
@@ -348,12 +349,13 @@ namespace TarkovMonitor
                     }
                     if (eventLine.Contains("SelectProfile ProfileId:"))
                     {
-                        var profileIdMatch = Regex.Match(eventLine, @"SelectProfile ProfileId:(?<profileId>\w+)");
+                        var profileIdMatch = Regex.Match(eventLine, @"SelectProfile ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)");
                         if (!profileIdMatch.Success)
                         {
                             continue;
                         }
                         CurrentProfile.Id = profileIdMatch.Groups["profileId"].Value;
+                        CurrentProfile.AccountId = profileIdMatch.Groups["accountId"].Value;
                         if (!e.InitialRead)
                         {
                             if (raidInfo.StartedTime != null && raidInfo.EndedTime == null)
@@ -367,6 +369,19 @@ namespace TarkovMonitor
                             }
                         }
                         continue;
+                    }
+                    if (eventLine.Contains("Control settings:"))
+                    {
+                        if (!logMessage.Groups["json"].Success)
+                        {
+                            continue;                            
+                        }
+                        var node = JsonNode.Parse(logMessage.Groups["json"].Value);
+                        if (node == null)
+                        {
+                            continue;
+                        }
+                        ControlSettings?.Invoke(this, new ControlSettingsEventArgs() { ControlSettings = node });
                     }
                     if (e.InitialRead)
                     {
@@ -1057,6 +1072,7 @@ namespace TarkovMonitor
     {
         public string Id { get; set; } = "";
         public ProfileType Type { get; set; } = ProfileType.Regular;
+        public string AccountId { get; set; } = "";
     }
 
     public class ProfileEventArgs : EventArgs
@@ -1073,5 +1089,10 @@ namespace TarkovMonitor
         public T LogContent { get; set; }
         public Profile Profile { get; set; }
 
+    }
+
+    public class ControlSettingsEventArgs : EventArgs
+    {
+        public JsonNode ControlSettings { get; set; }
     }
 }

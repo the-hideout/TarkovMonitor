@@ -6,7 +6,8 @@
 <MudDialog>
     <DialogContent>
         <MudText>
-            @LocalizationService.GetString("CurrentProfile"): @GameWatcher.CurrentProfile.Id (@GameWatcher.CurrentProfile.Type)
+            @LocalizationService.GetString("CurrentProfile"):
+            <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.Type)</MudLink>
         </MudText>
         <MudText>
             @LocalizationService.GetString("IfYouWantToUpdateProgressForDifferentProfile")
@@ -102,7 +103,14 @@
         {
             //eft.ProcessLogs(selectedPath);
             customWatcher.TaskModified += UpdateTaskStatus;
+            Profile currentProfile = new()
+            {
+                Id = GameWatcher.CurrentProfile.Id,
+                Type = GameWatcher.CurrentProfile.Type,
+                AccountId = GameWatcher.CurrentProfile.AccountId,
+            };
             customWatcher.ProcessLogsFromBreakpoint(selectedBreakpoint);
+            GameWatcher.CurrentProfile = currentProfile;
             customWatcher.TaskModified -= UpdateTaskStatus;
             foreach (var kvp in TaskStatuses)
             {

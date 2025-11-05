@@ -108,6 +108,8 @@
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@trackerIcon" Class="mr-2"/>@LocalizationService.GetString("TarkovTracker")</MudText>
             <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
             <MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
+            @LocalizationService.GetString("CurrentProfile"):
+            <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.Type)</MudLink>
             <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
             <MudSelect @bind-Value="@TarkovTrackerDomain" T="string" Label="@LocalizationService.GetString("TarkovTrackerService")" ShrinkLabel="true" HelperText="@LocalizationService.GetString("TarkovTrackerServiceHelperText")" AnchorOrigin="Origin.BottomCenter" xs="3">
                 @foreach (var pair in TarkovTracker.Domains)

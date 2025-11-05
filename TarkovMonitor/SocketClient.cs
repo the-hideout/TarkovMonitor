@@ -10,14 +10,13 @@ namespace TarkovMonitor
         //private static readonly string wsUrl = "ws://localhost:8080";
         //private static WebsocketClient? socket;
 
-        public static async Task Send(JsonObject message)
+        public static async Task Send(List<JsonObject> messages)
         {
             var remoteid = Properties.Settings.Default.remoteId;
             if (remoteid == null || remoteid == "")
             {
                 return;
             }
-            message["sessionID"] = remoteid;
             using WebsocketClient socket = new(new Uri(wsUrl + $"?sessionid={remoteid}-tm"));
             /*socket.MessageReceived.Subscribe(msg => {
                 if (msg.Text == null)
@@ -38,7 +37,15 @@ namespace TarkovMonitor
                 }
             });*/
             await socket.Start();
-            await socket.SendInstant(message.ToJsonString());          
+            foreach (var message in messages)
+            {
+                message["sessionID"] = remoteid;
+                await socket.SendInstant(message.ToJsonString());
+            }
+        }
+        public static Task Send(JsonObject message)
+        {
+            return Send(new List<JsonObject> { message });
         }
 
         public static async Task UpdatePlayerPosition(PlayerPositionEventArgs e)
@@ -48,7 +55,38 @@ namespace TarkovMonitor
             {
                 return;
             }
-            var payload = new JsonObject
+            var payload = GetPlayerPositionMessage(e);
+            try
+            {
+                await Send(payload);
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(payload, new(ex, "updating player position"));
+            }
+        }
+
+        public static async Task NavigateToMap(TarkovDev.Map map)
+        {
+            var payload = GetNavigateToMapMessage(map);
+            try
+            {
+                await Send(payload);
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(payload, new(ex, $"navigating to map {map.name}"));
+            }
+        }
+
+        public static JsonObject GetPlayerPositionMessage(PlayerPositionEventArgs e)
+        {
+            var map = TarkovDev.Maps.Find(m => m.nameId == e.RaidInfo.Map)?.normalizedName;
+            if (map == null && e.RaidInfo.Map != null)
+            {
+                throw new Exception($"Map {e.RaidInfo.Map} not found");
+            }
+            return new JsonObject
             {
                 ["type"] = "command",
                 ["data"] = new JsonObject
@@ -64,19 +102,11 @@ namespace TarkovMonitor
                     ["rotation"] = e.Rotation,
                 }
             };
-            try
-            {
-                await Send(payload);
-            }
-            catch (Exception ex)
-            {
-                ExceptionThrown?.Invoke(payload, new(ex, "updating player position"));
-            }
         }
 
-        public static async Task NavigateToMap(TarkovDev.Map map)
+        public static JsonObject GetNavigateToMapMessage(TarkovDev.Map map)
         {
-            var payload = new JsonObject
+            return new JsonObject
             {
                 ["type"] = "command",
                 ["data"] = new JsonObject
@@ -85,14 +115,6 @@ namespace TarkovMonitor
                     ["value"] = map.normalizedName
                 }
             };
-            try
-            {
-                await Send(payload);
-            }
-            catch (Exception ex)
-            {
-                ExceptionThrown?.Invoke(payload, new(ex, $"navigating to map {map.name}"));
-            }
         }
     }
 }
