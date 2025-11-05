@@ -89,3 +89,9 @@ The Tarkov.dev website has a feature that allows the user to "control" the websi
 ### What is the "Submit Queue Time Data" option for?
 
 When enabled, TarkovMonitor will submit the amount of time it takes to queue for a raid to Tarkov.dev. The information is sent anonymously and only the following pieces of information are sent and saved: the map, the time it took to find a raid, and whether the raid was for PMC or scav.
+
+## Trouble Shooting
+
+If the app won't launch and you see an "invalid WebView2 installation" error (sometimes accompanied by "The system cannot find the file specified"), you're likely hitting a known WebView2 issue.
+
+Follow the solution here: [Error on launching program (invalid WebView2 installation) #22 — solution comment](https://github.com/the-hideout/TarkovMonitor/issues/22#issuecomment-3443766675)
