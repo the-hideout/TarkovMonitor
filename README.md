@@ -1,3 +1,5 @@
+truthfully i lowk forgot how to contribute to stuff so ignore the fact this isnt on master branch LOL
+
 # TarkovMonitor
 
 [![build-dev](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml/badge.svg)](https://github.com/the-hideout/TarkovMonitor/actions/workflows/build-dev.yml)
