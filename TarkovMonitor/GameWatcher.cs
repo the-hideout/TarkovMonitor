@@ -201,6 +201,7 @@ namespace TarkovMonitor
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "initializing screenshot watcher"));
             }
+            //DebugMessage?.Invoke(this, new($"Watching screenshot folder {screenshotWatcher.Path}"));
         }
 
         private void ScreenshotWatcher_FolderCreated(object sender, FileSystemEventArgs e)
@@ -303,12 +304,12 @@ namespace TarkovMonitor
         private void LogFileCreateWatcher_Created(object sender, FileSystemEventArgs e)
         {
             string filename = e.Name ?? "";
-            if (filename.Contains("application.log"))
+            if (filename.Contains("application.log") || filename.Contains("application_000.log"))
             {
                 StartNewMonitor(e.FullPath);
                 _accountId = 0;
             }
-            if (filename.Contains("notifications.log"))
+            if (filename.Contains("notifications.log") || filename.Contains("notifications_000.log"))
             {
                 StartNewMonitor(e.FullPath);
             }
@@ -336,6 +337,7 @@ namespace TarkovMonitor
                     var eventDate = new DateTime();
                     DateTime.TryParseExact(logMessage.Groups["date"].Value + " " + logMessage.Groups["time"].Value.Split(" ")[0], "yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out eventDate);
                     var eventLine = logMessage.Groups["message"].Value;
+                    System.Diagnostics.Debug.WriteLine(eventLine);
                     if (eventLine.Contains("Session mode: "))
                     {
                         var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>\w+)");
@@ -631,15 +633,15 @@ namespace TarkovMonitor
                 {
                     GameLogType logType;
                     // Check which type of log file this is by the filename
-                    if (logFile.Contains("application.log"))
+                    if (logFile.Contains("application.log") || logFile.Contains("application_000.log"))
                     {
                         logType = GameLogType.Application;
                     }
-                    else if (logFile.Contains("notifications.log"))
+                    else if (logFile.Contains("notifications.log") || logFile.Contains("notifications_000.log"))
                     {
                         logType = GameLogType.Notifications;
                     }
-                    else if (logFile.Contains("traces.log"))
+                    else if (logFile.Contains("traces.log") || logFile.Contains("traces_000.log"))
                     {
                         // logType = GameLogType.Traces;
                         // Traces are not currently used, so skip them
@@ -685,7 +687,7 @@ namespace TarkovMonitor
             var appLogPath = "";
             foreach (var file in Directory.GetFiles(folderPath))
             {
-                if (file.EndsWith("application.log"))
+                if (file.EndsWith("application.log") || file.EndsWith("application_000.log"))
                 {
                     appLogPath = file;
                     break;
@@ -840,7 +842,7 @@ namespace TarkovMonitor
             var files = System.IO.Directory.GetFiles(folderPath);
             var monitorsStarted = 0;
             var monitorsCompletedInitialRead = 0;
-            List<string> monitoringLogs = new() { "notifications.log", "application.log" };
+            List<string> monitoringLogs = new() { "notifications.log", "application.log", "notifications_000.log", "application_000.log" };
             foreach (var file in files)
             {
                 foreach (var logType in monitoringLogs)
@@ -873,16 +875,16 @@ namespace TarkovMonitor
         private LogMonitor? StartNewMonitor(string path)
         {
             GameLogType? newType = null;
-            if (path.Contains("application.log"))
+            if (path.Contains("application.log") || path.Contains("application_000.log"))
             {
                 newType = GameLogType.Application;
                 CurrentProfile = new();
             }
-            if (path.Contains("notifications.log"))
+            if (path.Contains("notifications.log") || path.Contains("notifications_000.log"))
             {
                 newType = GameLogType.Notifications;
             }
-            if (path.Contains("traces.log"))
+            if (path.Contains("traces.log") || path.Contains("traces_000.log"))
             {
                 newType = GameLogType.Traces;
             }
