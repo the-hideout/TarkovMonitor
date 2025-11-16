@@ -128,10 +128,16 @@ namespace TarkovMonitor
         public event EventHandler<ControlSettingsEventArgs> ControlSettings;
 
         public static string GetDefaultLogsFolder()
-        {
-            using RegistryKey key = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\EscapeFromTarkov") ?? throw new Exception("EFT install registry entry not found");
-            return Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
-        }
+		{
+		    using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov"))
+		        if (key != null)
+		            return Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
+		
+		    using (RegistryKey? steamKey = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
+		        return Path.Combine(steamKey?.GetValue("SteamPath")?.ToString() ?? throw new Exception("Steam registry value not found"), @"steamapps\common\Escape from Tarkov\build\Logs");
+		
+		    throw new Exception("Tarkov isnt installed?");
+		}
 
         public static Dictionary<string, string> MapBundles = new() {
             { "city_preset", "TarkovStreets" },
