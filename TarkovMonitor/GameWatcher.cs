@@ -290,7 +290,7 @@ namespace TarkovMonitor
 			try
 			{
                 logFileCreateWatcher.Path = LogsPath;
-				logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
+                logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
 				logFileCreateWatcher.EnableRaisingEvents = true;
 				processTimer.Elapsed += ProcessTimer_Elapsed;
 				UpdateProcess();
@@ -327,7 +327,7 @@ namespace TarkovMonitor
             {
                 //DebugMessage?.Invoke(this, new DebugEventArgs(e.NewMessage));
                 NewLogData?.Invoke(this, e);
-                var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
+                var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3}(?<tzoffset> [+-]\d{2}:\d{2})?)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
