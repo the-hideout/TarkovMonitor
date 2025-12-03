@@ -106,7 +106,7 @@ namespace TarkovMonitor
                 TarkovDev.UpdatePlayerNames();
 
                 // Update Tarkov Tracker
-                if (Properties.Settings.Default.tarkovTrackerToken != "")
+                if (Properties.Settings.Default.tarkovTrackerToken != "" && e.Profile.Id != "")
                 {
                     try {
                         TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
