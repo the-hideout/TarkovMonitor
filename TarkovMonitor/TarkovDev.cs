@@ -553,7 +553,7 @@ namespace TarkovMonitor
         public static int ScavCooldownSeconds()
         {
             Dictionary<ProfileType, int> ScavCooldownBaseValues = new() {
-                { ProfileType.Regular, 2700 },
+                { ProfileType.Regular, 1500 },
                 { ProfileType.PVE, 1500 },
             };
             decimal baseTimer = Convert.ToDecimal(ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type]);
