@@ -65,7 +65,12 @@ namespace TarkovMonitor
         {
             return new List<(string Code, string Name)>
             {
+                ("de", GetString("German")),
                 ("en", GetString("English")),
+                ("es", GetString("Spanish")),
+                ("fr", GetString("French")),
+                ("pl", GetString("Polish")),
+                ("pt", GetString("Portuguese")),
                 ("ru", GetString("Russian")),
                 ("zh", GetString("Chinese"))
             };
