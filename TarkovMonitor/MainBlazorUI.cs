@@ -22,6 +22,7 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer runthroughTimer;
         private readonly System.Timers.Timer scavCooldownTimer;
         private LocalizationService localizationService;
+        private bool inRaid;
 
         public MainBlazorUI()
         {
@@ -33,6 +34,7 @@ namespace TarkovMonitor
                 Properties.Settings.Default.Save();
             }
             this.TopMost = Properties.Settings.Default.stayOnTop;
+            inRaid = false;
 
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
@@ -204,11 +206,15 @@ namespace TarkovMonitor
 
         private void ScavCooldownTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            if (Properties.Settings.Default.scavCooldownAlert)
+            if (!Properties.Settings.Default.scavCooldownAlert)
+            {
+                return;
+            }
+            if (!inRaid)
             {
                 Sound.Play("scav_available");
-                messageLog.AddMessage("Player scav available", "info");
             }
+            messageLog.AddMessage("Player scav available", "info");
         }
 
         private void RunthroughTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -263,6 +269,7 @@ namespace TarkovMonitor
 
         private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
+            inRaid = false;
             groupManager.Stale = true;
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
@@ -669,6 +676,7 @@ namespace TarkovMonitor
 
         private async void Eft_RaidStart(object? sender, RaidInfoEventArgs e)
         {
+            inRaid = true;
             Stats.AddRaid(e);
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
@@ -776,6 +784,7 @@ namespace TarkovMonitor
         {
             groupManager.Stale = true;
             runthroughTimer.Stop();
+            inRaid = false;
             try
             {
                 var mapName = e.Map;
