@@ -1,110 +1,52 @@
-<?xml version="1.0" encoding="utf-8"?>
-<root>
-  <!-- 
-    Microsoft ResX Schema 
-    
-    Version 2.0
-    
-    The primary goals of this format is to allow a simple XML format 
-    that is mostly human readable. The generation and parsing of the 
-    various data types are done through the TypeConverter classes 
-    associated with the data types.
-    
-    Example:
-    
-    ... ado.net/XML headers & schema ...
-    <resheader name="resmimetype">text/microsoft-resx</resheader>
-    <resheader name="version">2.0</resheader>
-    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
-    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
-    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
-    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
-    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
-        <value>[base64 mime encoded serialized .NET Framework object]</value>
-    </data>
-    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
-        <comment>This is a comment</comment>
-    </data>
-                
-    There are any number of "resheader" rows that contain simple 
-    name/value pairs.
-    
-    Each data row contains a name, and value. The row also contains a 
-    type or mimetype. Type corresponds to a .NET class that support 
-    text/value conversion through the TypeConverter architecture. 
-    Classes that don't support this are serialized and stored with the 
-    mimetype set.
-    
-    The mimetype is used for serialized objects, and tells the 
-    ResXResourceReader how to depersist the object. This is currently not 
-    extensible. For a given mimetype the value must be set accordingly:
-    
-    Note - application/x-microsoft.net.object.binary.base64 is the format 
-    that the ResXResourceWriter will generate, however the reader can 
-    read any of the formats listed below.
-    
-    mimetype: application/x-microsoft.net.object.binary.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
-            : and then encoded with base64 encoding.
-    
-    mimetype: application/x-microsoft.net.object.soap.base64
-    value   : The object must be serialized with 
-            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
-            : and then encoded with base64 encoding.
-
-    mimetype: application/x-microsoft.net.object.bytearray.base64
-    value   : The object must be serialized into a byte array 
-            : using a System.ComponentModel.TypeConverter
-            : and then encoded with base64 encoding.
-    -->
-  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
-    <xsd:element name="root" msdata:IsDataSet="true">
-      <xsd:complexType>
-        <xsd:choice maxOccurs="unbounded">
-          <xsd:element name="metadata">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" />
-              </xsd:sequence>
-              <xsd:attribute name="name" use="required" type="xsd:string" />
-              <xsd:attribute name="type" type="xsd:string" />
-              <xsd:attribute name="mimetype" type="xsd:string" />
-              <xsd:attribute ref="xml:space" />
-            </xsd:complexType>
-          </xsd:element>
-          <xsd:element name="assembly">
-            <xsd:complexType>
-              <xsd:attribute name="alias" type="xsd:string" />
-              <xsd:attribute name="name" type="xsd:string" />
-            </xsd:complexType>
-          </xsd:element>
-          <xsd:element name="data">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
-              </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
-              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
-              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
-              <xsd:attribute ref="xml:space" />
-            </xsd:complexType>
-          </xsd:element>
-          <xsd:element name="resheader">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-              </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" use="required" />
-            </xsd:complexType>
-          </xsd:element>
-        </xsd:choice>
-      </xsd:complexType>
-    </xsd:element>
-  </xsd:schema>
+<?xml version='1.0' encoding='utf-8'?>
+<root xmlns:ns1="urn:schemas-microsoft-com:xml-msdata" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  
+  <xs:schema id="root">
+    <xs:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xs:element name="root" ns1:IsDataSet="true">
+      <xs:complexType>
+        <xs:choice maxOccurs="unbounded">
+          <xs:element name="metadata">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" />
+              </xs:sequence>
+              <xs:attribute name="name" use="required" type="xsd:string" />
+              <xs:attribute name="type" type="xsd:string" />
+              <xs:attribute name="mimetype" type="xsd:string" />
+              <xs:attribute ref="xml:space" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="assembly">
+            <xs:complexType>
+              <xs:attribute name="alias" type="xsd:string" />
+              <xs:attribute name="name" type="xsd:string" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="data">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+                <xs:element name="comment" type="xsd:string" minOccurs="0" ns1:Ordinal="2" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" ns1:Ordinal="1" />
+              <xs:attribute name="type" type="xsd:string" ns1:Ordinal="3" />
+              <xs:attribute name="mimetype" type="xsd:string" ns1:Ordinal="4" />
+              <xs:attribute ref="xml:space" />
+            </xs:complexType>
+          </xs:element>
+          <xs:element name="resheader">
+            <xs:complexType>
+              <xs:sequence>
+                <xs:element name="value" type="xsd:string" minOccurs="0" ns1:Ordinal="1" />
+              </xs:sequence>
+              <xs:attribute name="name" type="xsd:string" use="required" />
+            </xs:complexType>
+          </xs:element>
+        </xs:choice>
+      </xs:complexType>
+    </xs:element>
+  </xs:schema>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
   </resheader>
@@ -118,288 +60,288 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Settings" xml:space="preserve">
-    <value>Settings</value>
+    <value>Ustawienia</value>
   </data>
   <data name="Notifications" xml:space="preserve">
-    <value>Notifications</value>
+    <value>Powiadomienia</value>
   </data>
   <data name="NotificationsPlaybackDevice" xml:space="preserve">
-    <value>Notifications playback device</value>
+    <value>Urządzenie odtwarzania powiadomień</value>
   </data>
   <data name="RaidStartingAudioNotification" xml:space="preserve">
-    <value>Raid Starting Audio Notification</value>
+    <value>Powiadomienie dźwiękowe o rozpoczęciu rajdu</value>
   </data>
   <data name="MatchFoundAudioNotification" xml:space="preserve">
-    <value>Match Found Audio Notification</value>
+    <value>Powiadomienie dźwiękowe o znalezieniu meczu</value>
   </data>
   <data name="RestartTasksAudioReminder" xml:space="preserve">
-    <value>Restart Tasks Audio Reminder</value>
+    <value>Dźwiękowe przypomnienie o wznowieniu zadań</value>
   </data>
   <data name="RunthroughPeriodAudioReminder" xml:space="preserve">
-    <value>Runthrough Period Audio Reminder</value>
+    <value>Dźwiękowe przypomnienie o czasie Runthrough</value>
   </data>
   <data name="AirFilterAudioReminders" xml:space="preserve">
-    <value>Air Filter Audio Reminders</value>
+    <value>Dźwiękowe przypomnienia o filtrze powietrza</value>
   </data>
   <data name="QuestItemReminderAudioNotification" xml:space="preserve">
-    <value>Quest Item Reminder Audio Notification</value>
+    <value>Dźwiękowe powiadomienie o przedmiotach do zadań</value>
   </data>
   <data name="ScavCooldownReminders" xml:space="preserve">
-    <value>Scav Cooldown Reminders</value>
+    <value>Przypomnienia o czasie odnowienia Scava</value>
   </data>
   <data name="ScavKarma" xml:space="preserve">
-    <value>Scav Karma</value>
+    <value>Karma Scava</value>
   </data>
   <data name="RunthroughTime" xml:space="preserve">
-    <value>Runthrough Time (HH:MM:SS)</value>
+    <value>Czas Runthrough (HH:MM:SS)</value>
   </data>
   <data name="WindowBehavior" xml:space="preserve">
-    <value>Window Behavior</value>
+    <value>Zachowanie okna</value>
   </data>
   <data name="StartTarkovMonitorMinimized" xml:space="preserve">
-    <value>Start Tarkov Monitor Minimized</value>
+    <value>Uruchamiaj Tarkov Monitor zminimalizowany</value>
   </data>
   <data name="MinimizeToSystemTray" xml:space="preserve">
-    <value>Minimize to System Tray</value>
+    <value>Minimalizuj do zasobnika systemowego</value>
   </data>
   <data name="StayOnTop" xml:space="preserve">
-    <value>Stay on Top</value>
+    <value>Zawsze na wierzchu</value>
   </data>
   <data name="SkipTarkovDevSplashLogo" xml:space="preserve">
-    <value>Skip Tarkov.dev Splash Logo</value>
+    <value>Pomiń ekran Tarkov.dev</value>
   </data>
   <data name="DataCollection" xml:space="preserve">
-    <value>Data Collection</value>
+    <value>Zbieranie danych</value>
   </data>
   <data name="SubmitQueueTimeData" xml:space="preserve">
-    <value>Submit Queue Time Data</value>
+    <value>Przesyłaj dane czasu kolejki</value>
   </data>
   <data name="TarkovTracker" xml:space="preserve">
     <value>TarkovTracker</value>
   </data>
   <data name="GetAToken" xml:space="preserve">
-    <value>Get A Token</value>
+    <value>Uzyskaj token</value>
   </data>
   <data name="TestToken" xml:space="preserve">
-    <value>Test Token</value>
+    <value>Przetestuj token</value>
   </data>
   <data name="APIToken" xml:space="preserve">
-    <value>API Token</value>
+    <value>Token API</value>
   </data>
   <data name="TarkovTrackerService" xml:space="preserve">
-    <value>Tarkov Tracker Service</value>
+    <value>Usługa Tarkov Tracker</value>
   </data>
   <data name="TarkovTrackerServiceHelperText" xml:space="preserve">
-    <value>Tarkov Tracker service to use</value>
+    <value>Usługa Tarkov Tracker do użycia</value>
   </data>
   <data name="TarkovDevWebsiteRemote" xml:space="preserve">
-    <value>Tarkov.dev Website Remote</value>
+    <value>Pilot strony Tarkov.dev</value>
   </data>
   <data name="RemoteID" xml:space="preserve">
-    <value>Remote ID</value>
+    <value>Identyfikator zdalny</value>
   </data>
   <data name="SwitchToTarkovDevMapOnRaidLoad" xml:space="preserve">
-    <value>Switch to Tarkov.dev map on raid load</value>
+    <value>Przełącz na mapę Tarkov.dev po wczytaniu rajdu</value>
   </data>
   <data name="SwitchToTarkovDevMapOnPositionUpdate" xml:space="preserve">
-    <value>Switch to Tarkov.dev map on position update (via screenshot)</value>
+    <value>Przełącz na mapę Tarkov.dev po aktualizacji pozycji (przez zrzut ekranu)</value>
   </data>
   <data name="AutomaticallyDeleteScreenshotsAfterRaid" xml:space="preserve">
-    <value>Automatically delete taken screenshots after raid</value>
+    <value>Automatycznie usuwaj zrzuty ekranu po rajdzie</value>
   </data>
   <data name="OfflineMap" xml:space="preserve">
-    <value>Offline Map</value>
+    <value>Mapa offline</value>
   </data>
   <data name="MapToUseForOfflineRaids" xml:space="preserve">
-    <value>Map to use for offline raids</value>
+    <value>Mapa używana do rajdów offline</value>
   </data>
   <data name="None" xml:space="preserve">
-    <value>None</value>
+    <value>Brak</value>
   </data>
   <data name="LogsFolder" xml:space="preserve">
-    <value>Logs Folder</value>
+    <value>Folder logów</value>
   </data>
   <data name="DontChangeThisUnlessYouReallyKnowWhatYoureDoing" xml:space="preserve">
-    <value>Don't change this unless you really know what you're doing.</value>
+    <value>Nie zmieniaj tego, jeśli naprawdę nie wiesz, co robisz.</value>
   </data>
   <data name="ResetToDefault" xml:space="preserve">
-    <value>Reset to Default</value>
+    <value>Przywróć domyślne</value>
   </data>
   <data name="InitialSetup" xml:space="preserve">
-    <value>Initial Setup</value>
+    <value>Konfiguracja początkowa</value>
   </data>
   <data name="ReadPastLogs" xml:space="preserve">
-    <value>Read Past Logs</value>
+    <value>Odczytaj wcześniejsze logi</value>
   </data>
   <data name="Language" xml:space="preserve">
-    <value>Language</value>
+    <value>Język</value>
   </data>
   <data name="SelectLanguage" xml:space="preserve">
-    <value>Select Language</value>
+    <value>Wybierz język</value>
   </data>
   <data name="Dashboard" xml:space="preserve">
-    <value>Dashboard</value>
+    <value>Pulpit</value>
   </data>
   <data name="Stats" xml:space="preserve">
-    <value>Stats</value>
+    <value>Statystyki</value>
   </data>
   <data name="Group" xml:space="preserve">
-    <value>Group</value>
+    <value>Grupa</value>
   </data>
   <data name="RawLogs" xml:space="preserve">
-    <value>Raw Logs</value>
+    <value>Surowe logi</value>
   </data>
   <data name="Sounds" xml:space="preserve">
-    <value>Sounds</value>
+    <value>Dźwięki</value>
   </data>
   <data name="Timers" xml:space="preserve">
-    <value>Timers</value>
+    <value>Timery</value>
   </data>
   <data name="English" xml:space="preserve">
-    <value>English</value>
+    <value>Angielski</value>
   </data>
   <data name="German" xml:space="preserve">
-    <value>German</value>
+    <value>Niemiecki</value>
   </data>
   <data name="Spanish" xml:space="preserve">
-    <value>Spanish</value>
+    <value>Hiszpański</value>
   </data>
   <data name="French" xml:space="preserve">
-    <value>French</value>
+    <value>Francuski</value>
   </data>
   <data name="Polish" xml:space="preserve">
-    <value>Polish</value>
+    <value>Polski</value>
   </data>
   <data name="Portuguese" xml:space="preserve">
-    <value>Portuguese</value>
+    <value>Portugalski</value>
   </data>
   <data name="Russian" xml:space="preserve">
-    <value>Русский</value>
+    <value>Rosyjski</value>
   </data>
   <data name="Chinese" xml:space="preserve">
-    <value>中文</value>
+    <value>Chiński</value>
   </data>
   <data name="TarkovMonitor" xml:space="preserve">
     <value>Tarkov Monitor</value>
   </data>
   <data name="Messages" xml:space="preserve">
-    <value>Messages</value>
+    <value>Wiadomości</value>
   </data>
   <data name="Cancel" xml:space="preserve">
-    <value>Cancel</value>
+    <value>Anuluj</value>
   </data>
   <data name="Submit" xml:space="preserve">
-    <value>Submit</value>
+    <value>Zatwierdź</value>
   </data>
   <data name="Ok" xml:space="preserve">
-    <value>Ok</value>
+    <value>OK</value>
   </data>
   <data name="ClearData" xml:space="preserve">
-    <value>Clear Data</value>
+    <value>Wyczyść dane</value>
   </data>
   <data name="FleaMarketSales" xml:space="preserve">
-    <value>Flea Market Sales</value>
+    <value>Sprzedaż na pchlim targu</value>
   </data>
   <data name="Raids" xml:space="preserve">
-    <value>Raids</value>
+    <value>Rajdy</value>
   </data>
   <data name="CustomLogData" xml:space="preserve">
-    <value>Custom Log Data</value>
+    <value>Niestandardowe dane logów</value>
   </data>
   <data name="ReadPreviousLogs" xml:space="preserve">
-    <value>Read Previous Logs</value>
+    <value>Odczytaj poprzednie logi</value>
   </data>
   <data name="OpenLogsFolder" xml:space="preserve">
-    <value>Open Logs Folder</value>
+    <value>Otwórz folder logów</value>
   </data>
   <data name="CurrentProfile" xml:space="preserve">
-    <value>Current profile</value>
+    <value>Bieżący profil</value>
   </data>
   <data name="IfYouWantToUpdateProgressForDifferentProfile" xml:space="preserve">
-    <value>If you want to update progress for a different profile, activate that profile in the game.</value>
+    <value>Jeśli chcesz zaktualizować postępy dla innego profilu, aktywuj go w grze.</value>
   </data>
   <data name="ReadPreviousLogsLabel" xml:space="preserve">
-    <value>Read previous logs</value>
+    <value>Wczytaj wcześniejsze logi</value>
   </data>
   <data name="ChooseStartingPointHelperText" xml:space="preserve">
-    <value>Choose the starting point from which to read logs</value>
+    <value>Wybierz punkt początkowy, od którego odczytać logi</value>
   </data>
   <data name="SelectStartingPointDescription" xml:space="preserve">
-    <value>Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same will be read and that cumulative progress will be synced to Tarkov Tracker.</value>
+    <value>Wybierz punkt początkowy, aby odczytać wcześniejsze logi i zaktualizować postęp zadań. Wszystkie logi od tego momentu zostaną odczytane, a łączny postęp zostanie zsynchronizowany z Tarkov Tracker.</value>
   </data>
   <data name="WarningMessage" xml:space="preserve">
-    <value>WARNING: You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</value>
+    <value>OSTRZEŻENIE: Możesz uszkodzić zapisany postęp zadań w Tarkov Tracker, jeśli wybierzesz nieprawidłową datę początkową, więc zachowaj ostrożność.</value>
   </data>
   <data name="CouldNotFindEFTInstallation" xml:space="preserve">
-    <value>Could not find the Escape From Tarkov installation location, or no logs exist.</value>
+    <value>Nie znaleziono instalacji Escape From Tarkov albo brak logów.</value>
   </data>
   <data name="NotFound" xml:space="preserve">
-    <value>Not found</value>
+    <value>Nie znaleziono</value>
   </data>
   <data name="AreYouSureYouWantToClearAllData" xml:space="preserve">
-    <value>Are you sure you want to clear all data? This cannot be undone.</value>
+    <value>Czy na pewno chcesz usunąć wszystkie dane? Tego nie da się cofnąć.</value>
   </data>
   <data name="CustomRaidStartingSound" xml:space="preserve">
-    <value>Custom Raid Starting Sound</value>
+    <value>Niestandardowy dźwięk startu rajdu</value>
   </data>
   <data name="CustomMatchFoundSound" xml:space="preserve">
-    <value>Custom Match Found Sound</value>
+    <value>Niestandardowy dźwięk znalezienia meczu</value>
   </data>
   <data name="CustomRestartTasksSound" xml:space="preserve">
-    <value>Custom Restart Tasks Sound</value>
+    <value>Niestandardowy dźwięk ponownego uruchamiania zadań</value>
   </data>
   <data name="CustomRunthroughPeriodSound" xml:space="preserve">
-    <value>Custom Runthrough Period Sound</value>
+    <value>Niestandardowy dźwięk czasu Runthrough</value>
   </data>
   <data name="CustomAirFilterOnSound" xml:space="preserve">
-    <value>Custom Air Filter On Sound</value>
+    <value>Niestandardowy dźwięk włączenia filtra powietrza</value>
   </data>
   <data name="CustomAirFilterOffSound" xml:space="preserve">
-    <value>Custom Air Filter Off Sound</value>
+    <value>Niestandardowy dźwięk wyłączenia filtra powietrza</value>
   </data>
   <data name="CustomScavCooldownSound" xml:space="preserve">
-    <value>Custom Scav Cooldown Sound</value>
+    <value>Niestandardowy dźwięk czasu odnowienia Scava</value>
   </data>
   <data name="YouArentInAGroupOrHavePartyMembersYet" xml:space="preserve">
-    <value>You aren't in a group or have party members yet.</value>
+    <value>Nie jesteś jeszcze w grupie ani nie masz członków drużyny.</value>
   </data>
   <data name="TimeInRaid" xml:space="preserve">
-    <value>Time In Raid</value>
+    <value>Czas w rajdzie</value>
   </data>
   <data name="RunthroughPeriod" xml:space="preserve">
-    <value>Runthrough Period</value>
+    <value>Okres Runthrough</value>
   </data>
   <data name="ScavCooldown" xml:space="preserve">
-    <value>Scav Cooldown</value>
+    <value>Czas odnowienia Scava</value>
   </data>
   <data name="ThereArentAnyMessagesYet" xml:space="preserve">
-    <value>There aren't any messages yet.</value>
+    <value>Nie ma jeszcze żadnych wiadomości.</value>
   </data>
   <data name="FleaMarketSale" xml:space="preserve">
-    <value>Flea Market Sale</value>
+    <value>Sprzedaż na pchlim targu</value>
   </data>
   <data name="Debug" xml:space="preserve">
     <value>Debug</value>
   </data>
   <data name="Error" xml:space="preserve">
-    <value>Error</value>
+    <value>Błąd</value>
   </data>
   <data name="Update" xml:space="preserve">
-    <value>Update</value>
+    <value>Aktualizacja</value>
   </data>
   <data name="Quest" xml:space="preserve">
-    <value>Quest</value>
+    <value>Zadanie</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from tarkov.dev</value>
+    <value>Pobrano z tarkov.dev {0} przedmiotów, {1} map, {2} handlarzy, {3} zadań i {4} stacji kryjówki.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>To automatically track task progress, set your Tarkov Tracker token in Settings</value>
+    <value>Aby automatycznie śledzić postęp zadań, ustaw token Tarkov Tracker w Ustawieniach.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
-    <value>Using {0} profile</value>
+    <value>Używany profil {0}</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Retrieved {0} level {1} {2} progress from Tarkov Tracker</value>
+    <value>Pobrano z Tarkov Tracker postęp {0} poziomu {1} {2}</value>
   </data>
 </root>
