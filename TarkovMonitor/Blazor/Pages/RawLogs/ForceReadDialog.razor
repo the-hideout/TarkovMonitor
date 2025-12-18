@@ -98,6 +98,7 @@
         SubmitDisabled = true;
         GameWatcher.ReadingPastLogs = true;
         TaskStatuses.Clear();
+        var totalTasks = 0;
         Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
         try
         {
@@ -125,6 +126,7 @@
                     // probably a daily
                     continue;
                 }
+                totalTasks++;
                 TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
                 var taskProgress = TarkovTracker.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
                 if (taskProgress != null)
@@ -162,12 +164,8 @@
             if (updateTasks.Count > 0)
             {
                 await TarkovTracker.SetTaskStatuses(updateTasks);
-                messageLog.AddMessage($"Updated status of {updateTasks.Count} tasks in Tarkov Tracker.", "info");
             }
-            else
-            {
-                messageLog.AddMessage("No tasks found in past logs that require updating in Tarkov Tracker.", "info");
-            }
+            messageLog.AddMessage($"Of {totalTasks} tasks found in logs, {updateTasks.Count} require status updates in Tarkov Tracker.", "info");
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
