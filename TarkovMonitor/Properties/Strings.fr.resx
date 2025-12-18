@@ -93,7 +93,7 @@
     <value>Karma de scav</value>
   </data>
   <data name="RunthroughTime" xml:space="preserve">
-    <value>Temps Runthrough (HH:MM:SS)</value>
+    <value>Temps Touriste (HH:MM:SS)</value>
   </data>
   <data name="WindowBehavior" xml:space="preserve">
     <value>Comportement de la fenêtre</value>
