@@ -71,8 +71,7 @@ namespace TarkovMonitor
                 ("fr", GetString("French")),
                 ("pl", GetString("Polish")),
                 ("pt", GetString("Portuguese")),
-                ("ru", GetString("Russian")),
-                ("zh", GetString("Chinese"))
+                ("ru", GetString("Russian"))
             };
         }
     }
