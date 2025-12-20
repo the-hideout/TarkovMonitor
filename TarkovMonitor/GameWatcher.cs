@@ -133,8 +133,8 @@ namespace TarkovMonitor
 		        if (key != null)
 		            return Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
 		
-		    using (RegistryKey? steamKey = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
-		        return Path.Combine(steamKey?.GetValue("SteamPath")?.ToString() ?? throw new Exception("Steam registry value not found"), @"steamapps\common\Escape from Tarkov\build\Logs");
+		    using (RegistryKey? steamKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 3932890"))
+		        return Path.Combine(steamKey?.GetValue("InstallLocation")?.ToString() ?? throw new Exception("Steam registry value not found"), @"steamapps\common\Escape from Tarkov\build\Logs");
 		
 		    throw new Exception("Tarkov isnt installed?");
 		}
