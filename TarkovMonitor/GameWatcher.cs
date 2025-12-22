@@ -127,16 +127,22 @@ namespace TarkovMonitor
         public event EventHandler<ProfileEventArgs> InitialReadComplete;
         public event EventHandler<ControlSettingsEventArgs> ControlSettings;
 
+        private string logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3}(?<tzoffset> [+-]\d{2}:\d{2})?)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
+
         public static string GetDefaultLogsFolder()
 		{
-		    using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov"))
-		        if (key != null)
-		            return Path.Combine(key.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
-		
-		    using (RegistryKey? steamKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 3932890"))
-		        return Path.Combine(steamKey?.GetValue("InstallLocation")?.ToString() ?? throw new Exception("Steam registry value not found"), @"steamapps\common\Escape from Tarkov\build\Logs");
-		
-		    throw new Exception("Tarkov isnt installed?");
+            using RegistryKey? regularKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov");
+		    if (regularKey != null)
+            {
+                return Path.Combine(regularKey.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
+            }
+
+            using RegistryKey? steamKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 3932890");
+            if (steamKey != null)
+            {
+                return Path.Combine(steamKey?.GetValue("InstallLocation")?.ToString() ?? throw new Exception("Steam registry value not found"), @"steamapps\common\Escape from Tarkov\build\Logs");
+            }
+		    throw new Exception("No Tarkov install path found");
 		}
 
         public static Dictionary<string, string> MapBundles = new() {
@@ -327,7 +333,6 @@ namespace TarkovMonitor
             {
                 //DebugMessage?.Invoke(this, new DebugEventArgs(e.NewMessage));
                 NewLogData?.Invoke(this, e);
-                var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3}(?<tzoffset> [+-]\d{2}:\d{2})?)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
@@ -664,7 +669,6 @@ namespace TarkovMonitor
                     using var textReader = new StreamReader(fileStream, Encoding.UTF8);
                     var fileContents = textReader.ReadToEnd();
 
-                    var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3}) (?<timeOffset>[+-]\d{2}:\d{2})\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                     var logMessages = Regex.Matches(fileContents, logPattern, RegexOptions.Multiline);
 
                     foreach (Match match in logMessages)
