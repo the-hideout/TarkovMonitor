@@ -127,7 +127,7 @@ namespace TarkovMonitor
         public event EventHandler<ProfileEventArgs> InitialReadComplete;
         public event EventHandler<ControlSettingsEventArgs> ControlSettings;
 
-        private string logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3}(?<tzoffset> [+-]\d{2}:\d{2})?)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
+        private string logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?<tzoffset> [+-]\d{2}:\d{2})?\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
 
         public static string GetDefaultLogsFolder()
 		{
