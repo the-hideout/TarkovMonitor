@@ -170,20 +170,17 @@ namespace TarkovMonitor
         private void Eft_ControlSettings(object? sender, ControlSettingsEventArgs e)
         {
             JsonArray keyBindings = e.ControlSettings["keyBindings"].AsArray();
-            foreach (var keyBinding in keyBindings)
+            JsonNode screenshotBind = keyBindings.FirstOrDefault((n) => n.AsObject()["keyName"].ToString() == "MakeScreenshot" && n.AsObject()["variants"].AsArray().Any(variant => variant.AsObject()["keyCode"].AsArray().Count > 0));
+            if (screenshotBind == null)
             {
-                System.Diagnostics.Debug.WriteLine($"keyBind {keyBinding.AsObject()["keyName"]}");
+                messageLog.AddMessage($"Screenshot key is not bound in EFT. Using this keybind is required to update tarkov.dev map position.", "info");
             }
-            JsonNode screenshotBind = keyBindings.FirstOrDefault((n) => n.AsObject()["keyName"].ToString() == "MakeScreenshot");
-            if (screenshotBind != null)
+            var variant = screenshotBind["variants"].AsArray().First(variant => variant.AsObject()["keyCode"].AsArray().Count > 0);
+            var keys = variant["keyCode"].AsArray().Select(n => n.GetValue<string>());
+            if (keys.Any(key => key == "SysReq"))
             {
-                return;
+                messageLog.AddMessage($"Screenshot key is not properly bound in EFT. Please re-bind your screenshot key in EFT for use with updatinge tarkov.dev map position.", "info");
             }
-            if (Properties.Settings.Default.remoteId == "")
-            {
-                return;
-            }
-            messageLog.AddMessage($"Screenshot key is not bound in EFT. Using this keybind is required to update tarkov.dev map position.", "info");
         }
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
