@@ -147,7 +147,15 @@ namespace TarkovMonitor
                 {
                     continue;
                 }
-                return Path.Combine(installPath, "Logs");
+                var logsPath = Path.Combine(installPath, "Logs");
+                if (!Directory.Exists(logsPath))
+                {
+                    logsPath = Path.Combine(installPath, "build", "Logs");
+                }
+                if (Directory.Exists(logsPath))
+                {
+                    return logsPath;
+                }
             }
 		    throw new Exception("No Tarkov install path found");
 		}
