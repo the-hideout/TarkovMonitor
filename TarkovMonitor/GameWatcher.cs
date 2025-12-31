@@ -130,17 +130,24 @@ namespace TarkovMonitor
         private string logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?<tzoffset> [+-]\d{2}:\d{2})?\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
 
         public static string GetDefaultLogsFolder()
-		{
-            using RegistryKey? regularKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov");
-		    if (regularKey != null)
+        {
+            string[] keyNames = {
+                "EscapeFromTarkov",
+                "Steam App 3932890",
+            };
+            foreach (var keyName in keyNames)
             {
-                return Path.Combine(regularKey.GetValue("InstallLocation")?.ToString() ?? throw new Exception("InstallLocation registry value not found"), "Logs");
-            }
-
-            using RegistryKey? steamKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 3932890");
-            if (steamKey != null)
-            {
-                return Path.Combine(steamKey?.GetValue("InstallLocation")?.ToString() ?? throw new Exception("Steam registry value not found"), "Logs");
+                using RegistryKey? regularKey = Registry.LocalMachine.OpenSubKey(@$"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{keyName}");
+                if (regularKey == null)
+                {
+                    continue;
+                }
+                var installPath = regularKey.GetValue("InstallLocation")?.ToString();
+                if (installPath == null)
+                {
+                    continue;
+                }
+                return Path.Combine(installPath, "Logs");
             }
 		    throw new Exception("No Tarkov install path found");
 		}

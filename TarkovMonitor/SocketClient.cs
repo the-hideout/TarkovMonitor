@@ -8,17 +8,36 @@ namespace TarkovMonitor
         public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
         private static readonly string wsUrl = "wss://socket.tarkov.dev";
         //private static readonly string wsUrl = "ws://localhost:8080";
-        //private static WebsocketClient? socket;
+        private static WebsocketClient socket;
+        private static System.Timers.Timer idleTimer = new()
+        {
+            AutoReset = false,
+            Interval = TimeSpan.FromMinutes(30).TotalMilliseconds,
+        };
 
-        public static async Task Send(List<JsonObject> messages)
+        static SocketClient()
+        {
+            idleTimer.Elapsed += (sender, e) => {
+                if (socket == null)
+                {
+                    return;
+                }
+                if (!socket.IsRunning)
+                {
+                    return;
+                }
+                socket.Stop(System.Net.WebSockets.WebSocketCloseStatus.NormalClosure, "Idle").ContinueWith(t => {
+                    socket.Dispose();
+                    socket = null;
+                });
+            };
+        }
+
+        public static async Task StartClient()
         {
             var remoteid = Properties.Settings.Default.remoteId;
-            if (remoteid == null || remoteid == "")
-            {
-                return;
-            }
-            using WebsocketClient socket = new(new Uri(wsUrl + $"?sessionid={remoteid}-tm"));
-            /*socket.MessageReceived.Subscribe(msg => {
+            socket = new(new Uri(wsUrl + $"?sessionid={remoteid}-tm"));
+            socket.MessageReceived.Subscribe(msg => {
                 if (msg.Text == null)
                 {
                     return;
@@ -35,13 +54,42 @@ namespace TarkovMonitor
                         ["type"] = "pong"
                     }.ToJsonString());
                 }
-            });*/
+            });
             await socket.Start();
+            idleTimer.Stop();
+            idleTimer.Start();
+        }
+
+        public static async Task VerifyClient()
+        {
+            if (socket != null)
+            {
+                if (socket.IsRunning)
+                {
+                    return;
+                }
+                socket.Dispose();
+                socket = null;
+            }
+            await StartClient();
+            return;
+        }
+
+        public static async Task Send(List<JsonObject> messages)
+        {
+            var remoteid = Properties.Settings.Default.remoteId;
+            if (remoteid == null || remoteid == "")
+            {
+                return;
+            }
+            await VerifyClient();
             foreach (var message in messages)
             {
                 message["sessionID"] = remoteid;
                 await socket.SendInstant(message.ToJsonString());
             }
+            idleTimer.Stop();
+            idleTimer.Start();
         }
         public static Task Send(JsonObject message)
         {
