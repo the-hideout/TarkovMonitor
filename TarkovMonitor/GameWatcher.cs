@@ -131,18 +131,18 @@ namespace TarkovMonitor
 
         public static string GetDefaultLogsFolder()
         {
-            string[] keyNames = {
-                "EscapeFromTarkov",
-                "Steam App 3932890",
+            string[] paths = {
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 3932890"
             };
-            foreach (var keyName in keyNames)
+            foreach (var path in paths)
             {
-                using RegistryKey? regularKey = Registry.LocalMachine.OpenSubKey(@$"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{keyName}");
-                if (regularKey == null)
+                using RegistryKey? regKey = Registry.LocalMachine.OpenSubKey(path);
+                if (regKey == null)
                 {
                     continue;
                 }
-                var installPath = regularKey.GetValue("InstallLocation")?.ToString();
+                var installPath = regKey.GetValue("InstallLocation")?.ToString();
                 if (installPath == null)
                 {
                     continue;
