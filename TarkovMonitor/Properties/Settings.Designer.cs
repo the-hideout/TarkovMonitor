@@ -334,5 +334,29 @@ namespace TarkovMonitor.Properties {
                 this["language"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool autoScreenshot {
+            get {
+                return ((bool)(this["autoScreenshot"]));
+            }
+            set {
+                this["autoScreenshot"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("30")]
+        public int autoScreenshotInterval {
+            get {
+                return ((int)(this["autoScreenshotInterval"]));
+            }
+            set {
+                this["autoScreenshotInterval"] = value;
+            }
+        }
     }
 }

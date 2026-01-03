@@ -133,7 +133,14 @@
             <div>
                 <MudSwitch @bind-Value="@AutomaticallyDeleteScreenshotsAfterRaid" Label="@LocalizationService.GetString("AutomaticallyDeleteScreenshotsAfterRaid")" Color="Color.Info" />
             </div>
-            <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="@LocalizationService.GetString("OfflineMap")" ShrinkLabel="true" HelperText="@LocalizationService.GetString("MapToUseForOfflineRaids")" AnchorOrigin="Origin.BottomCenter" xs="3">
+            <div>
+                <MudSwitch @bind-Value="@AutoScreenshotSwitch" Label="@LocalizationService.GetString("AutoScreenshotEnable")" Color="Color.Info" Disabled="@(string.IsNullOrEmpty(RemoteID))" />
+            </div>
+            <div>
+                <MudNumericField @bind-Value="@AutoScreenshotInterval" Label="@LocalizationService.GetString("AutoScreenshotInterval")" Min="1" Max="60" Disabled="@(!AutoScreenshotSwitch)" Adornment="Adornment.End" AdornmentText="@LocalizationService.GetString("Seconds")" Class="d-inline-flex" Style="max-width: 200px;" />
+            </div>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">@LocalizationService.GetString("AutoScreenshotDescription")</MudText>
+            <MudSelect @bind-Value="@MapOverrideSelect" T="string" Label="@LocalizationService.GetString("OfflineMap")" ShrinkLabel="true" HelperText="@LocalizationService.GetString("MapToUseForOfflineRaids")" AnchorOrigin="Origin.BottomCenter" xs="3" Class="mt-3">
                 <MudSelectItem T="string" Value="@string.Empty">@LocalizationService.GetString("None")</MudSelectItem>
                 @foreach (var map in TarkovDev.Maps)
                 {
@@ -659,6 +666,32 @@
         set
         {
             Properties.Settings.Default.automaticallyDeleteScreenshotsAfterRaid = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public bool AutoScreenshotSwitch
+    {
+        get
+        {
+            return Properties.Settings.Default.autoScreenshot;
+        }
+        set
+        {
+            Properties.Settings.Default.autoScreenshot = value;
+            Properties.Settings.Default.Save();
+        }
+    }
+
+    public int AutoScreenshotInterval
+    {
+        get
+        {
+            return Properties.Settings.Default.autoScreenshotInterval;
+        }
+        set
+        {
+            Properties.Settings.Default.autoScreenshotInterval = value;
             Properties.Settings.Default.Save();
         }
     }

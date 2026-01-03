@@ -207,6 +207,18 @@
   <data name="AutomaticallyDeleteScreenshotsAfterRaid" xml:space="preserve">
     <value>Automatically delete taken screenshots after raid</value>
   </data>
+  <data name="AutoScreenshotEnable" xml:space="preserve">
+    <value>Enable auto screenshot</value>
+  </data>
+  <data name="AutoScreenshotInterval" xml:space="preserve">
+    <value>Interval</value>
+  </data>
+  <data name="AutoScreenshotDescription" xml:space="preserve">
+    <value>Automatically takes screenshots during raids to update your position on tarkov.dev map.</value>
+  </data>
+  <data name="Seconds" xml:space="preserve">
+    <value>seconds</value>
+  </data>
   <data name="OfflineMap" xml:space="preserve">
     <value>Offline Map</value>
   </data>
