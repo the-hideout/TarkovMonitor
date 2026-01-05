@@ -179,7 +179,7 @@ namespace TarkovMonitor
             var keys = variant["keyCode"].AsArray().Select(n => n.GetValue<string>());
             if (keys.Any(key => key == "SysReq"))
             {
-                messageLog.AddMessage($"Screenshot key is not properly bound in EFT. Please re-bind your screenshot key in EFT for use with updatinge tarkov.dev map position.", "info");
+                messageLog.AddMessage($"Screenshot key is not properly bound in EFT. Please re-bind your screenshot key in EFT for use with updating tarkov.dev map position.", "info");
             }
         }
 
