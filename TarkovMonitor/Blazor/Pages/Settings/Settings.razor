@@ -2,6 +2,7 @@
 @using System.Diagnostics
 @using NAudio.Wave
 @using Microsoft.WindowsAPICodePack.Dialogs;
+@using System.Text.RegularExpressions;
 @inject GameWatcher eft
 @inject MessageLog messageLog
 @inject IDialogService DialogService
@@ -547,7 +548,7 @@
 
     private async void TestToken()
     {
-        if (TarkovTrackerToken.Length != 22)
+        if (!Regex.Match(TarkovTrackerToken, @"^(?:[A-Z]{3}_)?.{22}$").Success)
         {
             messageLog.AddMessage("You must enter a valid TarkovTracker API token.", "warning");
             return;
