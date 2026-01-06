@@ -277,7 +277,7 @@ namespace TarkovMonitor
             {
                 if (ex.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    throw new Exception($"Invalid Goons API response code ({ex.StatusCode}): {ex.Message}");
+                    throw new Exception($"Invalid Goons API response code ({ex.StatusCode}): {ex.Content}");
                 }
                 throw new Exception($"Goons API exception: {ex.Message}");
             }
