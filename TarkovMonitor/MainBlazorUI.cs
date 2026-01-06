@@ -433,7 +433,7 @@ namespace TarkovMonitor
 
         private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
         {
-            messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovTracker"), TarkovTracker.Progress.data.displayName, TarkovTracker.Progress.data.playerLevel, TarkovTracker.Progress.data.pmcFaction), "update", "https://tarkovtracker.io");
+            messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovTracker"), TarkovTracker.Progress.data.displayName, TarkovTracker.Progress.data.playerLevel, TarkovTracker.Progress.data.pmcFaction), "update", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
