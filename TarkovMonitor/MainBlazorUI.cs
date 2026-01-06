@@ -9,11 +9,47 @@ using System.ComponentModel;
 using MudBlazor;
 using Microsoft.Extensions.Localization;
 using System.Text.Json.Nodes;
+using System.Runtime.InteropServices;
 
 namespace TarkovMonitor
 {
     public partial class MainBlazorUI : Form
     {
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr FindWindow(string? lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct INPUT
+        {
+            public uint type;
+            public InputUnion U;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 32)]
+        private struct InputUnion
+        {
+            [FieldOffset(0)] public KEYBDINPUT ki;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KEYBDINPUT
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        private const uint INPUT_KEYBOARD = 1;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+
         private readonly GameWatcher eft;
         private readonly MessageLog messageLog;
         private readonly LogRepository logRepository;
@@ -21,8 +57,10 @@ namespace TarkovMonitor
         private readonly TimersManager timersManager;
         private readonly System.Timers.Timer runthroughTimer;
         private readonly System.Timers.Timer scavCooldownTimer;
+        private readonly System.Timers.Timer autoScreenshotTimer;
         private LocalizationService localizationService;
         private bool inRaid;
+        private int screenshotKeyCode = 0x7B; // Default to F12 (VK_F12)
 
         public MainBlazorUI()
         {
@@ -140,6 +178,19 @@ namespace TarkovMonitor
                 {
                     eft.LogsPath = Properties.Settings.Default.customLogsPath;
                 }
+                if (e.PropertyName == "autoScreenshot" || e.PropertyName == "autoScreenshotInterval")
+                {
+                    if (inRaid && Properties.Settings.Default.autoScreenshot && !string.IsNullOrEmpty(Properties.Settings.Default.remoteId))
+                    {
+                        autoScreenshotTimer.Stop();
+                        autoScreenshotTimer.Interval = Properties.Settings.Default.autoScreenshotInterval * 1000;
+                        autoScreenshotTimer.Start();
+                    }
+                    else
+                    {
+                        autoScreenshotTimer.Stop();
+                    }
+                }
             };
 
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
@@ -165,15 +216,23 @@ namespace TarkovMonitor
                 Enabled = false
             };
             scavCooldownTimer.Elapsed += ScavCooldownTimer_Elapsed;
+
+            autoScreenshotTimer = new System.Timers.Timer(Properties.Settings.Default.autoScreenshotInterval * 1000)
+            {
+                AutoReset = true,
+                Enabled = false
+            };
+            autoScreenshotTimer.Elapsed += AutoScreenshotTimer_Elapsed;
         }
 
         private void Eft_ControlSettings(object? sender, ControlSettingsEventArgs e)
         {
             JsonArray keyBindings = e.ControlSettings["keyBindings"].AsArray();
-            JsonNode screenshotBind = keyBindings.FirstOrDefault((n) => n.AsObject()["keyName"].ToString() == "MakeScreenshot" && n.AsObject()["variants"].AsArray().Any(variant => variant.AsObject()["keyCode"].AsArray().Count > 0));
+            JsonNode? screenshotBind = keyBindings.FirstOrDefault((n) => n.AsObject()["keyName"].ToString() == "MakeScreenshot" && n.AsObject()["variants"].AsArray().Any(variant => variant.AsObject()["keyCode"].AsArray().Count > 0));
             if (screenshotBind == null)
             {
                 messageLog.AddMessage($"Screenshot key is not bound in EFT. Using this keybind is required to update tarkov.dev map position.", "info");
+                return;
             }
             var variant = screenshotBind["variants"].AsArray().First(variant => variant.AsObject()["keyCode"].AsArray().Count > 0);
             var keys = variant["keyCode"].AsArray().Select(n => n.GetValue<string>());
@@ -181,6 +240,44 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage($"Screenshot key is not properly bound in EFT. Please re-bind your screenshot key in EFT for use with updating tarkov.dev map position.", "info");
             }
+
+            var keyName = variant["keyCode"].AsArray()[0]?.GetValue<string>();
+            if (!string.IsNullOrEmpty(keyName))
+            {
+                screenshotKeyCode = UnityKeyCodeMapper.ToVirtualKey(keyName);
+            }
+        }
+
+        private void TriggerScreenshot()
+        {
+            IntPtr hWnd = FindWindow(null, "EscapeFromTarkov");
+            if (hWnd == IntPtr.Zero)
+            {
+                return;
+            }
+
+            IntPtr foregroundWindow = GetForegroundWindow();
+            if (foregroundWindow != hWnd)
+            {
+                return;
+            }
+
+            INPUT[] inputs = new INPUT[2];
+
+            inputs[0].type = INPUT_KEYBOARD;
+            inputs[0].U.ki.wVk = (ushort)screenshotKeyCode;
+            inputs[0].U.ki.dwFlags = 0;
+
+            inputs[1].type = INPUT_KEYBOARD;
+            inputs[1].U.ki.wVk = (ushort)screenshotKeyCode;
+            inputs[1].U.ki.dwFlags = KEYEVENTF_KEYUP;
+
+            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+        }
+
+        private void AutoScreenshotTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            TriggerScreenshot();
         }
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
@@ -279,6 +376,7 @@ namespace TarkovMonitor
 
             messageLog.AddMessage(monMessage);
             runthroughTimer.Stop();
+            autoScreenshotTimer.Stop();
             if (Properties.Settings.Default.scavCooldownAlert && (e.RaidInfo.RaidType == RaidType.Scav || e.RaidInfo.RaidType == RaidType.PVE))
             {
                 scavCooldownTimer.Stop();
@@ -734,6 +832,12 @@ namespace TarkovMonitor
                 runthroughTimer.Stop();
                 runthroughTimer.Start();
             }
+            if (Properties.Settings.Default.autoScreenshot && !string.IsNullOrEmpty(Properties.Settings.Default.remoteId))
+            {
+                autoScreenshotTimer.Stop();
+                autoScreenshotTimer.Interval = Properties.Settings.Default.autoScreenshotInterval * 1000;
+                autoScreenshotTimer.Start();
+            }
             if (Properties.Settings.Default.submitQueueTime && e.RaidInfo.QueueTime > 0 && e.RaidInfo.RaidType != RaidType.Unknown)
             {
                 try
@@ -781,6 +885,7 @@ namespace TarkovMonitor
         {
             groupManager.Stale = true;
             runthroughTimer.Stop();
+            autoScreenshotTimer.Stop();
             inRaid = false;
             try
             {
