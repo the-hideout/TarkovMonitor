@@ -755,7 +755,9 @@ namespace TarkovMonitor
                 }
                 catch (Exception ex)
                 {
+#if DEBUG
                     messageLog.AddMessage($"Error submitting queue time: {ex.Message}", "exception");
+#endif
                 }
             }
         }
