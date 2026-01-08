@@ -176,8 +176,14 @@ namespace TarkovMonitor
                 if (screenshotBind == null)
                 {
                     messageLog.AddMessage($"Screenshot key is not bound in EFT. Using this keybind is required to update tarkov.dev map position.", "info");
+                    return;
                 }
-                var variant = screenshotBind["variants"].AsArray().First(variant => variant.AsObject()["keyCode"].AsArray().Count > 0);
+                var variant = screenshotBind["variants"].AsArray().FirstOrDefault(variant => variant.AsObject()["keyCode"].AsArray().Count > 0);
+                if (variant == null)
+                {
+                    // screenshot is bound to an axis, like mousewheel
+                    return;
+                }
                 var keys = variant["keyCode"].AsArray().Select(n => n.GetValue<string>());
                 if (keys.Any(key => key == "SysReq"))
                 {
