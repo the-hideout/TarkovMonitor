@@ -1,5 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -58,8 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-
-  <!-- Settings Page -->
   <data name="Settings" xml:space="preserve">
     <value>Настройки</value>
   </data>
@@ -180,13 +237,9 @@
   <data name="SelectLanguage" xml:space="preserve">
     <value>Выберите язык</value>
   </data>
-
-  <!-- Dashboard Page -->
   <data name="Dashboard" xml:space="preserve">
     <value>Панель управления</value>
   </data>
-
-  <!-- Other pages -->
   <data name="Stats" xml:space="preserve">
     <value>Статистика</value>
   </data>
@@ -202,8 +255,6 @@
   <data name="Timers" xml:space="preserve">
     <value>Таймеры</value>
   </data>
-
-  <!-- Languages -->
   <data name="English" xml:space="preserve">
     <value>Английский</value>
   </data>
@@ -225,16 +276,15 @@
   <data name="Russian" xml:space="preserve">
     <value>Русский</value>
   </data>
-
-  <!-- Navigation -->
+  <data name="Chinese" xml:space="preserve">
+    <value>китайский</value>
+  </data>
   <data name="TarkovMonitor" xml:space="preserve">
     <value>Tarkov Monitor</value>
   </data>
   <data name="Messages" xml:space="preserve">
     <value>Сообщения</value>
   </data>
-
-  <!-- Common Actions -->
   <data name="Cancel" xml:space="preserve">
     <value>Отмена</value>
   </data>
@@ -247,16 +297,12 @@
   <data name="ClearData" xml:space="preserve">
     <value>Очистить данные</value>
   </data>
-
-  <!-- Stats Page -->
   <data name="FleaMarketSales" xml:space="preserve">
     <value>Продажи на барахолке</value>
   </data>
   <data name="Raids" xml:space="preserve">
     <value>Рейды</value>
   </data>
-
-  <!-- Raw Logs Page -->
   <data name="CustomLogData" xml:space="preserve">
     <value>Пользовательские данные логов</value>
   </data>
@@ -266,8 +312,6 @@
   <data name="OpenLogsFolder" xml:space="preserve">
     <value>Открыть папку логов</value>
   </data>
-
-  <!-- Force Read Dialog -->
   <data name="CurrentProfile" xml:space="preserve">
     <value>Текущий профиль</value>
   </data>
@@ -289,17 +333,12 @@
   <data name="CouldNotFindEFTInstallation" xml:space="preserve">
     <value>Не удалось найти папку установки Escape From Tarkov или логи отсутствуют.</value>
   </data>
-
-  <!-- Page Titles -->
   <data name="NotFound" xml:space="preserve">
     <value>Не найдено</value>
   </data>
-  <!-- Confirm Dialog -->
   <data name="AreYouSureYouWantToClearAllData" xml:space="preserve">
     <value>Вы уверены, что хотите очистить все данные? Это действие нельзя отменить.</value>
   </data>
-
-  <!-- Sounds Page -->
   <data name="CustomRaidStartingSound" xml:space="preserve">
     <value>Пользовательский звук начала рейда</value>
   </data>
@@ -321,13 +360,9 @@
   <data name="CustomScavCooldownSound" xml:space="preserve">
     <value>Пользовательский звук отката скава</value>
   </data>
-
-  <!-- Group Page -->
   <data name="YouArentInAGroupOrHavePartyMembersYet" xml:space="preserve">
     <value>Вы еще не состоите в группе или у вас нет участников группы.</value>
   </data>
-
-  <!-- Timers Page -->
   <data name="TimeInRaid" xml:space="preserve">
     <value>Время в рейде</value>
   </data>
@@ -337,8 +372,6 @@
   <data name="ScavCooldown" xml:space="preserve">
     <value>Откат скава</value>
   </data>
-
-  <!-- MessageBoard -->
   <data name="ThereArentAnyMessagesYet" xml:space="preserve">
     <value>Сообщений пока нет.</value>
   </data>
@@ -357,8 +390,6 @@
   <data name="Quest" xml:space="preserve">
     <value>Квест</value>
   </data>
-
-  <!-- Dynamic Messages -->
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
     <value>Получено {0} предметов, {1} карт, {2} торговцев, {3} заданий и {4} станций убежища с tarkov.dev</value>
   </data>

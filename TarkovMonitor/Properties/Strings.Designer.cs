@@ -106,6 +106,15 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to 中文.
+        /// </summary>
+        internal static string Chinese {
+            get {
+                return ResourceManager.GetString("Chinese", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Choose the starting point from which to read logs.
         /// </summary>
         internal static string ChooseStartingPointHelperText {
@@ -286,6 +295,24 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to French.
+        /// </summary>
+        internal static string French {
+            get {
+                return ResourceManager.GetString("French", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to German.
+        /// </summary>
+        internal static string German {
+            get {
+                return ResourceManager.GetString("German", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Get A Token.
         /// </summary>
         internal static string GetAToken {
@@ -435,6 +462,24 @@ namespace TarkovMonitor.Properties {
         internal static string OpenLogsFolder {
             get {
                 return ResourceManager.GetString("OpenLogsFolder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Polish.
+        /// </summary>
+        internal static string Polish {
+            get {
+                return ResourceManager.GetString("Polish", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Portuguese.
+        /// </summary>
+        internal static string Portuguese {
+            get {
+                return ResourceManager.GetString("Portuguese", resourceCulture);
             }
         }
         
@@ -628,7 +673,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same will be read and that cumulative progress will be synced to Tarkov Tracker..
+        ///   Looks up a localized string similar to Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same profile will be read and that cumulative progress will be synced to Tarkov Tracker..
         /// </summary>
         internal static string SelectStartingPointDescription {
             get {
@@ -660,6 +705,15 @@ namespace TarkovMonitor.Properties {
         internal static string Sounds {
             get {
                 return ResourceManager.GetString("Sounds", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spanish.
+        /// </summary>
+        internal static string Spanish {
+            get {
+                return ResourceManager.GetString("Spanish", resourceCulture);
             }
         }
         

@@ -325,7 +325,7 @@
     <value>Choose the starting point from which to read logs</value>
   </data>
   <data name="SelectStartingPointDescription" xml:space="preserve">
-    <value>Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same will be read and that cumulative progress will be synced to Tarkov Tracker.</value>
+    <value>Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same profile will be read and that cumulative progress will be synced to Tarkov Tracker.</value>
   </data>
   <data name="WarningMessage" xml:space="preserve">
     <value>WARNING: You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</value>
