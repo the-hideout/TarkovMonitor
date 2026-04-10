@@ -1,12 +1,14 @@
-﻿using GraphQL.Client.Http;
-using GraphQL.Client.Serializer.SystemTextJson;
+﻿using Newtonsoft.Json.Linq;
 using Refit;
 
 namespace TarkovMonitor
 {
     internal class TarkovDev
     {
-        private static readonly GraphQLHttpClient client = new("https://api.tarkov.dev/graphql", new SystemTextJsonSerializer());
+        private static readonly HttpClient client = new()
+        {
+            BaseAddress = new Uri("https://json.tarkov.dev"),
+        };
 
         internal interface ITarkovDevAPI
         {
@@ -49,173 +51,134 @@ namespace TarkovMonitor
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
         public static Dictionary<string, string> PlayerNames { get; private set; } = new();
 
+        private static Dictionary<ProfileType, int> ScavCooldownBaseValues = new() {
+            { ProfileType.Regular, 1500 },
+            { ProfileType.PVE, 1500 },
+        };
+
         static TarkovDev()
         {
-            client.HttpClient.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+        }
+
+        private async static Task<JObject> GetJObject(string path) {
+            var response = await client.GetAsync(path);
+            response.EnsureSuccessStatusCode();
+            string responseBody = await response.Content.ReadAsStringAsync();
+            return JObject.Parse(responseBody);
+        }
+
+        private async static Task<T> JsonApiRequest<T>(string path, string lang = null)
+        {
+            JObject data = null;
+            Dictionary<string, string> langData = new();
+            Dictionary<string, string> langDataFallback = new();
+            var dataTask = GetJObject(path);
+            var langDataTask = System.Threading.Tasks.Task.FromResult(new JObject());
+            var langDataFallbackTask = System.Threading.Tasks.Task.FromResult(new JObject());
+            if (lang != null)
+            {
+                langDataTask = GetJObject($"{path}_{lang}");
+                if (lang != "en")
+                {
+                    langDataFallbackTask = GetJObject($"{path}_en");
+                }
+            }
+            await System.Threading.Tasks.Task.WhenAll(dataTask, langDataTask, langDataFallbackTask);
+            if (dataTask.IsFaulted)
+            {
+                throw dataTask.Exception.InnerException;
+            }
+            data = dataTask.Result;
+            if (lang == null || !data.ContainsKey("translations"))
+            {
+                return data.ToObject<T>();
+            }
+            if (langDataTask.IsFaulted)
+            {
+                throw langDataTask.Exception.InnerException;
+            }
+            langData = langDataTask.Result.ToObject<LocalizationResponse>().data;
+            if (lang != "en")
+            {
+                if (langDataFallbackTask.IsFaulted)
+                {
+                    throw langDataFallbackTask.Exception.InnerException;
+                }
+                langDataFallback = langDataFallbackTask.Result.ToObject<LocalizationResponse>().data;
+            }
+            foreach (var jPath in data["translations"].ToObject<string[]>())
+            {
+                foreach (JValue translationTarget in data.SelectTokens(jPath))
+                {
+                    var translatedValue = translationTarget.Value<string>();
+                    if (langData.ContainsKey(translatedValue))
+                    {
+                        translatedValue = langData[translatedValue];
+                    }
+                    else if (langDataFallback.ContainsKey(translatedValue))
+                    {
+                        translatedValue = langDataFallback[translatedValue];
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                    translationTarget.Value = translatedValue;
+                }
+            }
+            return data.ToObject<T>();
         }
 
         public async static Task<List<Task>> GetTasks()
         {
-            System.Diagnostics.Debug.WriteLine("GetTasks " + GameWatcher.CurrentProfile.Type.ToString().ToLower());
-            var request = new GraphQL.GraphQLRequest() {
-                Query = @"
-                    query TarkovMonitorTasks($language: LanguageCode, $gm: GameMode) {
-                        tasks(lang: $language, gameMode: $gm) {
-                            id
-                            name
-                            normalizedName
-                            wikiLink
-                            restartable
-                            failConditions {
-                              ...on TaskObjectiveTaskStatus {
-                                task {
-                                  id
-                                }
-                                status
-                              }
-                            }
-                        }
-                    }
-                ",
-                Variables = new { language = Properties.Settings.Default.language, gm = GameWatcher.CurrentProfile.Type.ToString().ToLower() },
-            };
-            var response = await client.SendQueryAsync<TasksResponse>(request);
-            Tasks = response.Data.tasks;
+            var response = await JsonApiRequest<TasksResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/tasks", Properties.Settings.Default.language);
+            Tasks = response.data.tasks.Values.ToList();
             return Tasks;
         }
 
         public async static Task<List<Map>> GetMaps()
         {
-            var request = new GraphQL.GraphQLRequest()
-            {
-                Query = @"
-                    query TarkovMonitorMaps($language: LanguageCode) {
-                        maps(lang: $language) {
-                            id
-                            name
-                            nameId
-                            normalizedName
-                            bosses {
-                                boss {
-                                    normalizedName
-                                }
-                                escorts {
-                                    boss {
-                                        normalizedName
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ",
-                Variables = new { language = Properties.Settings.Default.language },
-            };
-            var response = await client.SendQueryAsync<MapsResponse>(request);
-            Maps = response.Data.maps;
-            Maps.Sort((a, b) => a.name.CompareTo(b.name));
+            var response = await JsonApiRequest<MapsResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/maps", Properties.Settings.Default.language);
+            Maps = response.data.maps.Values.ToList();
             return Maps;
         }
         public async static Task<List<Item>> GetItems()
         {
-            var request = new GraphQL.GraphQLRequest()
-            {
-                Query = @"
-                    query TarkovMonitorItems($language: LanguageCode) {
-                        items(lang: $language) {
-                            id
-                            name
-                            width
-                            height
-                            link
-                            iconLink
-                            gridImageLink
-                            image512pxLink
-                            types
-                            properties {
-                                ...on ItemPropertiesWeapon {
-                                    defaultPreset { 
-                                        iconLink 
-                                        gridImageLink
-                                        width
-                                        height
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ",
-                Variables = new { language = Properties.Settings.Default.language },
-            };
-            var response = await client.SendQueryAsync<ItemsResponse>(request);
-            Items = response.Data.items;
+            var response = await JsonApiRequest<ItemsResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/items", Properties.Settings.Default.language);
+            Items = response.data.items.Values.ToList();
             foreach (var item in Items)
             {
                 if (item.types.Contains("gun"))
                 {
                     if (item.properties?.defaultPreset != null)
                     {
-                        item.width = item.properties.defaultPreset.width;
-                        item.height = item.properties.defaultPreset.height;
-                        item.iconLink = item.properties.defaultPreset.iconLink;
-                        item.gridImageLink = item.properties.defaultPreset.gridImageLink;
+                        var defaultPreset = Items.Find(i => i.id == item.properties.defaultPreset);
+                        if (defaultPreset == null)
+                        {
+                            continue;
+                        }
+                        item.width = defaultPreset.width;
+                        item.height = defaultPreset.height;
+                        item.iconLink = defaultPreset.iconLink;
+                        item.gridImageLink = defaultPreset.gridImageLink;
                     }
                 }
             }
+            PlayerLevels = response.data.playerLevels;
+            ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type] = response.data.settings.scavCooldownSeconds;
             return Items;
         }
         public async static Task<List<Trader>> GetTraders()
         {
-            var request = new GraphQL.GraphQLRequest()
-            {
-                Query = @"
-                    query TarkovMonitorTraders($language: LanguageCode) {
-                        traders(lang: $language) {
-                            id
-                            name
-                            normalizedName 
-                            reputationLevels {
-                                ...on TraderReputationLevelFence {
-                                    minimumReputation
-                                    scavCooldownModifier
-                                }
-                            }
-                        }
-                    }
-                ",
-                Variables = new { language = Properties.Settings.Default.language },
-            };
-            var response = await client.SendQueryAsync<TradersResponse>(request);
-            Traders = response.Data.traders;
+            var response = await JsonApiRequest<TradersResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/traders", Properties.Settings.Default.language);
+            Traders = response.data.Values.ToList();
             return Traders;
         }
         public async static Task<List<HideoutStation>> GetHideout()
         {
-            var request = new GraphQL.GraphQLRequest()
-            {
-                Query = @"
-                    query TarkovMonitorHideoutStations($language: LanguageCode) {
-                        hideoutStations(lang: $language) {
-                            id
-                            name
-                            normalizedName
-                            levels {
-                                id
-                                level
-                                bonuses {
-                                    ...on HideoutStationBonus {
-                                        type
-                                        name
-                                        value
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ",
-                Variables = new { language = Properties.Settings.Default.language },
-            };
-            var response = await client.SendQueryAsync<HideoutResponse>(request);
-            Stations = response.Data.hideoutStations;
+            var response = await JsonApiRequest<HideoutResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/hideout", Properties.Settings.Default.language);
+            Stations = response.data.Values.ToList();
             return Stations;
         }
         public async static System.Threading.Tasks.Task UpdateApiData()
@@ -228,23 +191,6 @@ namespace TarkovMonitor
                 GetHideout(),
             };
             await System.Threading.Tasks.Task.WhenAll(tasks);
-        }
-        public async static Task<List<PlayerLevel>> GetPlayerLevels()
-        {
-            var request = new GraphQL.GraphQLRequest()
-            {
-                Query = @"
-                    query TarkovMonitorPlayerLevels {
-                        playerLevels {
-                            level
-                            exp
-                        }
-                    }
-                "
-            };
-            var response = await client.SendQueryAsync<PlayerLevelsResponse>(request);
-            PlayerLevels = response.Data.playerLevels;
-            return PlayerLevels;
         }
 
         public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type, ProfileType gameMode)
@@ -369,9 +315,25 @@ namespace TarkovMonitor
             UpdateApiData();
         }
 
-        public class TasksResponse
+        public class JsonApiResponse
         {
-            public List<Task> tasks { get; set; }
+            public object data { get; set; }
+            public List<string>? translations { get; set; }
+        }
+
+        public class LocalizationResponse : JsonApiResponse
+        {
+            public Dictionary<string, string> data { get; set; }
+        }
+
+        public class TasksResponse : JsonApiResponse
+        {
+            public TasksJsonContent data {  get; set; }
+        }
+
+        public class TasksJsonContent
+        {
+            public Dictionary<string, Task> tasks { get; set; }
         }
 
         public class Task
@@ -384,20 +346,20 @@ namespace TarkovMonitor
             public List<TaskFailCondition> failConditions { get; set; }
         }
 
-        public class TaskFragment
-        {
-            public string id { get; set; }
-        }
-
         public class TaskFailCondition
         {
-            public TaskFragment task { get; set; }
-            public List<string> status { get; set; }
+            public string? task { get; set; }
+            public List<string>? status { get; set; }
         }
 
-        public class MapsResponse
+        public class MapsResponse : JsonApiResponse
         {
-            public List<Map> maps { get; set; }
+            public MapsJsonContent data { get; set; }
+        }
+
+        public class MapsJsonContent
+        {
+            public Dictionary<string, Map> maps { get; set; }
         }
 
         public class Map
@@ -409,26 +371,29 @@ namespace TarkovMonitor
             public List<BossSpawn> bosses { get; set; }
             public bool HasGoons()
             {
-                List<string> goons = new() { "death-knight", "big-pipe", "birdeye" };
-                return bosses.Any(b => goons.Contains(b.boss.normalizedName) || b.escorts.Any(e => goons.Contains(e.boss.normalizedName)));
+                List<string> goons = new() { "bossKnight", "followerBigPipe", "followerBirdEye" };
+                return bosses.Any(spawn => goons.Contains(spawn.mob) || spawn.escorts.Any(e => goons.Contains(e.mob)));
             }
         }
         public class BossEscort
         {
-            public Boss boss { get; set; }
+            public string mob { get; set; }
         }
         public class BossSpawn
         {
-            public Boss boss { get; set; }
+            public string mob { get; set; }
             public List<BossEscort> escorts { get; set; }
         }
-        public class Boss
+        public class ItemsResponse : JsonApiResponse
         {
-            public string normalizedName { get; set; }
+            public ItemsJsonContent data { get; set; }
         }
-        public class ItemsResponse
+
+        public class ItemsJsonContent
         {
-            public List<Item> items { get; set; }
+            public Dictionary<string, Item> items { get; set; }
+            public List<PlayerLevel> playerLevels { get; set; }
+            public GameSettings settings { get; set; }
         }
         public class Item
         {
@@ -445,19 +410,17 @@ namespace TarkovMonitor
         }
         public class ItemProperties
         {
-            public ItemPropertiesDefaultPreset? defaultPreset { get; set; }
-        }
-        public class ItemPropertiesDefaultPreset
-        {
-            public string iconLink { get; set; }
-            public string gridImageLink { get; set; }
-            public int width { get; set; }
-            public int height { get; set; }
+            public string? defaultPreset { get; set; }
         }
 
-        public class TradersResponse
+        public class GameSettings
         {
-            public List<Trader> traders { get; set; }
+            public int scavCooldownSeconds { get; set; }
+        }
+
+        public class TradersResponse : JsonApiResponse
+        {
+            public Dictionary<string, Trader> data { get; set; }
         }
         public class Trader
         {
@@ -472,9 +435,9 @@ namespace TarkovMonitor
             public decimal scavCooldownModifier { get; set; }
         }
 
-        public class HideoutResponse
+        public class HideoutResponse : JsonApiResponse
         {
-            public List<HideoutStation> hideoutStations { get; set; }
+            public Dictionary<string, HideoutStation> data { get; set; }
         }
         public class HideoutStation
         {
@@ -494,11 +457,6 @@ namespace TarkovMonitor
             public string type { get; set; }
             public string name { get; set; }
             public decimal value { get; set; }
-        }
-
-        public class PlayerLevelsResponse
-        {
-            public List<PlayerLevel> playerLevels { get; set; }
         }
         public class PlayerLevel
         {
@@ -552,10 +510,6 @@ namespace TarkovMonitor
 
         public static int ScavCooldownSeconds()
         {
-            Dictionary<ProfileType, int> ScavCooldownBaseValues = new() {
-                { ProfileType.Regular, 1500 },
-                { ProfileType.PVE, 1500 },
-            };
             decimal baseTimer = Convert.ToDecimal(ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type]);
 
             decimal hideoutBonus = 0;

@@ -363,7 +363,7 @@ namespace TarkovMonitor
                     var eventDate = new DateTime();
                     DateTime.TryParseExact(logMessage.Groups["date"].Value + " " + logMessage.Groups["time"].Value.Split(" ")[0], "yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out eventDate);
                     var eventLine = logMessage.Groups["message"].Value;
-                    System.Diagnostics.Debug.WriteLine(eventLine);
+                    //System.Diagnostics.Debug.WriteLine(eventLine);
                     if (eventLine.Contains("Session mode: "))
                     {
                         var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>\w+)");

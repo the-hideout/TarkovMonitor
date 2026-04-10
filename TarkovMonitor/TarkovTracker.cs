@@ -185,11 +185,11 @@ namespace TarkovMonitor
                         {
                             continue;
                         }
-                        if (failCondition.task.id == questId && failCondition.status.Contains("complete"))
+                        if (failCondition.task == questId && failCondition.status.Contains("complete"))
                         {
                             foreach (var taskStatus in Progress.data.tasksProgress)
                             {
-                                if (taskStatus.id == failCondition.task.id)
+                                if (taskStatus.id == failCondition.task)
                                 {
                                     taskStatus.failed = true;
                                     break;

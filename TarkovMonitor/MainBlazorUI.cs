@@ -280,7 +280,7 @@ namespace TarkovMonitor
         private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
             inRaid = false;
-            groupManager.Stale = true;
+            //groupManager.Stale = true;
             var mapName = e.RaidInfo.Map;
             var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
             if (map != null) mapName = map.name;
@@ -302,6 +302,7 @@ namespace TarkovMonitor
 
         private void Eft_GroupRaidSettings(object? sender, LogContentEventArgs<GroupRaidSettingsLogContent> e)
         {
+            return;
             groupManager.ClearGroup();
         }
 
@@ -427,6 +428,7 @@ namespace TarkovMonitor
 
         private void Eft_GroupUserLeave(object? sender, LogContentEventArgs<GroupMatchUserLeaveLogContent> e)
         {
+            return;
             if (e.LogContent.Nickname != "You")
             {
                 groupManager.RemoveGroupMember(e.LogContent.Nickname);
@@ -441,6 +443,7 @@ namespace TarkovMonitor
 
         private void Eft_GroupDisbanded(object? sender, EventArgs e)
         {
+            return;
             groupManager.ClearGroup();
         }
 
@@ -451,6 +454,7 @@ namespace TarkovMonitor
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
         {
+            return;
             groupManager.Stale = true;
         }
 
@@ -531,6 +535,7 @@ namespace TarkovMonitor
 
         private void Eft_GroupMemberReady(object? sender, LogContentEventArgs<GroupMatchRaidReadyLogContent> e)
         {
+            return;
             groupManager.UpdateGroupMember(e.LogContent);
             messageLog.AddMessage($"{e.LogContent.extendedProfile.Info.Nickname} ({e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Side.ToUpper()} {e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Level}) ready.", "group");
         }
@@ -794,7 +799,7 @@ namespace TarkovMonitor
 
         private void Eft_RaidExited(object? sender, RaidExitedEventArgs e)
         {
-            groupManager.Stale = true;
+            //groupManager.Stale = true;
             runthroughTimer.Stop();
             inRaid = false;
             try
