@@ -375,9 +375,9 @@ namespace TarkovMonitor
                         raidInfo.ProfileType = CurrentProfile.Type;
                         continue;
                     }
-                    if (eventLine.Contains("SelectProfile ProfileId:"))
+                    if (eventLine.Contains("SelectProfile ProfileId:") || eventLine.Contains("SelectedProfile ProfileId:"))
                     {
-                        var profileIdMatch = Regex.Match(eventLine, @"SelectProfile ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)");
+                        var profileIdMatch = Regex.Match(eventLine, @"Select(?:ed)?Profile ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)");
                         if (!profileIdMatch.Success)
                         {
                             continue;
