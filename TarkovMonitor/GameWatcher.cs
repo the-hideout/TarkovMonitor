@@ -76,24 +76,7 @@ namespace TarkovMonitor
                 return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Escape From Tarkov", "Screenshots");
             }
         }
-        private int _accountId = 0;
-        public int AccountId
-        {
-            get
-            {
-                if (_accountId > 0)
-                {
-                    return _accountId;
-                }
-                List<LogDetails> details = GetLogDetails(GetLatestLogFolder());
-                if (details.Count == 0)
-                {
-                    return 0;
-                }
-                _accountId = details[^1].AccountId;
-                return details[^1].AccountId;
-            }
-        }
+
         //private event EventHandler<NewLogEventArgs> NewLog;
         internal readonly Dictionary<GameLogType, LogMonitor> Monitors;
         private RaidInfo raidInfo;
@@ -127,7 +110,8 @@ namespace TarkovMonitor
         public event EventHandler<ProfileEventArgs> InitialReadComplete;
         public event EventHandler<ControlSettingsEventArgs> ControlSettings;
 
-        private string logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?<tzoffset> [+-]\d{2}:\d{2})?\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
+        private static string logPatternPrefix = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?<tzoffset> [+-]\d{2}:\d{2})?\|";
+        private static string logPattern = @$"{logPatternPrefix}(?<message>.+$)\s*(?<json>^{{[\s\S]+?^}})?";
 
         public static string GetDefaultLogsFolder()
         {
@@ -334,7 +318,6 @@ namespace TarkovMonitor
             if (filename.Contains("application.log") || filename.Contains("application_000.log"))
             {
                 StartNewMonitor(e.FullPath);
-                _accountId = 0;
             }
             if (filename.Contains("notifications.log") || filename.Contains("notifications_000.log"))
             {
@@ -372,9 +355,10 @@ namespace TarkovMonitor
                             continue;
                         }
                         CurrentProfile.Type = Enum.Parse<ProfileType>(modeMatch.Groups["mode"].Value, true);
-                        raidInfo.ProfileType = CurrentProfile.Type;
+                        raidInfo.Profile = CurrentProfile;
                         continue;
                     }
+                    // old message was SelectProfile, new is SelectedProfile
                     if (eventLine.Contains("SelectProfile ProfileId:") || eventLine.Contains("SelectedProfile ProfileId:"))
                     {
                         var profileIdMatch = Regex.Match(eventLine, @"Select(?:ed)?Profile ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)");
@@ -393,6 +377,7 @@ namespace TarkovMonitor
                             }
                             else
                             {
+                                System.Diagnostics.Debug.WriteLine("PROFILE CHANGED");
                                 ProfileChanged?.Invoke(this, new(CurrentProfile));
                             }
                         }
@@ -460,7 +445,7 @@ namespace TarkovMonitor
                         // When a map starts loading
                         raidInfo = new()
                         {
-                            ProfileType = CurrentProfile.Type,
+                            Profile = CurrentProfile,
                         };
                         var bundleMatch = Regex.Match(eventLine, @"scene preset path:maps\/(?<mapBundleName>[a-zA-Z0-9_]+)\.bundle");
                         if (bundleMatch.Success)
@@ -542,7 +527,7 @@ namespace TarkovMonitor
                         MatchingAborted?.Invoke(this, new(raidInfo, CurrentProfile));
                         raidInfo = new()
                         {
-                            ProfileType = CurrentProfile.Type,
+                            Profile = CurrentProfile,
                         };
                     }
                     if (eventLine.Contains("Got notification | UserMatchOver"))
@@ -550,7 +535,7 @@ namespace TarkovMonitor
                         RaidExited?.Invoke(this, new RaidExitedEventArgs { Map = jsonNode?["location"]?.ToString() ?? throw new Exception("Error parsing raid location"), RaidId = jsonNode?["shortId"]?.ToString() });
                         raidInfo = new()
                         {
-                            ProfileType = CurrentProfile.Type,
+                            Profile = CurrentProfile,
                         };
                     }
                     if (eventLine.Contains("application|Init: pstrGameVersion: "))
@@ -560,7 +545,7 @@ namespace TarkovMonitor
                             ExitedPostRaidMenus?.Invoke(this, new(raidInfo, CurrentProfile));
                             raidInfo = new()
                             {
-                                ProfileType = CurrentProfile.Type,
+                                Profile = CurrentProfile,
                             };
                         }
                     }
@@ -725,12 +710,12 @@ namespace TarkovMonitor
             using var fileStream = new FileStream(appLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var textReader = new StreamReader(fileStream, Encoding.UTF8);
             var applicationLog = textReader.ReadToEnd();
-            var matches = Regex.Matches(applicationLog, @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?: (?<timeOffset>[+-]\d{2}:\d{2}))?\|(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|SelectProfile ProfileId:(?<profileId>[a-f0-9]+) AccountId:(?<accountId>\d+)", RegexOptions.Multiline);
+            var matches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?:SelectProfile|CompleteSelectedProfile) ProfileId:(?<profileId>[a-f0-9]+) AccountId:(?<accountId>\d+)", RegexOptions.Multiline);
             if (matches.Count == 0)
             {
                 return logDetails;
             }
-            var profileTypeMatches = Regex.Matches(applicationLog, @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3}) (?<timeOffset>[+-]\d{2}:\d{2})\|(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|Session mode: (?<profileType>\w+)", RegexOptions.Multiline);
+            var profileTypeMatches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|Session mode: (?<profileType>\w+)", RegexOptions.Multiline);
             for (var i = 0; i < matches.Count; i++)
             {
                 Match match = matches[i];
@@ -976,10 +961,11 @@ namespace TarkovMonitor
         public float MapLoadTime { get; set; }
         public float QueueTime { get; set; }
         public bool Reconnected { get; set; }
+        public Profile Profile { get; set; }
         public RaidType RaidType { 
             get
             {
-                if (this.ProfileType == ProfileType.PVE)
+                if (this.Profile.Type == ProfileType.PVE)
                 {
                     return RaidType.PVE;
                 }
@@ -1004,7 +990,6 @@ namespace TarkovMonitor
         public DateTime? StartedTime { get; set; }
         public DateTime? EndedTime { get; set; }
         public List<string> Screenshots { get; set; } = new();
-        public ProfileType ProfileType { get; set; } = ProfileType.Regular;
         public RaidInfo()
         {
             Map = "";
@@ -1013,7 +998,7 @@ namespace TarkovMonitor
             MapLoadTime = 0;
             QueueTime = 0;
             Reconnected = false;
-            //RaidType = RaidType.Unknown;
+            Profile = new();
         }
     }
     public class Position

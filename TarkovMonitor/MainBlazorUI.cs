@@ -202,7 +202,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Using {e.Profile.Type} profile");
+            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), e.Profile.Type));
             TarkovTracker.SetProfile(e.Profile.Id);
         }
 
@@ -778,7 +778,7 @@ namespace TarkovMonitor
                 goonsButton.OnClick = async () => {
                     try
                     {
-                        await TarkovDev.PostGoonsSighting(raidInfo.Map, (DateTime)raidInfo.StartedTime, eft.AccountId, GameWatcher.CurrentProfile.Type);
+                        await TarkovDev.PostGoonsSighting(raidInfo.Map, (DateTime)raidInfo.StartedTime, Int32.Parse(raidInfo.Profile.AccountId), GameWatcher.CurrentProfile.Type);
                         messageLog.AddMessage($"Goons reported on {mapName}", "info");
                     }
                     catch (Exception ex)
