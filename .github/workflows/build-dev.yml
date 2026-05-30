@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # pin@v2
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@8e6bd2905eef86446227f003dda1deb3916c4aaf # pin@v2
         with:
           dotnet-version: "6.x" # Change this to the desired .NET version
 
@@ -28,7 +28,7 @@ jobs:
         run: dotnet publish -c Release --self-contained --runtime win-x64 -p:PublishSingleFile=true
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # pin@v4
         with:
           name: Published Application
           path: TarkovMonitor\bin\Release\net6.0-windows\win-x64\publish\*

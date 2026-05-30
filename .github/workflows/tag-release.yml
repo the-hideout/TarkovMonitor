@@ -11,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # pin@v2
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@8e6bd2905eef86446227f003dda1deb3916c4aaf # pin@v2
         with:
           dotnet-version: "6.x" # Change this to the desired .NET version
 
@@ -31,7 +31,7 @@ jobs:
           Compress-Archive -Destination $Env:GITHUB_WORKSPACE/TarkovMonitor.zip -Path .\*
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # pin@v1
         with:
           files: TarkovMonitor.zip
           prerelease: true
