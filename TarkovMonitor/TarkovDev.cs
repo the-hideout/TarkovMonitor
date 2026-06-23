@@ -5,9 +5,27 @@ namespace TarkovMonitor
 {
     internal class TarkovDev
     {
-        private static readonly HttpClient client = new()
+        private static readonly HttpClient jsonClient = new()
         {
             BaseAddress = new Uri("https://json.tarkov.dev"),
+            DefaultRequestHeaders = {
+                { "User-Agent", $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}" },
+            }
+        };
+
+        private static readonly HttpClient managerClient = new HttpClient {
+            BaseAddress = new Uri("https://manager.tarkov.dev/api"),
+            DefaultRequestHeaders = { 
+                { "User-Agent", $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}" },
+            }
+        };
+
+        private static readonly HttpClient playersClient = new HttpClient
+        {
+            BaseAddress = new Uri("https://players.tarkov.dev"),
+            DefaultRequestHeaders = {
+                { "User-Agent", $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}" },
+            }
         };
 
         internal interface ITarkovDevAPI
@@ -17,23 +35,23 @@ namespace TarkovMonitor
             [Post("/goons")]
             Task<DataSubmissionResponse> SubmitGoonsSighting([Body] GoonsBody body);
         }
-        private static ITarkovDevAPI api = RestService.For<ITarkovDevAPI>("https://manager.tarkov.dev/api");
+        private static ITarkovDevAPI api = RestService.For<ITarkovDevAPI>(managerClient);
 
-        internal interface ITarkovDevPlayersAPI
+        /*internal interface ITarkovDevPlayersAPI
         {
             [Get("/name/{name}")]
             Task<List<PlayerSearchResult>> SearchName(string name);
             [Get("/account/{accountId}")]
             Task<PlayerProfileResult> GetProfile(int accountId);
         }
-        private static ITarkovDevPlayersAPI playersApi = RestService.For<ITarkovDevPlayersAPI>("https://player.tarkov.dev");
+        private static ITarkovDevPlayersAPI playersApi = RestService.For<ITarkovDevPlayersAPI>("https://player.tarkov.dev");*/
 
         internal interface ITarkovDevPlayerJsonAPI
         {
             [Get("/profile/index.json")]
             Task<Dictionary<string, string>> GetPlayerNames();
         }
-        private static ITarkovDevPlayerJsonAPI playerJsonApi = RestService.For<ITarkovDevPlayerJsonAPI>("https://players.tarkov.dev");
+        private static ITarkovDevPlayerJsonAPI playerJsonApi = RestService.For<ITarkovDevPlayerJsonAPI>(playersClient);
 
         private static readonly System.Timers.Timer updateTimer = new() {
             AutoReset = true,
@@ -56,13 +74,8 @@ namespace TarkovMonitor
             { ProfileType.PVE, 1500 },
         };
 
-        static TarkovDev()
-        {
-            client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
-        }
-
         private async static Task<JObject> GetJObject(string path) {
-            var response = await client.GetAsync(path);
+            var response = await jsonClient.GetAsync(path);
             response.EnsureSuccessStatusCode();
             string responseBody = await response.Content.ReadAsStringAsync();
             return JObject.Parse(responseBody);
@@ -248,7 +261,7 @@ namespace TarkovMonitor
             return profile.AccountId;
         }
 
-        public async static Task<int> GetExperience(int accountId)
+        /*public async static Task<int> GetExperience(int accountId)
         {
             try
             {
@@ -275,7 +288,7 @@ namespace TarkovMonitor
             {
                 throw new Exception($"Players API error: {ex.Message}");
             }
-        }
+        }*/
 
         public static int GetLevel(int experience)
         {

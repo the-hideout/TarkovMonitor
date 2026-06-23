@@ -1,5 +1,6 @@
-﻿using System.Text.Json.Nodes;
-using Websocket.Client;
+﻿using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json.Nodes;
 
 namespace TarkovMonitor
 {
@@ -8,7 +9,9 @@ namespace TarkovMonitor
         public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
         private static readonly string wsUrl = "wss://socket.tarkov.dev";
         //private static readonly string wsUrl = "ws://localhost:8080";
-        private static WebsocketClient socket;
+        private static ClientWebSocket socket;
+        private static CancellationTokenSource cancellationToken;
+        private static Task receiveTask;
         private static System.Timers.Timer idleTimer = new()
         {
             AutoReset = false,
@@ -22,49 +25,75 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                if (!socket.IsRunning)
+                if (socket.State != WebSocketState.Open)
                 {
                     return;
                 }
-                socket.Stop(System.Net.WebSockets.WebSocketCloseStatus.NormalClosure, "Idle").ContinueWith(t => {
+                socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Idle", CancellationToken.None).ContinueWith(t => {
                     socket.Dispose();
                     socket = null;
                 });
             };
         }
 
+        private static Task SendSocketMessage(JsonNode payload)
+        {
+            byte[] byteBuffer = Encoding.UTF8.GetBytes(payload.ToJsonString());
+            return socket.SendAsync(new ArraySegment<byte>(byteBuffer), WebSocketMessageType.Text, true, cancellationToken.Token);
+        }
+
         public static async Task StartClient()
         {
+            if (cancellationToken != null && !cancellationToken.IsCancellationRequested)
+            {
+                cancellationToken.Cancel();
+            }
+            if (receiveTask != null)
+            {
+                await receiveTask;
+            }
+            cancellationToken = new();
             var remoteid = Properties.Settings.Default.remoteId;
-            socket = new(new Uri(wsUrl + $"?sessionid={remoteid}-tm"));
-            socket.MessageReceived.Subscribe(msg => {
-                if (msg.Text == null)
-                {
-                    return;
-                }
-                var message = JsonNode.Parse(msg.Text);
-                if (message == null)
-                {
-                    return;
-                }
-                if (message["type"]?.ToString() == "ping")
-                {
-                    socket.Send(new JsonObject
-                    {
-                        ["type"] = "pong"
-                    }.ToJsonString());
-                }
-            });
-            await socket.Start();
+            socket = new();
+            socket.Options.SetRequestHeader("User-Agent", $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            await socket.ConnectAsync(new Uri(wsUrl + $"?sessionid={remoteid}-tm"), new());
             idleTimer.Stop();
             idleTimer.Start();
+
+            receiveTask = Task.Run(async () =>
+            {
+                byte[] buffer = new byte[1024];
+                while (socket.State == WebSocketState.Open)
+                {
+                    var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken.Token);
+
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                        break;
+                    }
+
+                    JsonNode message = JsonNode.Parse(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                    if (message == null)
+                    {
+                        return;
+                    }
+                    if (message["type"]?.ToString() == "ping")
+                    {
+                        SendSocketMessage(new JsonObject
+                        {
+                            ["type"] = "pong"
+                        });
+                    }
+                }
+            }, cancellationToken.Token);
         }
 
         public static async Task VerifyClient()
         {
             if (socket != null)
             {
-                if (socket.IsRunning)
+                if (socket.State == WebSocketState.Open)
                 {
                     return;
                 }
@@ -86,7 +115,7 @@ namespace TarkovMonitor
             foreach (var message in messages)
             {
                 message["sessionID"] = remoteid;
-                await socket.SendInstant(message.ToJsonString());
+                await SendSocketMessage(message);
             }
             idleTimer.Stop();
             idleTimer.Start();
