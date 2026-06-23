@@ -50,7 +50,11 @@ namespace TarkovMonitor
             }
             if (receiveTask != null)
             {
-                await receiveTask;
+                try
+                {
+                    await receiveTask;
+                }
+                catch { }
             }
             cancellationToken = new();
             var remoteid = Properties.Settings.Default.remoteId;
@@ -63,13 +67,16 @@ namespace TarkovMonitor
             receiveTask = Task.Run(async () =>
             {
                 byte[] buffer = new byte[1024];
-                while (socket.State == WebSocketState.Open)
+                while (socket != null && socket.State == WebSocketState.Open)
                 {
                     var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken.Token);
 
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                        if (socket.State == WebSocketState.Open)
+                        {
+                            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                        }
                         break;
                     }
 
