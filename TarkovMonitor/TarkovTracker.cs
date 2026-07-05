@@ -50,9 +50,18 @@ namespace TarkovMonitor
             tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
         }
 
+        public static string GetApiBaseUrl(string trackerDomain)
+        {
+            if (trackerDomain == "tarkovtracker.org")
+            {
+                return "https://api.tarkovtracker.org/api/v2";
+            }
+            return $"https://{trackerDomain}/api/v2";
+        }
+
         public static ITarkovTrackerAPI InitAPI()
         {
-            api = RestService.For<ITarkovTrackerAPI>($"https://{Properties.Settings.Default.tarkovTrackerDomain}/api/v2",
+            api = RestService.For<ITarkovTrackerAPI>(GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain),
                 new RefitSettings {
                     AuthorizationHeaderValueGetter = (rq, cr) => {
                         return Task.Run<string>(() => {
