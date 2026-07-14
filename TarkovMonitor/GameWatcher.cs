@@ -150,6 +150,7 @@ namespace TarkovMonitor
             { "factory_day_preset", "factory4_day" },
             { "factory_night_preset", "factory4_night" },
             { "laboratory_preset", "laboratory" },
+            { "laboratory_dark_preset", "laboratory_dark" },
             { "labyrinth_preset", "Labyrinth" },
             { "lighthouse_preset", "Lighthouse" },
             { "rezerv_base_preset", "RezervBase" },
@@ -158,6 +159,8 @@ namespace TarkovMonitor
             { "shopping_mall", "Interchange" },
             { "shoreline_preset", "Shoreline" },
             { "woods_preset", "Woods" },
+            { "terminal_preset", "Terminal" },
+            { "icebreaker", "Icebreaker" },
         };
 
         public GameWatcher()
