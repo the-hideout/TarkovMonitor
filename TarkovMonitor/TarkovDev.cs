@@ -3,7 +3,7 @@ using Refit;
 
 namespace TarkovMonitor
 {
-    internal class TarkovDev
+    public class TarkovDev
     {
         private static readonly HttpClient jsonClient = new()
         {
@@ -381,6 +381,7 @@ namespace TarkovMonitor
             public string name { get; set; }
             public string nameId { get; set; }
             public string normalizedName { get; set; }
+            public string scenePath { get; set; }
             public List<BossSpawn> bosses { get; set; }
             public bool HasGoons()
             {

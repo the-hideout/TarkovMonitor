@@ -144,25 +144,6 @@ namespace TarkovMonitor
 		    throw new Exception("No Tarkov install path found");
 		}
 
-        public static Dictionary<string, string> MapBundles = new() {
-            { "city_preset", "TarkovStreets" },
-            { "customs_preset", "bigmap" },
-            { "factory_day_preset", "factory4_day" },
-            { "factory_night_preset", "factory4_night" },
-            { "laboratory_preset", "laboratory" },
-            { "laboratory_dark_preset", "laboratory_dark" },
-            { "labyrinth_preset", "Labyrinth" },
-            { "lighthouse_preset", "Lighthouse" },
-            { "rezerv_base_preset", "RezervBase" },
-            { "sandbox_preset", "Sandbox" },
-            { "sandbox_high_preset", "Sandbox_high" },
-            { "shopping_mall", "Interchange" },
-            { "shoreline_preset", "Shoreline" },
-            { "woods_preset", "Woods" },
-            { "terminal_preset", "Terminal" },
-            { "icebreaker", "Icebreaker" },
-        };
-
         public GameWatcher()
 		{
 			Monitors = new();
@@ -241,11 +222,11 @@ namespace TarkovMonitor
                     return;
                 }
                 var raid = raidInfo;
-                if ((raid.Map == null || raid.Map == "") && Properties.Settings.Default.customMap != "")
+                if ((raid.Map == null) && Properties.Settings.Default.customMap != "")
                 {
                     raid = new()
                     {
-                        Map = Properties.Settings.Default.customMap,
+                        Map = TarkovDev.Maps.Find(m => m.nameId == Properties.Settings.Default.customMap),
                     };
                 }
                 if (raid.Map == null)
@@ -450,14 +431,14 @@ namespace TarkovMonitor
                         {
                             Profile = CurrentProfile,
                         };
-                        var bundleMatch = Regex.Match(eventLine, @"scene preset path:maps\/(?<mapBundleName>[a-zA-Z0-9_]+)\.bundle");
-                        if (bundleMatch.Success)
+                        var scenePathMatch = Regex.Match(eventLine, @"scene preset path:(?<scenePath>maps\/[a-zA-Z0-9_]+\.bundle)");
+                        if (scenePathMatch.Success)
                         {
-                            var mapBundle = bundleMatch.Groups["mapBundleName"].Value;
-                            if (MapBundles.ContainsKey(mapBundle))
+                            var scenePath = scenePathMatch.Groups["scenePath"].Value;
+                            var map = TarkovDev.Maps.Find((map) => map.scenePath == scenePath);
+                            if (map != null)
                             {
-                                string mapId = MapBundles[mapBundle];
-                                raidInfo.Map = mapId;
+                                raidInfo.Map = map;
                                 MapLoading?.Invoke(this, new(raidInfo, CurrentProfile));
                             }
                         }
@@ -481,8 +462,9 @@ namespace TarkovMonitor
                     {
                         // Immediately after matching is complete
                         // Sufficient information is available to raise the MatchFound event
-                        var mapUnknown = raidInfo.Map == "" || raidInfo.Map == null;
-                        raidInfo.Map = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
+                        var mapUnknown = raidInfo.Map == null;
+                        var mapNameId = Regex.Match(eventLine, "Location: (?<map>[^,]+)").Groups["map"].Value;
+                        raidInfo.Map = TarkovDev.Maps.Find(map => map.nameId == mapNameId);
                         raidInfo.Online = eventLine.Contains("RaidMode: Online");
                         raidInfo.RaidId = Regex.Match(eventLine, @"shortId: (?<raidId>[A-Z0-9]{6})").Groups["raidId"].Value;
                         if (Raids.ContainsKey(raidInfo.RaidId)) {
@@ -958,7 +940,7 @@ namespace TarkovMonitor
     }
     public class RaidInfo
     {
-        public string Map { get; set; }
+        public TarkovDev.Map Map { get; set; }
         public string RaidId { get; set; }
         public bool Online { get; set; }
         public float MapLoadTime { get; set; }
@@ -995,7 +977,7 @@ namespace TarkovMonitor
         public List<string> Screenshots { get; set; } = new();
         public RaidInfo()
         {
-            Map = "";
+            Map = null;
             Online = false;
             RaidId = "";
             MapLoadTime = 0;
