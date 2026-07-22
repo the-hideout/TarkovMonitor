@@ -6,7 +6,7 @@ namespace TarkovMonitor
 {
     internal class Stats
     {
-        public static string DatabasePath => Path.Join(Application.UserAppDataPath, "TarkovMonitor.db");
+        public static string DatabasePath => Path.Join(Application.UserAppDataPath, "..", "TarkovMonitor.db");
         public static string ConnectionString => $"Data Source={DatabasePath};Version=3;";
         private static SQLiteConnection Connection;
         static Stats()
