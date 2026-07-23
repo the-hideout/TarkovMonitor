@@ -286,9 +286,8 @@ namespace TarkovMonitor
             {
                 try
                 {
-                    messageLog.AddMessage("Attempting to resume media...", "info");
+                    messageLog.AddMessage("Playing media...", "info");
                     MediaController.Play();
-                    messageLog.AddMessage("Media resume command sent", "info");
                 }
                 catch (Exception ex)
                 {
@@ -710,9 +709,8 @@ namespace TarkovMonitor
             {
                 try
                 {
-                    messageLog.AddMessage("Attempting to pause media...", "info");
+                    messageLog.AddMessage("Pausing media...", "info");
                     MediaController.Pause();
-                    messageLog.AddMessage("Media pause command sent", "info");
                 }
                 catch (Exception ex)
                 {
