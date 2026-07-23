@@ -334,5 +334,17 @@ namespace TarkovMonitor.Properties {
                 this["language"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool pauseMediaOnRaid {
+            get {
+                return ((bool)(this["pauseMediaOnRaid"]));
+            }
+            set {
+                this["pauseMediaOnRaid"] = value;
+            }
+        }
     }
 }

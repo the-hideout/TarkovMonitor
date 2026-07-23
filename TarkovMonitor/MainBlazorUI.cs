@@ -280,6 +280,21 @@ namespace TarkovMonitor
         private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
             inRaid = false;
+            
+            // Resume media on raid end
+            if (Properties.Settings.Default.pauseMediaOnRaid)
+            {
+                try
+                {
+                    messageLog.AddMessage("Playing media...", "info");
+                    MediaController.Play();
+                }
+                catch (Exception ex)
+                {
+                    messageLog.AddMessage($"Error resuming media: {ex.Message}", "exception");
+                }
+            }
+            
             //groupManager.Stale = true;
             MonitorMessage monMessage = new($"Ended {e.RaidInfo.Map?.name} raid");
 
@@ -688,6 +703,21 @@ namespace TarkovMonitor
         {
             inRaid = true;
             Stats.AddRaid(e);
+            
+            // Pause media on raid start
+            if (Properties.Settings.Default.pauseMediaOnRaid)
+            {
+                try
+                {
+                    messageLog.AddMessage("Pausing media...", "info");
+                    MediaController.Pause();
+                }
+                catch (Exception ex)
+                {
+                    messageLog.AddMessage($"Error pausing media: {ex.Message}", "exception");
+                }
+            }
+            
             if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
             {
                 MonitorMessage monMessage = new($"Starting {e.RaidInfo.RaidType} raid on {e.RaidInfo.Map?.name}");
@@ -791,6 +821,22 @@ namespace TarkovMonitor
             //groupManager.Stale = true;
             runthroughTimer.Stop();
             inRaid = false;
+            
+            // Resume media on raid exit
+            if (Properties.Settings.Default.pauseMediaOnRaid)
+            {
+                try
+                {
+                    messageLog.AddMessage("Attempting to resume media...", "info");
+                    MediaController.Play();
+                    messageLog.AddMessage("Media resume command sent", "info");
+                }
+                catch (Exception ex)
+                {
+                    messageLog.AddMessage($"Error resuming media: {ex.Message}", "exception");
+                }
+            }
+            
             try
             {
                 var mapName = e.Map;
