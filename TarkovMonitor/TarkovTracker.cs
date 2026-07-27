@@ -54,7 +54,7 @@ namespace TarkovMonitor
         {
             if (trackerDomain == "tarkovtracker.org")
             {
-                return "https://api.tarkovtracker.org/api/v2";
+                return "https://api.tarkovtracker.org";
             }
             return $"https://{trackerDomain}/api/v2";
         }
