@@ -11,6 +11,8 @@ namespace TarkovMonitor
     internal class GameWatcher
     {
         private Process? process;
+        private const string GameStoppingMarker = "EFT.NetworkGame`1:GameStopping()";
+        private string outputLogTail = "";
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher logFileCreateWatcher;
         private readonly FileSystemWatcher screenshotWatcher;
@@ -96,6 +98,7 @@ namespace TarkovMonitor
         public event EventHandler<RaidInfoEventArgs>? MatchingAborted;
         public event EventHandler<RaidInfoEventArgs>? RaidStarting;
         public event EventHandler<RaidInfoEventArgs>? RaidStarted;
+        public event EventHandler? RaidStopping;
         public event EventHandler<RaidExitedEventArgs>? RaidExited;
         public event EventHandler<RaidInfoEventArgs>? RaidEnded;
         public event EventHandler<RaidInfoEventArgs>? ExitedPostRaidMenus;
@@ -307,6 +310,10 @@ namespace TarkovMonitor
             {
                 StartNewMonitor(e.FullPath);
             }
+            if (filename.Contains("output.log") || filename.Contains("output_000.log"))
+            {
+                StartNewMonitor(e.FullPath);
+            }
         }
 
         internal void GameWatcher_NewLogData(object? sender, NewLogDataEventArgs e)
@@ -315,6 +322,22 @@ namespace TarkovMonitor
             {
                 //DebugMessage?.Invoke(this, new DebugEventArgs(e.NewMessage));
                 NewLogData?.Invoke(this, e);
+                if (e.Type == GameLogType.Output)
+                {
+                    string outputData = outputLogTail + e.Data;
+                    if (outputData.Contains(GameStoppingMarker))
+                    {
+                        RaidStopping?.Invoke(this, EventArgs.Empty);
+                    }
+
+                    int tailLength = Math.Min(outputData.Length, GameStoppingMarker.Length - 1);
+                    outputLogTail = outputData[^tailLength..];
+
+                    // output.log repeats messages that are already handled by the
+                    // dedicated application and notification log monitors. It is
+                    // watched only for the earlier GameStopping marker.
+                    return;
+                }
                 //var logPattern = @"(?<message>^\d{4}-\d{2}-\d{2}.+$)\s*(?<json>^{[\s\S]+?^})?";
                 //var logPattern = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2})\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?<message>.+$)\s*(?<json>^{[\s\S]+?^})?";
                 var logMessages = Regex.Matches(e.Data, logPattern, RegexOptions.Multiline);
@@ -342,10 +365,12 @@ namespace TarkovMonitor
                         raidInfo.Profile = CurrentProfile;
                         continue;
                     }
-                    // old message was SelectProfile, new is SelectedProfile
-                    if (eventLine.Contains("SelectProfile ProfileId:") || eventLine.Contains("SelectedProfile ProfileId:"))
+                    // Profile selection messages have changed names across EFT versions.
+                    if (eventLine.Contains("SelectProfile ProfileId:")
+                        || eventLine.Contains("SelectedProfile ProfileId:")
+                        || eventLine.Contains("PrepareSelectedProfileLocally ProfileId:"))
                     {
-                        var profileIdMatch = Regex.Match(eventLine, @"Select(?:ed)?Profile ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)");
+                        var profileIdMatch = Regex.Match(eventLine, @"(?:Select(?:ed)?Profile|PrepareSelectedProfileLocally) ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)");
                         if (!profileIdMatch.Success)
                         {
                             continue;
@@ -837,7 +862,7 @@ namespace TarkovMonitor
             var files = System.IO.Directory.GetFiles(folderPath);
             var monitorsStarted = 0;
             var monitorsCompletedInitialRead = 0;
-            List<string> monitoringLogs = new() { "notifications.log", "application.log", "notifications_000.log", "application_000.log" };
+            List<string> monitoringLogs = new() { "notifications.log", "application.log", "output.log", "notifications_000.log", "application_000.log", "output_000.log" };
             foreach (var file in files)
             {
                 foreach (var logType in monitoringLogs)
@@ -879,6 +904,11 @@ namespace TarkovMonitor
             {
                 newType = GameLogType.Notifications;
             }
+            if (path.Contains("output.log") || path.Contains("output_000.log"))
+            {
+                newType = GameLogType.Output;
+                outputLogTail = "";
+            }
             if (path.Contains("traces.log") || path.Contains("traces_000.log"))
             {
                 newType = GameLogType.Traces;
@@ -906,6 +936,7 @@ namespace TarkovMonitor
 	{
 		Application,
 		Notifications,
+		Output,
 		Traces
 	}
     public enum MessageType
