@@ -73,11 +73,15 @@
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
+            BackColor = Color.FromArgb(47, 47, 45);
             ClientSize = new Size(914, 667);
             Controls.Add(blazorWebView1);
+            FormBorderStyle = FormBorderStyle.None;
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(3, 4, 3, 4);
+            MinimumSize = new Size(720, 480);
             Name = "MainBlazorUI";
+            Padding = new Padding(1);
             Text = "Tarkov Monitor";
             Resize += MainBlazorUI_Resize;
             contextMenuStripTarkovMonitor.ResumeLayout(false);

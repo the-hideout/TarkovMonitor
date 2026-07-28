@@ -1,40 +1,65 @@
 ﻿@using System.Diagnostics
 @inherits LayoutComponentBase
 @layout MainLayout
+@implements IDisposable
 
 @inject IJSRuntime JSRuntime;
 @inject LocalizationService LocalizationService
+@inject MainBlazorUI WindowHost
+@inject MessageLog MessageLog
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
 
 <div style="width: 100%; height: 100%" class="tarkov-dev-bg">
 	<MudLayout>
-		<MudAppBar Elevation="1" Bottom="false" Dense="true">
+		<MudAppBar Class="window-app-bar" Elevation="1" Bottom="false" Dense="true">
 			<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
-			@CurrentPageTitle
-			<MudSpacer/>
+			<span class="window-page-title">@CurrentPageTitle</span>
+			<div class="window-drag-region" @onmousedown="BeginWindowDrag">
+				<span class="window-product-title">@LocalizationService.GetString("TarkovMonitor")</span>
+			</div>
+			<div class="window-controls" aria-label="Window controls">
+				<MudIconButton Class="window-control" Icon="@Icons.Material.Filled.Remove" Color="Color.Inherit" Size="Size.Small" OnClick="MinimizeWindow" aria-label="Minimize" />
+				<MudIconButton Class="window-control" Icon="@(WindowHost.IsMaximized ? Icons.Material.Filled.FilterNone : Icons.Material.Filled.CropSquare)" Color="Color.Inherit" Size="Size.Small" OnClick="ToggleMaximizeWindow" aria-label="@(WindowHost.IsMaximized ? "Restore" : "Maximize")" />
+				<MudIconButton Class="window-control window-control-close" Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Size="Size.Small" OnClick="CloseWindow" aria-label="Close" />
+			</div>
 		</MudAppBar>
-		<MudDrawer @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive">
-			<MudDrawerHeader LinkToIndex="true">
-				<div>
-					<img src="tarkov-dev-logo.svg" width="100%" style="vertical-align: middle;"/>
-					                <MudText Align="Align.Center" Typo="Typo.h6">@LocalizationService.GetString("TarkovMonitor")</MudText>
-				</div>
+		<MudDrawer Class="navigation-drawer" @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive">
+			<MudDrawerHeader Class="navigation-drawer-header">
+				<button class="navigation-brand" type="button" @onclick="@ToggleDrawer" aria-label="Collapse navigation">
+					<div class="navigation-brand-copy">
+						<img class="navigation-brand-logo" src="tarkov-dev-logo.svg" alt="Tarkov.dev" />
+					</div>
+					<MudIcon Class="drawer-collapse-cue" Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" />
+				</button>
 			</MudDrawerHeader>
-			<MudNavMenu Color="Color.Secondary" Bordered="true">
+			<MudNavMenu Class="navigation-menu" Color="Color.Secondary" Bordered="false">
 				<MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Message">@LocalizationService.GetString("Messages")</MudNavLink>
                 <!--MudNavLink Href="/group" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Group">@LocalizationService.GetString("Group")</!--MudNavLink-->
-                <MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">@LocalizationService.GetString("Settings")</MudNavLink>
-                <MudNavLink Href="/sounds" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Speaker">@LocalizationService.GetString("Sounds")</MudNavLink>
-                <MudNavLink Href="/stats" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.BarChart">@LocalizationService.GetString("Stats")</MudNavLink>
-                <MudNavLink Href="/raw" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.RawOn">@LocalizationService.GetString("RawLogs")</MudNavLink>
-                <MudNavLink Href="/timers" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Timer">@LocalizationService.GetString("Timers")</MudNavLink>
+				<MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">@LocalizationService.GetString("Settings")</MudNavLink>
+				<MudNavLink Href="/sounds" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Speaker">@LocalizationService.GetString("Sounds")</MudNavLink>
+				<MudNavLink Href="/stats" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.BarChart">@LocalizationService.GetString("Stats")</MudNavLink>
+				<MudNavLink Href="/raw" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.RawOn">@LocalizationService.GetString("RawLogs")</MudNavLink>
+				<MudNavLink Href="/timers" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Timer">@LocalizationService.GetString("Timers")</MudNavLink>
 			</MudNavMenu>
 		</MudDrawer>
-		<MudMainContent Class="mt-2">
+		<MudMainContent Class="app-main-content" Style="box-sizing: border-box;">
 			<CascadingValue Name="AppLayout" Value="this">
 				@Body
 			</CascadingValue>
 		</MudMainContent>
 	</MudLayout>
+	@if (!WindowHost.IsMaximized)
+	{
+		<div class="resize-zone resize-edge-top" @onmousedown="() => BeginWindowResize(12)" @onmousedown:preventDefault="true"></div>
+		<div class="resize-zone resize-edge-right" @onmousedown="() => BeginWindowResize(11)" @onmousedown:preventDefault="true"></div>
+		<div class="resize-zone resize-edge-bottom" @onmousedown="() => BeginWindowResize(15)" @onmousedown:preventDefault="true"></div>
+		<div class="resize-zone resize-edge-left" @onmousedown="() => BeginWindowResize(10)" @onmousedown:preventDefault="true"></div>
+		<div class="resize-zone resize-corner-top-left" @onmousedown="() => BeginWindowResize(13)" @onmousedown:preventDefault="true"></div>
+		<div class="resize-zone resize-corner-top-right" @onmousedown="() => BeginWindowResize(14)" @onmousedown:preventDefault="true"></div>
+		<div class="resize-zone resize-corner-bottom-left" @onmousedown="() => BeginWindowResize(16)" @onmousedown:preventDefault="true"></div>
+		<div class="resize-zone resize-corner-bottom-right" @onmousedown="() => BeginWindowResize(17)" @onmousedown:preventDefault="true"></div>
+	}
 </div>
 
 @code {
@@ -46,6 +71,8 @@
 	protected override void OnInitialized()
 	{
 		LocalizationService.LanguageChanged += OnLanguageChanged;
+		WindowHost.WindowStateChanged += OnWindowStateChanged;
+		MessageLog.newMessage += OnMessageAdded;
 	}
 
 	public void SetTitle(string value) {
@@ -58,8 +85,68 @@
 		drawerOpen = !drawerOpen;
 	}
 
+	private void BeginWindowDrag() => WindowHost.BeginWindowDrag();
+
+	private void BeginWindowResize(int hitTest) => WindowHost.BeginWindowResize(hitTest);
+
+	private void MinimizeWindow() => WindowHost.MinimizeWindow();
+
+	private void ToggleMaximizeWindow() => WindowHost.ToggleMaximizeWindow();
+
+	private void CloseWindow() => WindowHost.CloseWindow();
+
+	private void OnWindowStateChanged(object? sender, EventArgs e)
+	{
+		InvokeAsync(StateHasChanged);
+	}
+
+	private void OnMessageAdded(object? sender, NewLogMessageArgs e)
+	{
+		InvokeAsync(StateHasChanged);
+
+		if (e.Message.Type == "quest" && GameWatcher.ReadingPastLogs)
+		{
+			return;
+		}
+
+		var severity = e.Message.Type switch
+		{
+			"exception" => Severity.Error,
+			"warning" => Severity.Warning,
+			"update" => Severity.Success,
+			_ => Severity.Info
+		};
+
+		var path = NavigationManager.ToBaseRelativePath(NavigationManager.Uri)
+			.Split('?', '#')[0]
+			.Trim('/');
+		var messagesAreVisible = string.IsNullOrEmpty(path) || path.Equals("app", StringComparison.OrdinalIgnoreCase);
+		var requiresImmediateAttention = severity is Severity.Error or Severity.Warning;
+
+		if (messagesAreVisible && !requiresImmediateAttention)
+		{
+			return;
+		}
+
+		Snackbar.Add(e.Message.Message, severity, configuration =>
+		{
+			configuration.Onclick = snackbar =>
+			{
+				NavigationManager.NavigateTo("/");
+				return Task.CompletedTask;
+			};
+		});
+	}
+
 	private void OnLanguageChanged(object? sender, EventArgs e)
 	{
 		InvokeAsync(StateHasChanged);
+	}
+
+	public void Dispose()
+	{
+		LocalizationService.LanguageChanged -= OnLanguageChanged;
+		WindowHost.WindowStateChanged -= OnWindowStateChanged;
+		MessageLog.newMessage -= OnMessageAdded;
 	}
 }

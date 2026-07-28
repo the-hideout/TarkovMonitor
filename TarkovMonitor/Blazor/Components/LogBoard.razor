@@ -1,6 +1,6 @@
 ﻿@using Humanizer
 @inject LogRepository logRepository
-<MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-3">
+<MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-2">
     @if (logRepository.Logs.Count == 0)
     {
         <MudAlert Severity="Severity.Info">No new logs have been seen since launching the monitor.</MudAlert>
