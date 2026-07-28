@@ -5,6 +5,9 @@ on:
     tags:
       - '\d+\.\d+\.\d+\.\d+'
 
+permissions:
+  contents: write
+
 jobs:
   upload:
     runs-on: windows-latest
@@ -16,19 +19,48 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@8e6bd2905eef86446227f003dda1deb3916c4aaf # pin@v2
         with:
-          dotnet-version: "6.x" # Change this to the desired .NET version
+          dotnet-version: "6.x"
 
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Build and publish
-        run: dotnet publish -c Release --self-contained --runtime win-x64 -p:PublishSingleFile=true /property:Version=${{ github.ref_name }}
-
-      - name: Creare Build Release Archive
         shell: pwsh
         run: |
-          cd TarkovMonitor/bin/Release/net6.0-windows/win-x64/publish
-          Compress-Archive -Destination $Env:GITHUB_WORKSPACE/TarkovMonitor.zip -Path .\*
+          dotnet publish TarkovMonitor/TarkovMonitor.csproj `
+            -c Release `
+            --self-contained `
+            --runtime win-x64 `
+            -p:PublishSingleFile=true `
+            -p:Version=${{ github.ref_name }} `
+            --output "$Env:GITHUB_WORKSPACE\publish"
+
+      - name: Verify published application
+        shell: pwsh
+        run: |
+          $executable = "$Env:GITHUB_WORKSPACE\publish\TarkovMonitor.exe"
+
+          if (-not (Test-Path -LiteralPath $executable)) {
+            throw "Published executable was not found: $executable"
+          }
+
+          Write-Output "Verified published executable: $executable"
+
+      - name: Create build release archive
+        shell: pwsh
+        run: |
+          $publishDirectory = "$Env:GITHUB_WORKSPACE\publish"
+          $archivePath = "$Env:GITHUB_WORKSPACE\TarkovMonitor.zip"
+
+          Compress-Archive `
+            -Path "$publishDirectory\*" `
+            -DestinationPath $archivePath
+
+          if (-not (Test-Path -LiteralPath $archivePath)) {
+            throw "Release archive was not created: $archivePath"
+          }
+
+          Write-Output "Created release archive: $archivePath"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # pin@v1
