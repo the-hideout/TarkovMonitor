@@ -1,176 +1,156 @@
-﻿using System.Data.SQLite;
-// do not upgrade to 1.0.118
-// newer version throws an error after being compiled as single file assembly
+using System.Data.SQLite;
+
+// System.Data.SQLite is retained until the dedicated dependency-migration phase.
+// The current package has historically required single-file publish verification.
 
 namespace TarkovMonitor
 {
-    internal class Stats
+    internal static class Stats
     {
         public static string DatabasePath => Path.Join(Application.UserAppDataPath, "..", "TarkovMonitor.db");
-        public static string ConnectionString => $"Data Source={DatabasePath};Version=3;";
-        private static SQLiteConnection Connection;
-        static Stats()
-        {
-			Connection = new SQLiteConnection(ConnectionString);
-            Connection.Open();
+        private static readonly Lazy<StatsDatabase> Database = new(() => new StatsDatabase(DatabasePath));
 
-            List<string> createTableCommands = new()
+        public static void ClearData() => Database.Value.ClearData();
+
+        public static void AddFleaSale(FleaSoldMessageLogContent e, Profile profile) =>
+            Database.Value.AddFleaSale(e, profile);
+
+        public static int GetTotalSales(string currency) => Database.Value.GetTotalSales(currency);
+
+        public static void AddRaid(RaidInfoEventArgs e) => Database.Value.AddRaid(e);
+
+        public static int GetTotalRaids(string mapNameId) => Database.Value.GetTotalRaids(mapNameId);
+
+        public static Dictionary<string, int> GetTotalRaidsPerMap(RaidType raidType) =>
+            Database.Value.GetTotalRaidsPerMap(raidType, TarkovDev.Maps);
+    }
+
+    internal sealed class StatsDatabase : IDisposable
+    {
+        private readonly SQLiteConnection connection;
+
+        internal StatsDatabase(string databasePath)
+        {
+            connection = new SQLiteConnection($"Data Source={databasePath};Version=3;");
+            connection.Open();
+            CreateTables();
+            UpdateDatabase();
+        }
+
+        public void Dispose()
+        {
+            connection.Dispose();
+        }
+
+        internal void ClearData()
+        {
+            var tableNames = new List<string>();
+            using (var command = CreateCommand("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"))
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    tableNames.Add(reader.GetString(0));
+                }
+            }
+
+            using var transaction = connection.BeginTransaction();
+            foreach (var tableName in tableNames)
+            {
+                using var command = CreateCommand($"DELETE FROM [{tableName}];", transaction);
+                command.ExecuteNonQuery();
+            }
+            transaction.Commit();
+        }
+
+        internal void AddFleaSale(FleaSoldMessageLogContent e, Profile profile)
+        {
+            const string sql = "INSERT INTO flea_sales(profile_id, item_id, buyer, count, currency, price) VALUES(@profile_id, @item_id, @buyer, @count, @currency, @price);";
+            var receivedItem = e.ReceivedItems.First();
+            ExecuteNonQuery(sql, new Dictionary<string, object?>
+            {
+                ["profile_id"] = profile.Id,
+                ["item_id"] = e.SoldItemId,
+                ["buyer"] = e.Buyer,
+                ["count"] = e.SoldItemCount,
+                ["currency"] = receivedItem.Key,
+                ["price"] = receivedItem.Value,
+            });
+        }
+
+        internal int GetTotalSales(string currency)
+        {
+            return ExecuteScalarInt(
+                "SELECT COALESCE(SUM(price), 0) FROM flea_sales WHERE currency = @currency;",
+                new Dictionary<string, object?> { ["currency"] = currency });
+        }
+
+        internal void AddRaid(RaidInfoEventArgs e)
+        {
+            const string sql = "INSERT INTO raids(profile_id, map, raid_type, queue_time, raid_id) VALUES (@profile_id, @map, @raid_type, @queue_time, @raid_id);";
+            ExecuteNonQuery(sql, new Dictionary<string, object?>
+            {
+                ["profile_id"] = e.Profile.Id,
+                ["map"] = e.RaidInfo.Map?.nameId,
+                ["raid_type"] = (int)e.RaidInfo.RaidType,
+                ["queue_time"] = e.RaidInfo.QueueTime,
+                ["raid_id"] = e.RaidInfo.RaidId,
+            });
+        }
+
+        internal int GetTotalRaids(string mapNameId)
+        {
+            return ExecuteScalarInt(
+                "SELECT COUNT(id) FROM raids WHERE map = @map;",
+                new Dictionary<string, object?> { ["map"] = mapNameId });
+        }
+
+        internal Dictionary<string, int> GetTotalRaidsPerMap(RaidType raidType, IEnumerable<TarkovDev.Map> maps)
+        {
+            var mapTotals = new Dictionary<string, int>();
+            using (var command = CreateCommand(
+                "SELECT map, COUNT(id) FROM raids WHERE raid_type = @raid_type GROUP BY map;",
+                parameters: new Dictionary<string, object?> { ["raid_type"] = (int)raidType }))
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    if (!reader.IsDBNull(0))
+                    {
+                        mapTotals[reader.GetString(0)] = reader.GetInt32(1);
+                    }
+                }
+            }
+
+            return maps.ToDictionary(
+                map => map.name,
+                map => mapTotals.TryGetValue(map.nameId, out var total) ? total : 0);
+        }
+
+        private void CreateTables()
+        {
+            var commands = new[]
             {
                 "CREATE TABLE IF NOT EXISTS flea_sales (id INTEGER PRIMARY KEY, profile_id VARCHAR(24), item_id CHAR(24), buyer VARCHAR(14), count INT, currency CHAR(24), price INT, time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
                 "CREATE TABLE IF NOT EXISTS raids (id INTEGER PRIMARY KEY, profile_id VARCHAR(24), map VARCHAR(24), raid_type INT, queue_time DECIMAL(6,2), raid_id VARCHAR(24), time TIMESTAMP DEFAULT CURRENT_TIMESTAMP);",
             };
-            foreach (var commandText in createTableCommands)
+            foreach (var sql in commands)
             {
-                using var command = new SQLiteCommand(Connection);
-                command.CommandText = commandText;
-                command.ExecuteNonQuery();
+                ExecuteNonQuery(sql);
             }
-
-            UpdateDatabase();
         }
 
-        public static void ClearData()
+        private void UpdateDatabase()
         {
-            Query("PRAGMA foreign_keys=off;");
-            var reader = Query("SELECT name FROM sqlite_master WHERE type='table';");
-            while (reader.Read())
-            {
-                var tableName = reader.GetString(0);
-                Query($"DELETE FROM {tableName};");
-            }
-            Query("PRAGMA foreign_keys=on;");
-        }
-
-        private static SQLiteDataReader Query(string query, Dictionary<string,object> parameters)
-        {
-            using var command = new SQLiteCommand(Connection);
-            command.CommandText = query;
-            foreach (var parameter in parameters)
-            {
-                command.Parameters.AddWithValue($"@{parameter.Key}", parameter.Value);
-            }
-            return command.ExecuteReader();
-        }
-        private static SQLiteDataReader Query (string query)
-        {
-            return Query(query, new());
-        }
-
-        public static void AddFleaSale(FleaSoldMessageLogContent e, Profile profile)
-        {
-            var sql = "INSERT INTO flea_sales(profile_id, item_id, buyer, count, currency, price) VALUES(@profile_id, @item_id, @buyer, @count, @currency, @price);";
-            var parameters = new Dictionary<string, object>
-            {
-                {
-                    "profile_id", profile.Id
-                },
-                {
-                    "item_id", e.SoldItemId
-                },
-                {
-                    "buyer", e.Buyer
-                },
-                {
-                    "count", e.SoldItemCount
-                },
-                {
-                    "currency", e.ReceivedItems.ElementAt(0).Key
-                },
-                {
-                    "price", e.ReceivedItems.ElementAt(0).Value
-                },
-            };
-            Query(sql, parameters);
-        }
-        public static int GetTotalSales(string currency)
-        {
-            var reader = Query("SELECT SUM(price) as total FROM flea_sales WHERE currency = @currency", new() { { "currency", currency } });
-            while (reader.Read())
-            {
-                if (reader.IsDBNull(0))
-                {
-                    continue;
-                }
-                return reader.GetInt32(0);
-            }
-            return 0;
-		}
-        public static void AddRaid(RaidInfoEventArgs e)
-        {
-            var sql = "INSERT INTO raids(profile_id, map, raid_type, queue_time, raid_id) VALUES (@profile_id, @map, @raid_type, @queue_time, @raid_id);";
-            var parameters = new Dictionary<string, object> {
-                {
-                    "profile_id", e.Profile.Id
-                },
-                {
-                    "map", e.RaidInfo.Map
-                },
-                {
-                    "raid_type", e.RaidInfo.RaidType
-                },
-                {
-                    "queue_time", e.RaidInfo.QueueTime
-                },
-                {
-                    "raid_id", e.RaidInfo.RaidId
-                },
-            };
-            Query(sql, parameters);
-        }
-        public static int GetTotalRaids(string mapNameId)
-        {
-            var reader = Query("SELECT COUNT(id) as total FROM raids WHERE map = @map", new() { { "map", mapNameId } });
-            while (reader.Read())
-            {
-                if (reader.IsDBNull(0))
-                {
-                    continue;
-                }
-                return reader.GetInt32(0);
-            }
-            return 0;
-        }
-        public static Dictionary<string, int> GetTotalRaidsPerMap(RaidType raidType)
-        {
-            Dictionary<string, int> mapTotals = new();
-            var reader = Query("SELECT map, COUNT(id) as total FROM raids WHERE raid_type = @raid_type GROUP BY map", new() { { "raid_type", raidType } });
-            while (reader.Read())
-            {
-                if (reader.IsDBNull(1))
-                {
-                    mapTotals[reader.GetString(0)] = 0;
-                    continue;
-                }
-                mapTotals[reader.GetString(0)] = reader.GetInt32(1);
-            }
-            Dictionary<string, int> raidsPerMap = new();
-            foreach (var map in TarkovDev.Maps)
-            {
-                raidsPerMap[map.name] = 0;
-                if (mapTotals.ContainsKey(map.nameId))
-                {
-                    raidsPerMap[map.name] = mapTotals[map.nameId];
-                }
-            }
-            return raidsPerMap;
-        }
-
-        private static void UpdateDatabase()
-        {
-            List<string> db_tables = new() { "raids", "flea_sales" };
-            foreach (var tableName in db_tables)
+            foreach (var tableName in new[] { "raids", "flea_sales" })
             {
                 var profileIdFieldExists = false;
-                var result = Query($"PRAGMA table_info({tableName});");
-                while (result.Read())
+                using (var command = CreateCommand($"PRAGMA table_info([{tableName}]);"))
+                using (var reader = command.ExecuteReader())
                 {
-                    for (int i = 0; i < result.FieldCount; i++)
+                    while (reader.Read())
                     {
-                        if (result.GetName(i) != "name")
-                        {
-                            continue;
-                        }
-                        if (result.GetString(i) == "profile_id")
+                        if (reader.GetString(reader.GetOrdinal("name")) == "profile_id")
                         {
                             profileIdFieldExists = true;
                             break;
@@ -179,12 +159,39 @@ namespace TarkovMonitor
                 }
                 if (!profileIdFieldExists)
                 {
-                    using var command = new SQLiteCommand(Connection);
-                    command.CommandText = $"ALTER TABLE {tableName} ADD COLUMN profile_id VARCHAR(24)";
-                    command.ExecuteNonQuery();
+                    ExecuteNonQuery($"ALTER TABLE [{tableName}] ADD COLUMN profile_id VARCHAR(24);");
                 }
-
             }
+        }
+
+        private int ExecuteScalarInt(string sql, Dictionary<string, object?>? parameters = null)
+        {
+            using var command = CreateCommand(sql, parameters: parameters);
+            return Convert.ToInt32(command.ExecuteScalar());
+        }
+
+        private void ExecuteNonQuery(string sql, Dictionary<string, object?>? parameters = null)
+        {
+            using var command = CreateCommand(sql, parameters: parameters);
+            command.ExecuteNonQuery();
+        }
+
+        private SQLiteCommand CreateCommand(
+            string sql,
+            SQLiteTransaction? transaction = null,
+            Dictionary<string, object?>? parameters = null)
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.Transaction = transaction;
+            if (parameters != null)
+            {
+                foreach (var parameter in parameters)
+                {
+                    command.Parameters.AddWithValue($"@{parameter.Key}", parameter.Value ?? DBNull.Value);
+                }
+            }
+            return command;
         }
     }
 }
