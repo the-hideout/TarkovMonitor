@@ -82,7 +82,7 @@ namespace TarkovMonitor
                         Exception?.Invoke(this, new(ex, $"reading {this.Type} log data"));
                     }
 
-                    Thread.Sleep(5000);
+                    Thread.Sleep(Type == GameLogType.Output ? 250 : 5000);
                 }
             });
         }

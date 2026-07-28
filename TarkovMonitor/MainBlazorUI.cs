@@ -78,6 +78,7 @@ namespace TarkovMonitor
             eft.ExceptionThrown += Eft_ExceptionThrown;
             eft.RaidStarting += Eft_RaidStarting;
             eft.RaidStarted += Eft_RaidStart;
+            eft.RaidStopping += Eft_RaidStopping;
             eft.RaidExited += Eft_RaidExited;
             eft.RaidEnded += Eft_RaidEnded;
             eft.ExitedPostRaidMenus += Eft_ExitedPostRaidMenus;
@@ -277,23 +278,10 @@ namespace TarkovMonitor
             monMessage.Buttons.Add(screenshotButton);
         }
 
-        private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
+        private async void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
             inRaid = false;
-            
-            // Resume media on raid end
-            if (Properties.Settings.Default.pauseMediaOnRaid)
-            {
-                try
-                {
-                    messageLog.AddMessage("Playing media...", "info");
-                    MediaController.Play();
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error resuming media: {ex.Message}", "exception");
-                }
-            }
+            await ResumeMediaAfterRaid();
             
             //groupManager.Stale = true;
             MonitorMessage monMessage = new($"Ended {e.RaidInfo.Map?.name} raid");
@@ -690,12 +678,52 @@ namespace TarkovMonitor
             messageLog.AddMessage($"Error {e.Context}: {e.Exception.Message}\n{e.Exception.StackTrace}", "exception");
         }
 
-        private void Eft_RaidStarting(object? sender, RaidInfoEventArgs e)
+        private async void Eft_RaidStarting(object? sender, RaidInfoEventArgs e)
         {
             if (Properties.Settings.Default.raidStartAlert)
             {
                 // always notify if the GameStarting event appeared
                 Sound.Play("raid_starting");
+            }
+
+            await PauseMediaForRaid();
+        }
+
+        private async Task PauseMediaForRaid()
+        {
+            if (!Properties.Settings.Default.pauseMediaOnRaid) return;
+
+            try
+            {
+                int pausedSessions = await MediaController.PauseAsync();
+                messageLog.AddMessage($"Paused {pausedSessions} music session(s)", "info");
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error pausing media: {ex.Message}", "exception");
+            }
+        }
+
+        private async void Eft_RaidStopping(object? sender, EventArgs e)
+        {
+            await ResumeMediaAfterRaid();
+        }
+
+        private async Task ResumeMediaAfterRaid()
+        {
+            if (!Properties.Settings.Default.pauseMediaOnRaid) return;
+
+            try
+            {
+                int resumedSessions = await MediaController.ResumeAsync();
+                if (resumedSessions > 0)
+                {
+                    messageLog.AddMessage($"Resumed {resumedSessions} music session(s)", "info");
+                }
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error resuming media: {ex.Message}", "exception");
             }
         }
 
@@ -704,18 +732,10 @@ namespace TarkovMonitor
             inRaid = true;
             Stats.AddRaid(e);
             
-            // Pause media on raid start
-            if (Properties.Settings.Default.pauseMediaOnRaid)
+            // GameStarting is not always logged for scav raids, so pause here as a fallback.
+            if (e.RaidInfo.StartingTime == null)
             {
-                try
-                {
-                    messageLog.AddMessage("Pausing media...", "info");
-                    MediaController.Pause();
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error pausing media: {ex.Message}", "exception");
-                }
+                await PauseMediaForRaid();
             }
             
             if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
@@ -816,26 +836,12 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_RaidExited(object? sender, RaidExitedEventArgs e)
+        private async void Eft_RaidExited(object? sender, RaidExitedEventArgs e)
         {
             //groupManager.Stale = true;
             runthroughTimer.Stop();
             inRaid = false;
-            
-            // Resume media on raid exit
-            if (Properties.Settings.Default.pauseMediaOnRaid)
-            {
-                try
-                {
-                    messageLog.AddMessage("Attempting to resume media...", "info");
-                    MediaController.Play();
-                    messageLog.AddMessage("Media resume command sent", "info");
-                }
-                catch (Exception ex)
-                {
-                    messageLog.AddMessage($"Error resuming media: {ex.Message}", "exception");
-                }
-            }
+            await ResumeMediaAfterRaid();
             
             try
             {
