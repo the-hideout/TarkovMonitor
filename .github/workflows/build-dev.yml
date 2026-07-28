@@ -25,10 +25,27 @@ jobs:
         run: dotnet restore
 
       - name: Build and publish
-        run: dotnet publish -c Release --self-contained --runtime win-x64 -p:PublishSingleFile=true
+        shell: pwsh
+        run: |
+          dotnet publish TarkovMonitor/TarkovMonitor.csproj `
+            -c Release `
+            --self-contained `
+            --runtime win-x64 `
+            -p:PublishSingleFile=true `
+            --output "$Env:GITHUB_WORKSPACE\publish"
+
+      - name: Verify published application
+        shell: pwsh
+        run: |
+          $executable = "$Env:GITHUB_WORKSPACE\publish\TarkovMonitor.exe"
+
+          if (-not (Test-Path -LiteralPath $executable)) {
+            throw "Published executable was not found: $executable"
+          }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # pin@v4
         with:
           name: Published Application
-          path: TarkovMonitor\bin\Release\net6.0-windows\win-x64\publish\*
+          path: publish
+          if-no-files-found: error
