@@ -19,6 +19,8 @@ class Splash : Form
 
     private System.Timers.Timer splashTimer = new System.Timers.Timer();
 
+    [System.ComponentModel.Browsable(false)]
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public new float Opacity
     {
         get
