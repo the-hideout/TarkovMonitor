@@ -1,46 +1,88 @@
-using System.Runtime.InteropServices;
+using Windows.Media.Control;
 
 namespace TarkovMonitor
 {
     /// <summary>
-    /// Controls system media playback (play/pause) for background applications like Spotify, YouTube, etc.
+    /// Controls supported music playback through Windows media sessions.
     /// </summary>
     internal static class MediaController
     {
-        private const int KEYEVENTF_EXTENDEDKEY = 0x0001;
-        private const int KEYEVENTF_KEYUP = 0x0002;
-        private const byte VK_MEDIA_PLAY_PAUSE = 0xB3;
+        private static readonly SemaphoreSlim mediaSessionLock = new(1, 1);
+        private static List<GlobalSystemMediaTransportControlsSession> pausedSessions = new();
 
-        [DllImport("user32.dll")]
-        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
-        /// <summary>
-        /// Sends a media play/pause key event to toggle media playback
-        /// </summary>
-        public static void TogglePlayPause()
+        private static bool IsSupportedMusicSession(GlobalSystemMediaTransportControlsSession session)
         {
-            // Press the key
-            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_EXTENDEDKEY, UIntPtr.Zero);
-            // Release the key
-            keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, UIntPtr.Zero);
+            string source = session.SourceAppUserModelId;
+            return source.Contains("spotify", StringComparison.OrdinalIgnoreCase)
+                || source.Contains("applemusic", StringComparison.OrdinalIgnoreCase)
+                || source.Contains("itunes", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
-        /// Pauses media playback by sending play/pause command
-        /// Note: This toggles play/pause state. The media must be playing for this to pause it.
+        /// Pauses supported music sessions that are currently playing and remembers
+        /// only the sessions successfully paused by TarkovMonitor.
         /// </summary>
-        public static void Pause()
+        public static async Task<int> PauseAsync()
         {
-            TogglePlayPause();
+            await mediaSessionLock.WaitAsync();
+            try
+            {
+                pausedSessions.Clear();
+
+                var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+                foreach (var session in manager.GetSessions())
+                {
+                    if (!IsSupportedMusicSession(session)
+                        || session.GetPlaybackInfo().PlaybackStatus != GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                    {
+                        continue;
+                    }
+
+                    if (await session.TryPauseAsync())
+                    {
+                        pausedSessions.Add(session);
+                    }
+                }
+
+                return pausedSessions.Count;
+            }
+            finally
+            {
+                mediaSessionLock.Release();
+            }
         }
 
         /// <summary>
-        /// Resumes media playback by sending play/pause command
-        /// Note: This toggles play/pause state. The media must be paused for this to resume it.
+        /// Resumes only the music sessions that TarkovMonitor paused at raid start.
         /// </summary>
-        public static void Play()
+        public static async Task<int> ResumeAsync()
         {
-            TogglePlayPause();
+            await mediaSessionLock.WaitAsync();
+            try
+            {
+                var sessionsToResume = pausedSessions;
+                pausedSessions = new();
+                int resumedCount = 0;
+
+                foreach (var session in sessionsToResume)
+                {
+                    if (session.GetPlaybackInfo().PlaybackStatus != GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused)
+                    {
+                        continue;
+                    }
+
+                    if (await session.TryPlayAsync())
+                    {
+                        resumedCount++;
+                    }
+                }
+
+                return resumedCount;
+            }
+            finally
+            {
+                mediaSessionLock.Release();
+            }
         }
     }
 }

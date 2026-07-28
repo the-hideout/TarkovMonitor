@@ -277,7 +277,7 @@ namespace TarkovMonitor
             monMessage.Buttons.Add(screenshotButton);
         }
 
-        private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
+        private async void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
             inRaid = false;
             
@@ -286,8 +286,8 @@ namespace TarkovMonitor
             {
                 try
                 {
-                    messageLog.AddMessage("Playing media...", "info");
-                    MediaController.Play();
+                    int resumedSessions = await MediaController.ResumeAsync();
+                    messageLog.AddMessage($"Resumed {resumedSessions} music session(s)", "info");
                 }
                 catch (Exception ex)
                 {
@@ -709,8 +709,8 @@ namespace TarkovMonitor
             {
                 try
                 {
-                    messageLog.AddMessage("Pausing media...", "info");
-                    MediaController.Pause();
+                    int pausedSessions = await MediaController.PauseAsync();
+                    messageLog.AddMessage($"Paused {pausedSessions} music session(s)", "info");
                 }
                 catch (Exception ex)
                 {
@@ -816,7 +816,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_RaidExited(object? sender, RaidExitedEventArgs e)
+        private async void Eft_RaidExited(object? sender, RaidExitedEventArgs e)
         {
             //groupManager.Stale = true;
             runthroughTimer.Stop();
@@ -827,9 +827,8 @@ namespace TarkovMonitor
             {
                 try
                 {
-                    messageLog.AddMessage("Attempting to resume media...", "info");
-                    MediaController.Play();
-                    messageLog.AddMessage("Media resume command sent", "info");
+                    int resumedSessions = await MediaController.ResumeAsync();
+                    messageLog.AddMessage($"Resumed {resumedSessions} music session(s)", "info");
                 }
                 catch (Exception ex)
                 {
