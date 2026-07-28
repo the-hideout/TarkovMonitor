@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # pin@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@8e6bd2905eef86446227f003dda1deb3916c4aaf # pin@v2
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # pin@v6.0.0
         with:
           dotnet-version: "6.x" # Change this to the desired .NET version
 
@@ -44,7 +44,7 @@ jobs:
           }
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # pin@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         with:
           name: Published Application
           path: publish
