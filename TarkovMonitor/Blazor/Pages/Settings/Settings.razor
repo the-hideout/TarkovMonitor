@@ -131,6 +131,18 @@
             <div>
                 <MudSwitch @bind-Value="@NavigateMapOnPositionUpdateSwitch" Label="@LocalizationService.GetString("SwitchToTarkovDevMapOnPositionUpdate")" Color="Color.Info" />
             </div>
+            <div style="margin-top: 8px;">
+                <MudSwitch @bind-Value="@autoZoomInput" Label="Zoom to player on screenshot" Color="Color.Info" />
+                <MudNumericField @bind-Value="@viewRadiusInput"
+                                 Label="View radius (meters)"
+                                 Min="50" Max="5000" Step="25"
+                                 Disabled="@(!autoZoomInput)"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Adornment="Adornment.End" AdornmentText="m"
+                                 HelperText="Meters shown around your position on each new map (50 = very close, 1000 = wide area)"
+                                 Style="max-width: 200px; margin-top: 4px;" />
+            </div>
             <div>
                 <MudSwitch @bind-Value="@AutomaticallyDeleteScreenshotsAfterRaid" Label="@LocalizationService.GetString("AutomaticallyDeleteScreenshotsAfterRaid")" Color="Color.Info" />
             </div>
@@ -141,6 +153,9 @@
                     <MudSelectItem T="string" Value="@map.nameId">@map.name</MudSelectItem>
                 }
             </MudSelect>
+            <div style="margin-top: 16px;">
+                <MudButton @onclick="SaveRemoteSettings" Variant="Variant.Filled" Color="Color.Primary">Save Map &amp; Remote Settings</MudButton>
+            </div>
         </MudPaper>
     </MudItem>
 
@@ -182,12 +197,17 @@
         }
     }
 
+    private bool autoZoomInput;
+    private int viewRadiusInput;
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         PlaybackDevices = Sound.GetPlaybackDevices();
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
         LocalizationService.LanguageChanged += OnLanguageChanged;
+        autoZoomInput = Properties.Settings.Default.autoZoomOnLocationUpdate;
+        viewRadiusInput = Properties.Settings.Default.viewRadiusOnLocationUpdate;
     }
 
     protected override void OnParametersSet()
@@ -702,5 +722,14 @@
 
     void SetDefaultLogFolder() {
         CustomLogsFolder = "";
+    }
+
+    private void SaveRemoteSettings()
+    {
+        Properties.Settings.Default.autoZoomOnLocationUpdate = autoZoomInput;
+        Properties.Settings.Default.viewRadiusOnLocationUpdate = viewRadiusInput;
+        Properties.Settings.Default.Save();
+        SocketClient.ResetLastMap();
+        messageLog.AddMessage("Remote settings saved successfully.", "success");
     }
 }

@@ -346,5 +346,29 @@ namespace TarkovMonitor.Properties {
                 this["pauseMediaOnRaid"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool autoZoomOnLocationUpdate {
+            get {
+                return ((bool)(this["autoZoomOnLocationUpdate"]));
+            }
+            set {
+                this["autoZoomOnLocationUpdate"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("200")]
+        public int viewRadiusOnLocationUpdate {
+            get {
+                return ((int)(this["viewRadiusOnLocationUpdate"]));
+            }
+            set {
+                this["viewRadiusOnLocationUpdate"] = value;
+            }
+        }
     }
 }

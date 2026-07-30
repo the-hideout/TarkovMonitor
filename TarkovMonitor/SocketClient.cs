@@ -12,6 +12,7 @@ namespace TarkovMonitor
         private static ClientWebSocket socket;
         private static CancellationTokenSource cancellationToken;
         private static Task receiveTask;
+        private static string? _lastMapName;
         private static System.Timers.Timer idleTimer = new()
         {
             AutoReset = false,
@@ -132,6 +133,11 @@ namespace TarkovMonitor
             return Send(new List<JsonObject> { message });
         }
 
+        public static void ResetLastMap()
+        {
+            _lastMapName = null;
+        }
+
         public static async Task UpdatePlayerPosition(PlayerPositionEventArgs e)
         {
             if (e.RaidInfo.Map == null)
@@ -149,6 +155,33 @@ namespace TarkovMonitor
             }
         }
 
+        public static async Task SendPlayerPositionAndZoom(PlayerPositionEventArgs e)
+        {
+            if (e.RaidInfo.Map == null)
+            {
+                return;
+            }
+
+            bool mapChanged = e.RaidInfo.Map.normalizedName != _lastMapName;
+            _lastMapName = e.RaidInfo.Map.normalizedName;
+
+            int? viewRadius = null;
+            if (mapChanged && Properties.Settings.Default.autoZoomOnLocationUpdate)
+            {
+                viewRadius = Math.Clamp(Properties.Settings.Default.viewRadiusOnLocationUpdate, 50, 5000);
+            }
+
+            var message = GetPlayerPositionMessage(e, viewRadius);
+            try
+            {
+                await Send(message);
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(message, new(ex, "sending player position and zoom"));
+            }
+        }
+
         public static async Task NavigateToMap(TarkovDev.Map map)
         {
             var payload = GetNavigateToMapMessage(map);
@@ -162,27 +195,32 @@ namespace TarkovMonitor
             }
         }
 
-        public static JsonObject GetPlayerPositionMessage(PlayerPositionEventArgs e)
+        public static JsonObject GetPlayerPositionMessage(PlayerPositionEventArgs e, int? viewRadius = null)
         {
             if (e.RaidInfo.Map == null)
             {
                 throw new Exception("Map not found");
             }
+            var data = new JsonObject
+            {
+                ["type"] = "playerPosition",
+                ["map"] = e.RaidInfo.Map.normalizedName,
+                ["position"] = new JsonObject
+                {
+                    ["x"] = e.Position.X,
+                    ["y"] = e.Position.Y,
+                    ["z"] = e.Position.Z,
+                },
+                ["rotation"] = e.Rotation,
+            };
+            if (viewRadius.HasValue)
+            {
+                data["viewRadius"] = viewRadius.Value;
+            }
             return new JsonObject
             {
                 ["type"] = "command",
-                ["data"] = new JsonObject
-                {
-                    ["type"] = "playerPosition",
-                    ["map"] = e.RaidInfo.Map.normalizedName,
-                    ["position"] = new JsonObject
-                    {
-                        ["x"] = e.Position.X,
-                        ["y"] = e.Position.Y,
-                        ["z"] = e.Position.Z,
-                    },
-                    ["rotation"] = e.Rotation,
-                }
+                ["data"] = data,
             };
         }
 

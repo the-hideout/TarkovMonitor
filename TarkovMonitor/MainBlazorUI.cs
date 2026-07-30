@@ -335,16 +335,19 @@ namespace TarkovMonitor
             {
                 return;
             }
+            // EFT writes the screenshot before the player has actually spawned, producing a
+            // bogus (0,0,0) origin on the first screenshot of every raid. Skip it so we don't
+            // send a false position and don't consume the "map changed" zoom trigger.
+            if (e.Position.X == 0 && e.Position.Y == 0 && e.Position.Z == 0)
+            {
+                return;
+            }
             messageLog.AddMessage($"Player position on {e.RaidInfo.Map.name}: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
-            List<JsonObject> socketMessages = new();
-            socketMessages.Add(SocketClient.GetPlayerPositionMessage(e));
-            //await SocketClient.UpdatePlayerPosition(e);
+            await SocketClient.SendPlayerPositionAndZoom(e);
             if (Properties.Settings.Default.navigateMapOnPositionUpdate)
             {
-                //SocketClient.NavigateToMap(map);
-                socketMessages.Add(SocketClient.GetNavigateToMapMessage(e.RaidInfo.Map));
+                await SocketClient.NavigateToMap(e.RaidInfo.Map);
             }
-            SocketClient.Send(socketMessages);
         }
 
         private void UpdateCheck_Error(object? sender, ExceptionEventArgs e)
