@@ -9,6 +9,7 @@
 @inject MessageLog MessageLog
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
+@inject TimersManager TimersManager
 
 <div style="width: 100%; height: 100%" class="tarkov-dev-bg">
 	<MudLayout>
@@ -48,6 +49,47 @@
 				@Body
 			</CascadingValue>
 		</MudMainContent>
+		@if (ShowFloatingTimerPanel)
+		{
+			<MudPaper id="floating-timer-panel" Class="@FloatingTimerPanelClass" Elevation="8">
+				<div class="floating-timer-panel__handle">
+					<MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" />
+					@if (floatingTimerPanelCollapsed)
+					{
+						<MudText Typo="Typo.subtitle2" Class="floating-timer-panel__compact-value">@CompactTimerValues</MudText>
+					}
+					else
+					{
+						<MudText Typo="Typo.subtitle2">Raid timers</MudText>
+						<MudIconButton Icon="@Icons.Material.Filled.Restore" Size="Size.Small" Color="Color.Inherit"
+							Title="Reset position" OnClick="ResetFloatingTimerPosition" />
+					}
+					<MudIconButton Icon="@(floatingTimerPanelCollapsed ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+						Size="Size.Small" Color="Color.Inherit"
+						Title="@(floatingTimerPanelCollapsed ? "Expand timer panel" : "Collapse timer panel")"
+						OnClick="ToggleFloatingTimerPanel" />
+				</div>
+				@if (!floatingTimerPanelCollapsed)
+				{
+				<div class="floating-timer-panel__timers">
+					@if (TimersManager.FloatingPanelShowTimeInRaid)
+					{
+						<div class="floating-timer-panel__timer">
+							<MudText Typo="Typo.caption">Elapsed Raid Time</MudText>
+							<MudText Typo="Typo.h5" Class="floating-timer-panel__value">@FormatTimer(timeInRaid)</MudText>
+						</div>
+					}
+					@if (TimersManager.FloatingPanelShowRunThrough)
+					{
+						<div class="floating-timer-panel__timer">
+							<MudText Typo="Typo.caption">@LocalizationService.GetString("RunthroughPeriod")</MudText>
+							<MudText Typo="Typo.h5" Class="floating-timer-panel__value">@FormatTimer(runThroughRemaining)</MudText>
+						</div>
+					}
+				</div>
+				}
+			</MudPaper>
+		}
 	</MudLayout>
 	@if (!WindowHost.IsMaximized)
 	{
@@ -67,12 +109,41 @@
 	bool drawerOpen = true;
 
 	public string CurrentPageTitle = "TarkovMonitor";
+	private TimeSpan timeInRaid;
+	private TimeSpan runThroughRemaining;
+	private bool isTimersPage;
+	private bool floatingTimerPanelCollapsed = true;
+
+	private bool ShowFloatingTimerPanel =>
+		TimersManager.FloatingPanelEnabled && TimersManager.IsRaidActive && !isTimersPage;
+
+	private static string FormatTimer(TimeSpan value) => value.ToString(@"hh\:mm\:ss");
+	private string FloatingTimerPanelClass => $"floating-timer-panel{(floatingTimerPanelCollapsed ? " floating-timer-panel--collapsed" : string.Empty)}";
+	private string CompactTimerValues => string.Join(" | ", new[]
+	{
+		TimersManager.FloatingPanelShowTimeInRaid ? $"ERT {FormatTimer(timeInRaid)}" : null,
+		TimersManager.FloatingPanelShowRunThrough ? $"RT {FormatTimer(runThroughRemaining)}" : null
+	}.Where(value => value is not null));
 
 	protected override void OnInitialized()
 	{
 		LocalizationService.LanguageChanged += OnLanguageChanged;
 		WindowHost.WindowStateChanged += OnWindowStateChanged;
 		MessageLog.newMessage += OnMessageAdded;
+		NavigationManager.LocationChanged += OnLocationChanged;
+		TimersManager.RaidTimerChanged += OnRaidTimerChanged;
+		TimersManager.RunThroughTimerChanged += OnRunThroughTimerChanged;
+		TimersManager.RaidActiveChanged += OnFloatingTimerStateChanged;
+		TimersManager.FloatingPanelSettingChanged += OnFloatingTimerStateChanged;
+		timeInRaid = TimersManager.TimeInRaid;
+		runThroughRemaining = TimersManager.RunThroughRemaining;
+		UpdateCurrentPage();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (ShowFloatingTimerPanel)
+			await JSRuntime.InvokeVoidAsync("floatingTimerPanel.initialize", "floating-timer-panel");
 	}
 
 	public void SetTitle(string value) {
@@ -143,10 +214,58 @@
 		InvokeAsync(StateHasChanged);
 	}
 
+	private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+	{
+		UpdateCurrentPage();
+		InvokeAsync(StateHasChanged);
+	}
+
+	private void UpdateCurrentPage()
+	{
+		var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+		isTimersPage = relativePath.Split('?', '#')[0].Trim('/').Equals("timers", StringComparison.OrdinalIgnoreCase);
+	}
+
+	private void OnRaidTimerChanged(object? sender, TimerChangedEventArgs e)
+	{
+		timeInRaid = e.TimerValue;
+		InvokeAsync(StateHasChanged);
+	}
+
+	private void OnFloatingTimerStateChanged(object? sender, EventArgs e)
+	{
+		if (!TimersManager.IsRaidActive)
+			floatingTimerPanelCollapsed = true;
+		timeInRaid = TimersManager.TimeInRaid;
+		runThroughRemaining = TimersManager.RunThroughRemaining;
+		InvokeAsync(StateHasChanged);
+	}
+
+	private void ToggleFloatingTimerPanel()
+	{
+		floatingTimerPanelCollapsed = !floatingTimerPanelCollapsed;
+	}
+
+	private void OnRunThroughTimerChanged(object? sender, TimerChangedEventArgs e)
+	{
+		runThroughRemaining = e.TimerValue;
+		InvokeAsync(StateHasChanged);
+	}
+
+	private async Task ResetFloatingTimerPosition()
+	{
+		await JSRuntime.InvokeVoidAsync("floatingTimerPanel.reset", "floating-timer-panel");
+	}
+
 	public void Dispose()
 	{
 		LocalizationService.LanguageChanged -= OnLanguageChanged;
 		WindowHost.WindowStateChanged -= OnWindowStateChanged;
 		MessageLog.newMessage -= OnMessageAdded;
+		NavigationManager.LocationChanged -= OnLocationChanged;
+		TimersManager.RaidTimerChanged -= OnRaidTimerChanged;
+		TimersManager.RunThroughTimerChanged -= OnRunThroughTimerChanged;
+		TimersManager.RaidActiveChanged -= OnFloatingTimerStateChanged;
+		TimersManager.FloatingPanelSettingChanged -= OnFloatingTimerStateChanged;
 	}
 }
