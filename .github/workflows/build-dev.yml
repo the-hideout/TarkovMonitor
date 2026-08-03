@@ -19,7 +19,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # pin@v6.0.0
         with:
-          dotnet-version: "6.x" # Change this to the desired .NET version
+          dotnet-version: "10.x"
 
       - name: Restore dependencies
         run: dotnet restore
