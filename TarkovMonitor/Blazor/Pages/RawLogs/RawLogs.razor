@@ -9,8 +9,10 @@
 
 <MudGrid Class="pa-0" Spacing="0" Style="position:relative;">
 	<MudItem xs="12">
-        <LogBoard>
-        </LogBoard>
+        <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
+            <LogBoard>
+            </LogBoard>
+        </MudPaper>
     </MudItem>
     @if (DebugMode() || LogsFolderSet())
     {
