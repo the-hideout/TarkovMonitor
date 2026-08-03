@@ -89,7 +89,7 @@ namespace TarkovMonitor
 
 			eft = new GameWatcher();
 
-            timersManager = new TimersManager(eft);
+            timersManager = new TimersManager(eft, messageLog);
 
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
             var services = new ServiceCollection();
