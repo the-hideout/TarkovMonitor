@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Transactions;
 using Refit;
@@ -13,10 +14,6 @@ namespace TarkovMonitor
         {
             HttpClient Client { get; }
 
-            [Get("/token")]
-            [Headers("Authorization: Bearer {token}")]
-            Task<TokenResponse> TestToken(string token);
-
             [Get("/progress")]
             [Headers("Authorization: Bearer")]
             Task<ProgressResponse> GetProgress();
@@ -30,6 +27,7 @@ namespace TarkovMonitor
             Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
         }
 
+        private static readonly HttpClient tokenInspectionClient = new();
         private static ITarkovTrackerAPI api = InitAPI();
 
         public static ProgressResponse Progress { get; private set; } = new();
@@ -47,6 +45,7 @@ namespace TarkovMonitor
         };
 
         static TarkovTracker() {
+            tokenInspectionClient.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
             tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
         }
 
@@ -310,13 +309,43 @@ namespace TarkovMonitor
 
         public static async Task<TokenResponse> TestToken(string apiToken)
         {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"{GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain).TrimEnd('/')}/token");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiToken.Trim());
+
+            HttpResponseMessage httpResponse;
             try
             {
-                var response = await api.TestToken(apiToken);
+                httpResponse = await tokenInspectionClient.SendAsync(request);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new Exception($"TarkovTracker API connection error: {ex.Message}");
+            }
+
+            using (httpResponse)
+            {
+                if (httpResponse.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    InvalidTokenException();
+                }
+                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                if (!httpResponse.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Invalid TarkovTracker API response code: {(int)httpResponse.StatusCode} {httpResponse.ReasonPhrase}");
+                }
+
+                var responseBody = await httpResponse.Content.ReadAsStringAsync();
+                var response = JsonSerializer.Deserialize<TokenResponse>(responseBody)
+                    ?? throw new Exception("TarkovTracker returned an empty token response.");
                 if (response.permissions.Contains("WP"))
                 {
                     ValidToken = true;
-                    GetProgress();
+                    await GetProgress();
                     TokenValidated?.Invoke(null, new EventArgs());
                 }
                 else
@@ -326,22 +355,6 @@ namespace TarkovMonitor
                     TokenInvalid?.Invoke(null, new EventArgs());
                 }
                 return response;
-            }
-            catch (ApiException ex)
-            {
-                if (ex.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    InvalidTokenException();
-                }
-                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    throw new Exception("Rate limited by Tarkov Tracker API");
-                }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
             }
         }
 
@@ -375,8 +388,10 @@ namespace TarkovMonitor
 
         public class TokenResponse
         {
-            public List<string> permissions { get; set; }
-            public string token { get; set; }
+            public bool success { get; set; }
+            public List<string> permissions { get; set; } = new();
+            public string? token { get; set; }
+            public string? gameMode { get; set; }
         }
 
         public class ProgressResponse
