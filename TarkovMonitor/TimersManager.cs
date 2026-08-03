@@ -12,20 +12,71 @@ namespace TarkovMonitor
         public event EventHandler<TimerChangedEventArgs> RaidTimerChanged;
         public event EventHandler<TimerChangedEventArgs> RunThroughTimerChanged;
         public event EventHandler<TimerChangedEventArgs> ScavCooldownTimerChanged;
+        public event EventHandler? RaidActiveChanged;
+        public event EventHandler? FloatingPanelSettingChanged;
 
         private TimeSpan RunThroughRemainingTime;
         private TimeSpan TimeInRaidTime;
         private TimeSpan ScavCooldownTime;
-        private DateTime? RaidStartTime;
+        private readonly Stopwatch raidStopwatch = new();
         private System.Threading.Timer timerRaid;
         private System.Threading.Timer timerRunThrough;
         private System.Threading.Timer timerScavCooldown;
         private CancellationTokenSource cancellationTokenSource = new();
         private readonly GameWatcher eft;
+        private readonly MessageLog messageLog;
 
-        public TimersManager(GameWatcher eft)
+        public bool IsRaidActive { get; private set; }
+        public TimeSpan TimeInRaid => TimeInRaidTime;
+        public TimeSpan RunThroughRemaining => RunThroughRemainingTime;
+        public bool FloatingPanelEnabled
+        {
+            get => Properties.Settings.Default.floatingTimerPanelEnabled;
+            set
+            {
+                if (Properties.Settings.Default.floatingTimerPanelEnabled == value)
+                    return;
+
+                Properties.Settings.Default.floatingTimerPanelEnabled = value;
+                Properties.Settings.Default.Save();
+                FloatingPanelSettingChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        public bool FloatingPanelShowTimeInRaid
+        {
+            get => Properties.Settings.Default.floatingTimerPanelShowTimeInRaid;
+            set
+            {
+                if (!value && !FloatingPanelShowRunThrough)
+                    return;
+                SaveFloatingPanelTimerSetting(nameof(Properties.Settings.Default.floatingTimerPanelShowTimeInRaid), value);
+            }
+        }
+        public bool FloatingPanelShowRunThrough
+        {
+            get => Properties.Settings.Default.floatingTimerPanelShowRunThrough;
+            set
+            {
+                if (!value && !FloatingPanelShowTimeInRaid)
+                    return;
+                SaveFloatingPanelTimerSetting(nameof(Properties.Settings.Default.floatingTimerPanelShowRunThrough), value);
+            }
+        }
+
+        private void SaveFloatingPanelTimerSetting(string settingName, bool value)
+        {
+            if ((bool)Properties.Settings.Default[settingName] == value)
+                return;
+
+            Properties.Settings.Default[settingName] = value;
+            Properties.Settings.Default.Save();
+            FloatingPanelSettingChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public TimersManager(GameWatcher eft, MessageLog messageLog)
         {
             this.eft = eft;
+            this.messageLog = messageLog;
 
             // Get Scav cooldown time from TarkovTracker but ensuring the API has been called and hydrated at least once.
             // without this, the scav cooldown time will be 25.
@@ -55,6 +106,8 @@ namespace TarkovMonitor
 
             TimeInRaidTime = TimeSpan.Zero;
             RunThroughRemainingTime = Properties.Settings.Default.runthroughTime;
+            IsRaidActive = true;
+            raidStopwatch.Restart();
 
             timerRaid.Change(0, 1000);
             timerRunThrough.Change(0, 1000);
@@ -69,10 +122,17 @@ namespace TarkovMonitor
                 TimerValue = RunThroughRemainingTime
             });
 
+            RaidActiveChanged?.Invoke(this, EventArgs.Empty);
+
         }
 
         private void Eft_RaidEnded(object? sender, RaidInfoEventArgs e)
         {
+            var completedRaidTime = raidStopwatch.Elapsed;
+            var shouldRecordRaidTime = IsRaidActive;
+            IsRaidActive = false;
+            raidStopwatch.Stop();
+            TimeInRaidTime = completedRaidTime;
             RunThroughRemainingTime = TimeSpan.Zero;
             timerRunThrough.Change(Timeout.Infinite, Timeout.Infinite);
             timerRaid.Change(Timeout.Infinite, Timeout.Infinite);
@@ -93,6 +153,11 @@ namespace TarkovMonitor
             {
                 TimerValue = ScavCooldownTime
             });
+
+            RaidActiveChanged?.Invoke(this, EventArgs.Empty);
+
+            if (shouldRecordRaidTime)
+                messageLog.AddMessage($"Raid completed — total time in raid: {completedRaidTime:hh\\:mm\\:ss}.", "info");
         }
 
         private void TimerRaid_Elapsed(object state)
@@ -100,13 +165,19 @@ namespace TarkovMonitor
             if (cancellationTokenSource.IsCancellationRequested)
                 return;
 
-            TimeInRaidTime += TimeSpan.FromSeconds(1);
+            TimeInRaidTime = raidStopwatch.Elapsed;
 
             RaidTimerChanged?.Invoke(this, new TimerChangedEventArgs()
             {
                 TimerValue = TimeInRaidTime
             });
         }
+
+
+
+
+
+
 
         private void TimerRunThrough_Elapsed(object state)
         {
