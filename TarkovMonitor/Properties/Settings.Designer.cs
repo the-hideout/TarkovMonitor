@@ -346,5 +346,41 @@ namespace TarkovMonitor.Properties {
                 this["pauseMediaOnRaid"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool floatingTimerPanelEnabled {
+            get {
+                return ((bool)(this["floatingTimerPanelEnabled"]));
+            }
+            set {
+                this["floatingTimerPanelEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool floatingTimerPanelShowTimeInRaid {
+            get {
+                return ((bool)(this["floatingTimerPanelShowTimeInRaid"]));
+            }
+            set {
+                this["floatingTimerPanelShowTimeInRaid"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool floatingTimerPanelShowRunThrough {
+            get {
+                return ((bool)(this["floatingTimerPanelShowRunThrough"]));
+            }
+            set {
+                this["floatingTimerPanelShowRunThrough"] = value;
+            }
+        }
     }
 }

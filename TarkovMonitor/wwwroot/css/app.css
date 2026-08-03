@@ -33,3 +33,61 @@ body {
 .dashboard-page-item {
     height: 100%;
 }
+
+.floating-timer-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 190px;
+    z-index: 1300;
+    overflow: hidden;
+    user-select: none;
+}
+
+.floating-timer-panel--collapsed {
+    width: auto;
+    min-width: 150px;
+}
+
+.floating-timer-panel__handle {
+    align-items: center;
+    cursor: move;
+    display: flex;
+    gap: 4px;
+    padding: 2px 2px 2px 8px;
+    touch-action: none;
+}
+
+.floating-timer-panel__handle .mud-typography {
+    flex: 1;
+}
+
+.floating-timer-panel__compact-value {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.floating-timer-panel .mud-icon-button {
+    padding: 4px;
+}
+
+.floating-timer-panel__value {
+    font-variant-numeric: tabular-nums;
+}
+
+.floating-timer-panel__timers {
+    display: grid;
+    gap: 6px;
+    padding: 4px 10px 10px;
+}
+
+.floating-timer-panel__timer {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.floating-timer-panel__timer .mud-typography-h5 {
+    font-size: 1.1rem;
+}
