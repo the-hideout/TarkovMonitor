@@ -18,8 +18,10 @@ namespace TarkovMonitor
         private readonly FileSystemWatcher screenshotWatcher;
         private string _logsPath = "";
         public static Profile CurrentProfile { get; set; } = new();
+        public static string LastDetectedSessionMode { get; private set; } = Properties.Settings.Default.lastTarkovSessionMode;
         public static bool ReadingPastLogs = false;
         public bool InitialLogsRead { get; private set; } = false;
+        public bool IsGameRunning { get; private set; } = false;
         public string LogsPath { 
             get
             {
@@ -86,6 +88,7 @@ namespace TarkovMonitor
         public event EventHandler<ExceptionEventArgs>? ExceptionThrown;
         public event EventHandler<DebugEventArgs>? DebugMessage;
         public event EventHandler? GameStarted;
+        public event EventHandler? GameStopped;
         public event EventHandler<LogContentEventArgs<GroupLogContent>>? GroupInviteAccept;
         public event EventHandler<LogContentEventArgs<GroupRaidSettingsLogContent>>? GroupRaidSettings;
         public event EventHandler<LogContentEventArgs<GroupMatchRaidReadyLogContent>>? GroupMemberReady;
@@ -361,8 +364,19 @@ namespace TarkovMonitor
                         {
                             continue;
                         }
-                        CurrentProfile.Type = Enum.Parse<ProfileType>(modeMatch.Groups["mode"].Value, true);
+                        var previousSessionMode = CurrentProfile.SessionMode;
+                        CurrentProfile.SessionMode = modeMatch.Groups["mode"].Value;
+                        RememberSessionMode(CurrentProfile.SessionMode);
+                        CurrentProfile.Type = Enum.TryParse<ProfileType>(CurrentProfile.SessionMode, true, out var profileType)
+                            ? profileType
+                            : ProfileType.Regular;
                         raidInfo.Profile = CurrentProfile;
+                        if (!e.InitialRead
+                            && CurrentProfile.Id != ""
+                            && !string.Equals(previousSessionMode, CurrentProfile.SessionMode, StringComparison.OrdinalIgnoreCase))
+                        {
+                            ProfileChanged?.Invoke(this, new(CurrentProfile));
+                        }
                         continue;
                     }
                     // Profile selection messages have changed names across EFT versions.
@@ -606,6 +620,21 @@ namespace TarkovMonitor
             }
         }
 
+        private static void RememberSessionMode(string sessionMode)
+        {
+            if (ReadingPastLogs || string.IsNullOrWhiteSpace(sessionMode))
+            {
+                return;
+            }
+            LastDetectedSessionMode = sessionMode;
+            if (Properties.Settings.Default.lastTarkovSessionMode == sessionMode)
+            {
+                return;
+            }
+            Properties.Settings.Default.lastTarkovSessionMode = sessionMode;
+            Properties.Settings.Default.Save();
+        }
+
         private void ProcessTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
             UpdateProcess();
@@ -732,13 +761,17 @@ namespace TarkovMonitor
                 var dateTimeString = match.Groups["date"].Value + " " + match.Groups["time"].Value;
                 DateTime profileDate = DateTime.ParseExact(dateTimeString, "yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
                 ProfileType profileType = ProfileType.Regular;
+                var sessionMode = "Regular";
                 if (matches.Count == profileTypeMatches.Count)
                 {
-                    profileType = Enum.Parse<ProfileType>(profileTypeMatches[i].Groups["profileType"].Value, true);
+                    sessionMode = profileTypeMatches[i].Groups["profileType"].Value;
+                    profileType = Enum.TryParse<ProfileType>(sessionMode, true, out var parsedProfileType)
+                        ? parsedProfileType
+                        : ProfileType.Regular;
                 }
                 logDetails.Add(new LogDetails()
                 {
-                    Profile = new() { Id = match.Groups["profileId"].Value, Type = profileType },
+                    Profile = new() { Id = match.Groups["profileId"].Value, Type = profileType, SessionMode = sessionMode },
                     AccountId = Int32.Parse(match.Groups["accountId"].Value),
                     Date = profileDate,
                     Version = new Version(match.Groups["version"].Value),
@@ -807,10 +840,12 @@ namespace TarkovMonitor
         {
             try
             {
+                var wasGameRunning = IsGameRunning;
                 if (process != null)
                 {
                     if (!process.HasExited)
                     {
+                        IsGameRunning = true;
                         return;
                     }
                     //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
@@ -822,10 +857,16 @@ namespace TarkovMonitor
                 {
                     //DebugMessage?.Invoke(this, new DebugEventArgs("EFT not running."));
                     process = null;
+                    IsGameRunning = false;
+                    if (wasGameRunning)
+                    {
+                        GameStopped?.Invoke(this, EventArgs.Empty);
+                    }
                     return;
                 }
-                GameStarted?.Invoke(this, new EventArgs());
                 process = processes.First();
+                IsGameRunning = true;
+                GameStarted?.Invoke(this, EventArgs.Empty);
 
             } catch (Exception ex)
             {
@@ -1094,6 +1135,7 @@ namespace TarkovMonitor
     {
         PVE,
         Regular,
+        // Seasonal, // Enable when EFT's released log value is confirmed.
     }
 
     public class Profile
@@ -1101,6 +1143,7 @@ namespace TarkovMonitor
         public string Id { get; set; } = "";
         public ProfileType Type { get; set; } = ProfileType.Regular;
         public string AccountId { get; set; } = "";
+        public string SessionMode { get; set; } = "Regular";
     }
 
     public class ProfileEventArgs : EventArgs
