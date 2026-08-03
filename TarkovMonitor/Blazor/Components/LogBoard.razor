@@ -1,16 +1,16 @@
 ﻿@using Humanizer
 @inject LogRepository logRepository
-<MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="ma-2">
+<MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Stretch" Class="ma-2" Style="min-width: 0;">
     @if (logRepository.Logs.Count == 0)
     {
         <MudAlert Severity="Severity.Info">No new logs have been seen since launching the monitor.</MudAlert>
     }else{
         @foreach (LogLine line in logRepository.Logs)
         {
-            <div class="">
-                <div class="d-block">
-                    <MudPaper Class="d-flex align-enter py-1 px-3 mud-theme-secondary" Elevation="0" Square>
-                        <span class="my-auto" style="white-space: pre-wrap">
+            <div style="width: 100%; min-width: 0;">
+                <div class="d-block" style="min-width: 0;">
+                    <MudPaper Class="d-flex align-center py-1 px-3" Style="width: 100%; min-width: 0; background: transparent;" Elevation="0" Square>
+                        <span class="my-auto" style="min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere;">
                             @line.Message
                         </span>
                     </MudPaper>
