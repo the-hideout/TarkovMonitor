@@ -7,6 +7,7 @@
 @inject MessageLog messageLog
 @inject IDialogService DialogService
 @inject LocalizationService LocalizationService
+@inject TimersManager timersManager
 @layout AppLayout
 @implements IDisposable
 
@@ -62,6 +63,18 @@
             <div>
                 <MudTextField @bind-Value="@RunthroughTime" Label="@LocalizationService.GetString("RunthroughTime")" Class="d-inline-flex" sx="3" />
             </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Timer" Class="mr-2" />Timers</MudText>
+            <MudSwitch @bind-Value="@FloatingTimerPanelSwitch" Label="Show floating time-in-raid panel" Color="Color.Info" />
+            <MudText Typo="Typo.caption">Shows a movable timer inside Tarkov Monitor after deployment finishes. It is hidden while viewing the Timers tab.</MudText>
+            <MudText Typo="Typo.subtitle2" Class="mt-3">Displayed timers</MudText>
+            <MudSwitch @bind-Value="@FloatingTimerShowTimeInRaidSwitch" Label="Elapsed raid time" Color="Color.Info" Class="ml-4" />
+            <MudSwitch @bind-Value="@FloatingTimerShowRunThroughSwitch" Label="Run-through remaining" Color="Color.Info" Class="ml-4" />
+            <MudText Typo="Typo.caption">At least one timer must remain selected. Scav cooldown is not currently available in the floating panel.</MudText>
         </MudPaper>
     </MudItem>
 
@@ -282,6 +295,24 @@
             Properties.Settings.Default.raidStartAlert = value;
             Properties.Settings.Default.Save();
         }
+    }
+
+    public bool FloatingTimerPanelSwitch
+    {
+        get => timersManager.FloatingPanelEnabled;
+        set => timersManager.FloatingPanelEnabled = value;
+    }
+
+    public bool FloatingTimerShowTimeInRaidSwitch
+    {
+        get => timersManager.FloatingPanelShowTimeInRaid;
+        set => timersManager.FloatingPanelShowTimeInRaid = value;
+    }
+
+    public bool FloatingTimerShowRunThroughSwitch
+    {
+        get => timersManager.FloatingPanelShowRunThrough;
+        set => timersManager.FloatingPanelShowRunThrough = value;
     }
 
     public bool MatchFoundSwitch { 
