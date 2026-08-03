@@ -12,6 +12,7 @@ namespace TarkovMonitor
         public DateTime Time { get; set; } = DateTime.Now;
         public string Type { get; set; } = "";
         public string Url { get; set; } = "";
+        public string LinkText { get; set; } = "";
         public Action? OnClick { get; set; } = null;
         public ObservableCollection<MonitorMessageButton> Buttons { get; set; } = new();
         public ObservableCollection<MonitorMessageSelect> Selects { get; set; } = new();
@@ -43,10 +44,11 @@ namespace TarkovMonitor
                 }
             };
         }
-        public MonitorMessage(string message, string? type = "", string? url = "") : this(message)
+        public MonitorMessage(string message, string? type = "", string? url = "", string? linkText = "") : this(message)
         {
             Type = type ?? "";
             Url = url ?? "";
+            LinkText = linkText ?? "";
             if (Type == "exception")
             {
                 Buttons.Add(new("Copy", () => {

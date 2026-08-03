@@ -1,4 +1,4 @@
-﻿using MudBlazor.Services;
+using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
@@ -77,6 +77,14 @@ namespace TarkovMonitor
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
             messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            if (!TarkovTracker.IsLegacyService && TarkovTracker.GetPendingTokenValidations().Count > 0)
+            {
+                messageLog.AddMessage(
+                    "Previously saved TarkovTracker API keys must be validated before they can be used.",
+                    "warning",
+                    "/settings#tarkov-tracker",
+                    "Click here to validate saved keys.");
+            }
 
             // Singleton log repository to record, display, and analyze logs for TarkovMonitor
             logRepository = new LogRepository();
