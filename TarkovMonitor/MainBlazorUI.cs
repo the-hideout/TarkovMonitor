@@ -1,4 +1,4 @@
-using MudBlazor.Services;
+﻿using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
@@ -143,6 +143,8 @@ namespace TarkovMonitor
             eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
+            eft.GameStarted += Eft_GameStarted;
+            eft.GameStopped += Eft_GameStopped;
             eft.MapLoading += Eft_MapLoading;
             eft.MapLoading += Eft_MapLoading_NavigateToMap;
             eft.MatchFound += Eft_MatchFound;
@@ -150,7 +152,7 @@ namespace TarkovMonitor
             eft.ProfileChanged += Eft_ProfileChanged;
             eft.ControlSettings += Eft_ControlSettings;
 
-            eft.InitialReadComplete += (object? sender, ProfileEventArgs e) =>
+            eft.InitialReadComplete += async (object? sender, ProfileEventArgs e) =>
             {
                 // Update tarkov.dev API data
 
@@ -159,18 +161,17 @@ namespace TarkovMonitor
                 TarkovDev.UpdatePlayerNames();
 
                 // Update Tarkov Tracker
-                if (Properties.Settings.Default.tarkovTrackerToken != "" && e.Profile.Id != "")
+                if (TarkovTracker.IsLegacyService && Properties.Settings.Default.tarkovTrackerToken != "" && e.Profile.Id != "")
                 {
                     try {
                         TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
+                        Properties.Settings.Default.tarkovTrackerToken = "";
+                        Properties.Settings.Default.Save();
                     } catch (Exception ex) {
                         messageLog.AddMessage($"Error setting token from previously saved settings {ex.Message}", "exception");
                     }
-
-                    Properties.Settings.Default.tarkovTrackerToken = "";
-                    Properties.Settings.Default.Save();
                 }
-                InitializeProgress();
+                await InitializeProgress();
             };
 
             try
@@ -343,14 +344,25 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
+        private async void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
-            if (e.Profile.Id == TarkovTracker.CurrentProfileId)
+            if (e.Profile.Id == TarkovTracker.CurrentProfileId
+                && string.Equals(
+                    TarkovTracker.NormalizeSessionMode(e.Profile.SessionMode),
+                    TarkovTracker.CurrentSessionMode,
+                    StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
-            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), e.Profile.Type));
-            TarkovTracker.SetProfile(e.Profile.Id);
+            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), TarkovTracker.GetSessionDisplayName(e.Profile.SessionMode)));
+            try
+            {
+                await TarkovTracker.SetProfile(e.Profile);
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage($"Error switching Tarkov Tracker session: {ex.Message}", "exception");
+            }
         }
 
         private void Eft_ExitedPostRaidMenus(object? sender, RaidInfoEventArgs e)
@@ -601,6 +613,28 @@ namespace TarkovMonitor
             groupManager.Stale = true;
         }
 
+        private void Eft_GameStarted(object? sender, EventArgs e)
+        {
+            messageLog.AddMessage("EFT client detected. Waiting for the active session profile.", "info");
+        }
+
+        private void Eft_GameStopped(object? sender, EventArgs e)
+        {
+            TarkovTracker.ResetActiveProfile();
+            messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
+            AddLastDetectedSessionMessage();
+        }
+
+        private void AddLastDetectedSessionMessage()
+        {
+            if (string.IsNullOrWhiteSpace(GameWatcher.LastDetectedSessionMode))
+            {
+                messageLog.AddMessage("Last detected EFT session: unavailable.", "info");
+                return;
+            }
+            messageLog.AddMessage($"Last detected EFT session: {TarkovTracker.GetSessionDisplayName(GameWatcher.LastDetectedSessionMode)}.", "info");
+        }
+
         private void WebView_CoreWebView2InitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
         {
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
@@ -621,17 +655,24 @@ namespace TarkovMonitor
 
         private async Task InitializeProgress()
         {
+            if (!eft.IsGameRunning)
+            {
+                TarkovTracker.ResetActiveProfile();
+                messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
+                AddLastDetectedSessionMessage();
+                return;
+            }
             try
             {
-                await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
+                await TarkovTracker.SetProfile(GameWatcher.CurrentProfile);
             }
             catch (Exception ex)
             {
                 messageLog.AddMessage($"Error retrieving Tarkov Tracker profile: {ex.Message}");
                 return;
             }
-            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), GameWatcher.CurrentProfile.Type));
-            if (TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id) == "")
+            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), TarkovTracker.GetSessionDisplayName(GameWatcher.CurrentProfile.SessionMode)));
+            if (TarkovTracker.GetTokenForProfile(GameWatcher.CurrentProfile) == "")
             {
                 messageLog.AddMessage(localizationService.GetString("ToAutomaticallyTrackTaskProgress"));
                 return;
