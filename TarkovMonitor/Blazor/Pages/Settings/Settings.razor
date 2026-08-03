@@ -118,19 +118,67 @@
     </MudItem-->
 
     <MudItem xs="12">
-        <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
+        <MudPaper id="tarkov-tracker" Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@trackerIcon" Class="mr-2"/>@LocalizationService.GetString("TarkovTracker")</MudText>
-            <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
-            <MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
-            @LocalizationService.GetString("CurrentProfile"):
-            <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.Type)</MudLink>
-            <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
             <MudSelect @bind-Value="@TarkovTrackerDomain" T="string" Label="@LocalizationService.GetString("TarkovTrackerService")" ShrinkLabel="true" HelperText="@LocalizationService.GetString("TarkovTrackerServiceHelperText")" AnchorOrigin="Origin.BottomCenter" xs="3">
                 @foreach (var pair in TarkovTracker.Domains)
                 {
                     <MudSelectItem T="string" Value="@pair.Key">@pair.Value</MudSelectItem>
                 }
             </MudSelect>
+            <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
+
+            @if (!TarkovTracker.IsLegacyService)
+            {
+                <MudText Typo="Typo.body2">Import keys from TarkovTracker.org. Each PVP or PVE key is locked to the game mode verified by TarkovTracker.</MudText>
+                <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3">Import API Key</MudButton>
+
+                @if (PendingTokenValidations.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Class="mb-3">Previously saved API keys must be validated before Tarkov Monitor can use them.</MudAlert>
+                    @foreach (var pendingToken in PendingTokenValidations)
+                    {
+                        <MudPaper Class="pa-3 mb-2" Outlined="true" Elevation="0">
+                            <MudText Typo="Typo.subtitle1"><b>@pendingToken.DisplayName</b> • Validation required</MudText>
+                            <MudText Typo="Typo.body2">Saved key: @MaskToken(pendingToken.Token)</MudText>
+                            <MudButton @onclick="@(async () => await ValidateLegacyTrackerKey(pendingToken))" Variant="Variant.Text" Color="Color.Warning">Validate &amp; Save</MudButton>
+                        </MudPaper>
+                    }
+                }
+
+                @if (!TrackerPrefixes.Any(HasImportedToken))
+                {
+                    <MudText Typo="Typo.body2">No TarkovTracker.org API keys are currently stored.</MudText>
+                }
+                @foreach (var prefix in TrackerPrefixes.Where(HasImportedToken))
+                {
+                    <MudPaper Class="pa-3 mb-2" Outlined="true" Elevation="0">
+                        <div class="d-flex align-center justify-space-between">
+                            <div>
+                                <MudText Typo="Typo.subtitle1"><b>@TarkovTracker.GetPrefixDisplayName(prefix)</b> @ActivePrefixMarker(prefix)</MudText>
+                                <MudText Typo="Typo.caption">Stored key type: @(prefix + "_")</MudText>
+                            </div>
+                            <MudButton @onclick="@(async () => await RemoveImportedToken(prefix))" Variant="Variant.Text" Color="Color.Default">Remove</MudButton>
+                        </div>
+                        <MudText Typo="Typo.body2" Color="Color.Success">Verified and saved locally • @MaskedImportedToken(prefix)</MudText>
+                        @* Seasonal UI: enable after EFT and TarkovTracker publish their Seasonal mode values.
+                        @if (prefix == "SN1")
+                        {
+                            <MudText Typo="Typo.caption">Stored as Seasonal; automatic switching will be enabled after EFT confirms its Session mode value.</MudText>
+                        }
+                        *@
+                    </MudPaper>
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-3">TarkovTracker.io has been retired. We recommend moving to TarkovTracker.org for continued support and session-based API key switching.</MudAlert>
+                <MudText Typo="Typo.body2" Class="mb-2">Legacy TarkovTracker.io compatibility uses the original profile-based key format.</MudText>
+                <MudText>@LocalizationService.GetString("CurrentProfile"):</MudText>
+                <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.Type)</MudLink>
+                <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick" />
+                <MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
+            }
         </MudPaper>
     </MudItem>
 
@@ -187,6 +235,7 @@
 
     private Dictionary<int, string> PlaybackDevices;
     private List<(string Code, string Name)> AvailableLanguages = new();
+    private static readonly string[] TrackerPrefixes = { "PVP", "PVE" /*, "SN1" Enable with the Seasonal UI. */ };
     private TarkovDev.Trader? TraderFence
     {
         get
@@ -201,6 +250,8 @@
         PlaybackDevices = Sound.GetPlaybackDevices();
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
         LocalizationService.LanguageChanged += OnLanguageChanged;
+        eft.GameStarted += OnGameClientStateChanged;
+        eft.GameStopped += OnGameClientStateChanged;
     }
 
     protected override void OnParametersSet()
@@ -220,6 +271,8 @@
     public void Dispose()
     {
         LocalizationService.LanguageChanged -= OnLanguageChanged;
+        eft.GameStarted -= OnGameClientStateChanged;
+        eft.GameStopped -= OnGameClientStateChanged;
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)
@@ -555,10 +608,103 @@
                 return;
             }
             Properties.Settings.Default.tarkovTrackerDomain = value;
-            TarkovTrackerToken = "";
+            TarkovTracker.ResetActiveProfile();
             TarkovTracker.InitAPI();
             Properties.Settings.Default.Save();
+            _ = ReactivateCurrentTrackerProfile();
         }
+    }
+
+    private void OnGameClientStateChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ReactivateCurrentTrackerProfile()
+    {
+        if (!eft.IsGameRunning || GameWatcher.CurrentProfile.Id == "")
+        {
+            return;
+        }
+        try
+        {
+            await TarkovTracker.SetProfile(GameWatcher.CurrentProfile);
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Error changing Tarkov Tracker service: {ex.Message}", "exception");
+        }
+    }
+
+    private bool HasImportedToken(string prefix)
+    {
+        return !string.IsNullOrWhiteSpace(TarkovTracker.GetImportedToken(prefix));
+    }
+
+    private string ActivePrefixMarker(string prefix)
+    {
+        return string.Equals(TarkovTracker.GetPrefixForSessionMode(GameWatcher.CurrentProfile.SessionMode), prefix, StringComparison.OrdinalIgnoreCase)
+            ? "• Active session"
+            : "";
+    }
+
+    private string MaskedImportedToken(string prefix)
+    {
+        var token = TarkovTracker.GetImportedToken(prefix);
+        return token.Length <= 4 ? "••••" : $"••••{token[^4..]}";
+    }
+
+    private async Task OpenImportTrackerKey()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = DialogService.Show<ImportTarkovTrackerKeyDialog>("Import TarkovTracker.org API Key", options);
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is TarkovTracker.ImportedToken importedToken)
+        {
+            messageLog.AddMessage($"Saved the verified {importedToken.DisplayName} TarkovTracker.org API key.", "update");
+            await ReactivateCurrentTrackerProfile();
+            StateHasChanged();
+        }
+    }
+
+    private IReadOnlyList<TarkovTracker.PendingTokenValidation> PendingTokenValidations =>
+        TarkovTracker.GetPendingTokenValidations();
+
+    private static string MaskToken(string token)
+    {
+        return token.Length <= 4 ? "••••" : $"{TarkovTracker.GetTokenPrefix(token)}_••••{token[^4..]}";
+    }
+
+    private async Task ValidateLegacyTrackerKey(TarkovTracker.PendingTokenValidation pendingToken)
+    {
+        var parameters = new DialogParameters<ImportTarkovTrackerKeyDialog>
+        {
+            { dialog => dialog.InitialApiKey, pendingToken.Token }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = DialogService.Show<ImportTarkovTrackerKeyDialog>("Validate Saved TarkovTracker.org API Key", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is TarkovTracker.ImportedToken importedToken)
+        {
+            messageLog.AddMessage($"Validated and migrated the saved {importedToken.DisplayName} TarkovTracker.org API key.", "update");
+            await ReactivateCurrentTrackerProfile();
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveImportedToken(string prefix)
+    {
+        var removedWasActive = string.Equals(
+            TarkovTracker.GetPrefixForSessionMode(GameWatcher.CurrentProfile.SessionMode),
+            prefix,
+            StringComparison.OrdinalIgnoreCase);
+        TarkovTracker.SetImportedToken(prefix, "");
+        if (removedWasActive && GameWatcher.CurrentProfile.Id != "")
+        {
+            await TarkovTracker.SetProfile(GameWatcher.CurrentProfile);
+        }
+        messageLog.AddMessage($"Removed the saved {TarkovTracker.GetPrefixDisplayName(prefix)} TarkovTracker.org API key.", "update");
+        StateHasChanged();
     }
 
     void TokenShowClick()
@@ -586,7 +732,7 @@
         } else {
             try
             {
-                var tokenResponse = await TarkovTracker.TestToken(TarkovTrackerToken);
+                var tokenResponse = await TarkovTracker.TestToken(TarkovTrackerToken, true);
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
                     messageLog.AddMessage("You do not have write permissions with this token.", "warning");

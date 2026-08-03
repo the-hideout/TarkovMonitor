@@ -1,0 +1,154 @@
+@implements IDisposable
+@inject MessageLog MessageLog
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-2">
+            Paste an API key created by TarkovTracker.org. Tarkov Monitor verifies it and automatically stores it as Regular (PVP) or PVE.
+        </MudText>
+        <MudText Typo="Typo.caption" Class="mb-2">For accuracy, copy and paste the key directly instead of typing or editing it manually.</MudText>
+        <MudTextField @bind-Value="apiKey"
+                      Immediate="true"
+                      Label="TarkovTracker.org API key"
+                      InputType="@passwordInput"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Disabled="@(saving || cooldownSeconds > 0)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@passwordIcon"
+                      OnAdornmentClick="ToggleKeyVisibility" />
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="@messageSeverity" Dense="true" Class="mt-2">@errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="@saving">Cancel</MudButton>
+        <MudButton Color="Color.Info" OnClick="Save" Disabled="@(saving || cooldownSeconds > 0 || string.IsNullOrWhiteSpace(apiKey))">
+            @if (saving)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                <span>Verifying</span>
+            }
+            else if (cooldownSeconds > 0)
+            {
+                <span>@($"Try again in {cooldownSeconds}s")</span>
+            }
+            else
+            {
+                <span>Verify &amp; Save</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public string InitialApiKey { get; set; } = "";
+
+    private string apiKey = "";
+    private string errorMessage = "";
+    private Severity messageSeverity = Severity.Error;
+    private bool saving;
+    private int cooldownSeconds;
+    private CancellationTokenSource? cooldownCancellation;
+    private bool showKey;
+    private InputType passwordInput = InputType.Password;
+    private string passwordIcon = Icons.Material.Filled.VisibilityOff;
+
+    protected override void OnInitialized()
+    {
+        apiKey = InitialApiKey;
+        StartCooldownCountdown();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void ToggleKeyVisibility()
+    {
+        showKey = !showKey;
+        passwordInput = showKey ? InputType.Text : InputType.Password;
+        passwordIcon = showKey ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        errorMessage = "";
+        messageSeverity = Severity.Error;
+        try
+        {
+            var importedToken = await TarkovTracker.ImportToken(apiKey);
+            MudDialog.Close(DialogResult.Ok(importedToken));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            messageSeverity = ex is TarkovTracker.DuplicateImportedTokenException
+                ? Severity.Info
+                : Severity.Error;
+            StartCooldownCountdown();
+            if (cooldownSeconds > 0)
+            {
+                var report = string.Join(Environment.NewLine,
+                    "TarkovTracker.org API key validation failed.",
+                    $"UTC time: {DateTimeOffset.UtcNow:O}",
+                    $"Tarkov Monitor version: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}",
+                    "Operation: Verify and save TarkovTracker.org API key",
+                    "Endpoint: GET https://api.tarkovtracker.org/token",
+                    $"Key type: {TarkovTracker.GetPrefixDisplayName(TarkovTracker.GetTokenPrefix(apiKey))}",
+                    $"Error type: {ex.GetType().Name}",
+                    $"Error: {ex.Message}",
+                    "The API key was intentionally excluded from this report.");
+                MessageLog.AddMessage(report, "exception");
+                errorMessage += " A sanitized error report was added to Messages for copying or reporting.";
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void StartCooldownCountdown()
+    {
+        cooldownSeconds = TarkovTracker.GetImportValidationCooldownSeconds();
+        if (cooldownSeconds <= 0 || cooldownCancellation is { IsCancellationRequested: false })
+        {
+            return;
+        }
+
+        cooldownCancellation = new CancellationTokenSource();
+        _ = RunCooldownCountdown(cooldownCancellation.Token);
+    }
+
+    private async Task RunCooldownCountdown(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                cooldownSeconds = TarkovTracker.GetImportValidationCooldownSeconds();
+                await InvokeAsync(StateHasChanged);
+                if (cooldownSeconds <= 0)
+                {
+                    break;
+                }
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            cooldownCancellation?.Dispose();
+            cooldownCancellation = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        cooldownCancellation?.Cancel();
+    }
+}
