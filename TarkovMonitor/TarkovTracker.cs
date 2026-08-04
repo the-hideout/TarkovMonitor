@@ -397,9 +397,49 @@ namespace TarkovMonitor
             }
         }
 
+        private static void EnsureExactLegacyTokenCleanupWritable()
+        {
+            if (!IsLegacyService && !legacyTokenStoreLoaded)
+            {
+                throw new InvalidOperationException("Previously saved Tarkov Tracker API key storage needs repair before matching old-key cleanup can run. The unreadable saved value was preserved.");
+            }
+        }
+
         public static void SetImportedToken(string prefix, string token)
         {
             StoreImportedToken(prefix, token, markVerified: false);
+        }
+
+        public static bool RemoveImportedToken(string prefix)
+        {
+            if (IsLegacyService)
+            {
+                return false;
+            }
+            EnsureOrgStoresWritable();
+
+            var normalizedPrefix = prefix.Trim().ToUpperInvariant();
+            if (!IsSupportedPrefix(normalizedPrefix))
+            {
+                return false;
+            }
+
+            lock (stateLock)
+            {
+                var storedToken = GetImportedToken(normalizedPrefix);
+                if (string.IsNullOrWhiteSpace(storedToken))
+                {
+                    return false;
+                }
+
+                EnsureExactLegacyTokenCleanupWritable();
+                PersistImportedTokenChangeLocked(
+                    normalizedPrefix,
+                    "",
+                    markVerified: false,
+                    matchingTokenCopiesToRemove: storedToken);
+                return true;
+            }
         }
 
         private static void StoreImportedToken(string prefix, string token, bool markVerified)
@@ -409,55 +449,147 @@ namespace TarkovMonitor
             var trimmedToken = token.Trim();
             lock (stateLock)
             {
-                var originalModeTokens = new Dictionary<string, string>(modeTokens, StringComparer.OrdinalIgnoreCase);
-                var originalVerificationHashes = new Dictionary<string, string>(verifiedModeTokenHashes, StringComparer.OrdinalIgnoreCase);
-                var originalModeSetting = Properties.Settings.Default.tarkovTrackerModeTokens;
-                var originalVerificationSetting = Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes;
-                if (string.IsNullOrWhiteSpace(trimmedToken))
+                var matchingTokenCopiesToRemove = markVerified && !IsLegacyService ? trimmedToken : null;
+                if (matchingTokenCopiesToRemove != null)
                 {
-                    modeTokens.Remove(normalizedPrefix);
+                    EnsureExactLegacyTokenCleanupWritable();
+                }
+                PersistImportedTokenChangeLocked(
+                    normalizedPrefix,
+                    trimmedToken,
+                    markVerified,
+                    matchingTokenCopiesToRemove);
+            }
+        }
+
+        private static void PersistImportedTokenChangeLocked(
+            string normalizedPrefix,
+            string token,
+            bool markVerified,
+            string? matchingTokenCopiesToRemove)
+        {
+            var originalTokens = new Dictionary<string, string>(tokens, StringComparer.Ordinal);
+            var originalModeTokens = new Dictionary<string, string>(modeTokens, StringComparer.OrdinalIgnoreCase);
+            var originalVerificationHashes = new Dictionary<string, string>(verifiedModeTokenHashes, StringComparer.OrdinalIgnoreCase);
+            var originalSingleton = Properties.Settings.Default.tarkovTrackerToken;
+            var originalSerializedTokens = Properties.Settings.Default.tarkovTrackerTokens;
+            var originalModeSetting = Properties.Settings.Default.tarkovTrackerModeTokens;
+            var originalVerificationSetting = Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes;
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                modeTokens.Remove(normalizedPrefix);
+                verifiedModeTokenHashes.Remove(normalizedPrefix);
+            }
+            else
+            {
+                modeTokens[normalizedPrefix] = token;
+                if (markVerified)
+                {
+                    verifiedModeTokenHashes[normalizedPrefix] = ComputeTokenFingerprint(token);
+                }
+                else if (!IsTokenVerified(normalizedPrefix, token))
+                {
                     verifiedModeTokenHashes.Remove(normalizedPrefix);
                 }
-                else
+            }
+
+            var legacyProfilesChanged = false;
+            if (matchingTokenCopiesToRemove != null)
+            {
+                if (ApiKeyIdentityMatches(
+                    Properties.Settings.Default.tarkovTrackerToken,
+                    matchingTokenCopiesToRemove))
                 {
-                    modeTokens[normalizedPrefix] = trimmedToken;
-                    if (markVerified)
-                    {
-                        verifiedModeTokenHashes[normalizedPrefix] = ComputeTokenFingerprint(trimmedToken);
-                    }
-                    else if (!IsTokenVerified(normalizedPrefix, trimmedToken))
-                    {
-                        verifiedModeTokenHashes.Remove(normalizedPrefix);
-                    }
+                    Properties.Settings.Default.tarkovTrackerToken = "";
                 }
 
-                try
+                var matchingLegacyProfiles = tokens
+                    .Where(pair => ApiKeyIdentityMatches(pair.Value, matchingTokenCopiesToRemove))
+                    .Select(pair => pair.Key)
+                    .ToList();
+                foreach (var profileId in matchingLegacyProfiles)
                 {
-                    Properties.Settings.Default.tarkovTrackerModeTokens = JsonSerializer.Serialize(modeTokens);
-                    Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = JsonSerializer.Serialize(verifiedModeTokenHashes);
-                    Properties.Settings.Default.Save();
-                }
-                catch
-                {
-                    modeTokens = originalModeTokens;
-                    verifiedModeTokenHashes = originalVerificationHashes;
-                    Properties.Settings.Default.tarkovTrackerModeTokens = originalModeSetting;
-                    Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = originalVerificationSetting;
-                    throw;
+                    tokens.Remove(profileId);
+                    legacyProfilesChanged = true;
                 }
 
-                if (!IsLegacyService
-                    && string.Equals(
-                        GetPrefixForSessionMode(currentSessionMode),
-                        normalizedPrefix,
-                        StringComparison.OrdinalIgnoreCase)
-                    && !string.Equals(activeToken, GetImportedToken(normalizedPrefix), StringComparison.Ordinal))
+                var matchingObsoleteModePrefixes = modeTokens
+                    .Where(pair => !string.Equals(pair.Key, normalizedPrefix, StringComparison.OrdinalIgnoreCase)
+                        && ApiKeyIdentityMatches(pair.Value, matchingTokenCopiesToRemove))
+                    .Select(pair => pair.Key)
+                    .ToList();
+                foreach (var prefix in matchingObsoleteModePrefixes)
                 {
-                    activeToken = "";
-                    BeginNewActivationLocked();
-                    ValidToken = false;
-                    Progress = new();
+                    modeTokens.Remove(prefix);
+                    verifiedModeTokenHashes.Remove(prefix);
                 }
+            }
+
+            try
+            {
+                if (legacyProfilesChanged)
+                {
+                    Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
+                }
+                Properties.Settings.Default.tarkovTrackerModeTokens = JsonSerializer.Serialize(modeTokens);
+                Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = JsonSerializer.Serialize(verifiedModeTokenHashes);
+                Properties.Settings.Default.Save();
+            }
+            catch
+            {
+                tokens = originalTokens;
+                modeTokens = originalModeTokens;
+                verifiedModeTokenHashes = originalVerificationHashes;
+                Properties.Settings.Default.tarkovTrackerToken = originalSingleton;
+                Properties.Settings.Default.tarkovTrackerTokens = originalSerializedTokens;
+                Properties.Settings.Default.tarkovTrackerModeTokens = originalModeSetting;
+                Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = originalVerificationSetting;
+                throw;
+            }
+
+            if (!IsLegacyService
+                && string.Equals(
+                    GetPrefixForSessionMode(currentSessionMode),
+                    normalizedPrefix,
+                    StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(activeToken, GetImportedToken(normalizedPrefix), StringComparison.Ordinal))
+            {
+                activeToken = "";
+                BeginNewActivationLocked();
+                ValidToken = false;
+                Progress = new();
+            }
+        }
+
+        private static bool IsVerifiedImportedTokenDuplicate(string suppliedPrefix, string suppliedToken)
+        {
+            lock (stateLock)
+            {
+                if (!modeTokens.TryGetValue(suppliedPrefix, out var storedToken)
+                    || !ApiKeyIdentityMatches(storedToken, suppliedToken)
+                    || !IsTokenVerified(suppliedPrefix, storedToken))
+                {
+                    return false;
+                }
+
+                var hasMatchingOldCopies = ApiKeyIdentityMatches(
+                        Properties.Settings.Default.tarkovTrackerToken,
+                        storedToken)
+                    || tokens.Values.Any(token => ApiKeyIdentityMatches(token, storedToken))
+                    || modeTokens.Any(pair =>
+                        !string.Equals(pair.Key, suppliedPrefix, StringComparison.OrdinalIgnoreCase)
+                        && ApiKeyIdentityMatches(pair.Value, storedToken));
+                if (hasMatchingOldCopies)
+                {
+                    PersistImportedTokenChangeLocked(
+                        suppliedPrefix,
+                        storedToken,
+                        markVerified: true,
+                        matchingTokenCopiesToRemove: storedToken);
+                }
+
+                return true;
             }
         }
 
@@ -537,12 +669,15 @@ namespace TarkovMonitor
         public static async Task<ImportedToken> ImportToken(string apiToken)
         {
             ValidateImportTokenLocally(apiToken);
+            if (IsLegacyService)
+            {
+                throw new InvalidOperationException("Switch the Tarkov Tracker service to TarkovTracker.org before importing an API key.");
+            }
             EnsureOrgStoresWritable();
+            EnsureExactLegacyTokenCleanupWritable();
             var trimmedToken = apiToken.Trim();
             var suppliedPrefix = GetTokenPrefix(trimmedToken);
-            if (modeTokens.TryGetValue(suppliedPrefix, out var storedToken)
-                && string.Equals(storedToken, trimmedToken, StringComparison.Ordinal)
-                && IsTokenVerified(suppliedPrefix, storedToken))
+            if (IsVerifiedImportedTokenDuplicate(suppliedPrefix, trimmedToken))
             {
                 throw new DuplicateImportedTokenException(
                     $"This {GetPrefixDisplayName(suppliedPrefix)} API key is already verified and saved locally.");
