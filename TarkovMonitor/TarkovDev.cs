@@ -53,12 +53,12 @@ namespace TarkovMonitor
         }
         private static ITarkovDevPlayerJsonAPI playerJsonApi = RestService.For<ITarkovDevPlayerJsonAPI>(playersClient);
 
-        private static readonly System.Timers.Timer updateTimer = new() {
-            AutoReset = true,
-            Enabled = false, 
-            Interval = TimeSpan.FromMinutes(20).TotalMilliseconds
-        };
+        private static System.Timers.Timer? updateTimer;
         private static readonly SemaphoreSlim updateLock = new(1, 1);
+        private static readonly object profileDataPublicationLock = new();
+        private static readonly object updateTimerLifecycleLock = new();
+        private static long autoUpdateGeneration;
+        private static long profileDataGeneration;
 
         public static List<Task> Tasks { get; private set; } = new();
         public static List<Map> Maps { get; private set; } = new();
@@ -203,6 +203,14 @@ namespace TarkovMonitor
         }
         public async static System.Threading.Tasks.Task UpdateApiData(ProfileType? profileType = null)
         {
+            await TryUpdateApiData(profileType, null);
+        }
+
+        internal async static System.Threading.Tasks.Task<bool> TryUpdateApiData(
+            ProfileType? profileType,
+            Func<bool>? canPublish)
+        {
+            var expectedProfileDataGeneration = Volatile.Read(ref profileDataGeneration);
             await updateLock.WaitAsync();
             try
             {
@@ -210,6 +218,14 @@ namespace TarkovMonitor
                 // a mode change during the requests from mixing PVE and Regular data.
                 // Fetch into locals so a failed request cannot publish a partial dataset.
                 var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
+                lock (profileDataPublicationLock)
+                {
+                    if (!CanPublishProfileData(expectedProfileDataGeneration, canPublish))
+                    {
+                        return false;
+                    }
+                    ClearProfileDataForRouteChange(targetProfileType);
+                }
                 var route = targetProfileType.ToString().ToLower();
                 var tasksRequest = JsonApiRequest<TasksResponse>($"{route}/tasks", Properties.Settings.Default.language);
                 var mapsRequest = JsonApiRequest<MapsResponse>($"{route}/maps", Properties.Settings.Default.language);
@@ -241,19 +257,65 @@ namespace TarkovMonitor
                 var nextPlayerLevels = itemsRequest.Result.data.playerLevels;
                 var nextScavCooldown = itemsRequest.Result.data.settings.scavCooldownSeconds;
 
-                Tasks = nextTasks;
-                Maps = nextMaps;
-                Items = nextItems;
-                Traders = nextTraders;
-                Stations = nextStations;
-                PlayerLevels = nextPlayerLevels;
-                ScavCooldownBaseValues[targetProfileType] = nextScavCooldown;
-                LoadedProfileType = targetProfileType;
+                // The session can change while the five requests are in flight. Recheck
+                // ownership before making any of the fetched objects globally visible.
+                lock (profileDataPublicationLock)
+                {
+                    if (!CanPublishProfileData(expectedProfileDataGeneration, canPublish))
+                    {
+                        return false;
+                    }
+
+                    Tasks = nextTasks;
+                    Maps = nextMaps;
+                    Items = nextItems;
+                    Traders = nextTraders;
+                    Stations = nextStations;
+                    PlayerLevels = nextPlayerLevels;
+                    ScavCooldownBaseValues[targetProfileType] = nextScavCooldown;
+                    LoadedProfileType = targetProfileType;
+                    return true;
+                }
             }
             finally
             {
                 updateLock.Release();
             }
+        }
+
+        private static bool CanPublishProfileData(
+            long expectedProfileDataGeneration,
+            Func<bool>? canPublish)
+        {
+            return expectedProfileDataGeneration == Volatile.Read(ref profileDataGeneration)
+                && (canPublish == null || canPublish());
+        }
+
+        internal static void InvalidatePendingProfileDataUpdates()
+        {
+            lock (profileDataPublicationLock)
+            {
+                Interlocked.Increment(ref profileDataGeneration);
+            }
+        }
+
+        private static void ClearProfileDataForRouteChange(ProfileType targetProfileType)
+        {
+            if (LoadedProfileType == targetProfileType)
+            {
+                return;
+            }
+
+            // A failed PVE request must not leave Regular data available to consumers,
+            // or vice versa. Empty collections are a safe degraded state and allow the
+            // independent TarkovTracker service to keep selecting the correct API key.
+            Tasks = new();
+            Maps = new();
+            Items = new();
+            Traders = new();
+            Stations = new();
+            PlayerLevels = new();
+            LoadedProfileType = null;
         }
 
         public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type, ProfileType gameMode)
@@ -365,17 +427,103 @@ namespace TarkovMonitor
 
         public static void StartAutoUpdates()
         {
-            updateTimer.Enabled = true;
-            updateTimer.Elapsed += UpdateTimer_Elapsed;
+            // Keep lifecycle replacement atomic with the final dataset publication
+            // check. The shared lock order is publication -> lifecycle, so once this
+            // method returns no request owned by the replaced timer can publish data.
+            lock (profileDataPublicationLock)
+            {
+                lock (updateTimerLifecycleLock)
+                {
+                    var generation = Interlocked.Increment(ref autoUpdateGeneration);
+                    var previousTimer = updateTimer;
+                    updateTimer = null;
+                    previousTimer?.Stop();
+                    previousTimer?.Dispose();
+
+                    var timer = new System.Timers.Timer
+                    {
+                        AutoReset = true,
+                        Enabled = false,
+                        Interval = TimeSpan.FromMinutes(20).TotalMilliseconds
+                    };
+                    timer.Elapsed += (sender, eventArgs) => UpdateTimer_Elapsed(timer, generation);
+                    updateTimer = timer;
+                    timer.Start();
+                }
+            }
         }
 
-        private static void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        public static void StopAutoUpdates()
         {
-            if (DateTime.Now.Subtract(LastActivity).TotalMinutes > 5)
+            lock (profileDataPublicationLock)
+            {
+                lock (updateTimerLifecycleLock)
+                {
+                    Interlocked.Increment(ref autoUpdateGeneration);
+                    var timer = updateTimer;
+                    updateTimer = null;
+                    timer?.Stop();
+                    timer?.Dispose();
+                }
+            }
+        }
+
+        private static void UpdateTimer_Elapsed(
+            System.Timers.Timer lifecycleTimer,
+            long generation)
+        {
+            if (!IsCurrentAutoUpdateLifecycle(lifecycleTimer, generation)
+                || DateTime.Now.Subtract(LastActivity).TotalMinutes > 5)
             {
                 return;
             }
-            UpdateApiData();
+
+            var profile = GameWatcher.CurrentProfile.Snapshot();
+            if (profile.SessionMode == EftSessionMode.Unknown
+                || string.IsNullOrWhiteSpace(profile.Id)
+                || !profile.HasIdentity)
+            {
+                return;
+            }
+
+            _ = UpdateTimerProfileDataAsync(lifecycleTimer, generation, profile);
+        }
+
+        private static async System.Threading.Tasks.Task UpdateTimerProfileDataAsync(
+            System.Timers.Timer lifecycleTimer,
+            long generation,
+            Profile profile)
+        {
+            try
+            {
+                await TryUpdateApiData(
+                    profile.TarkovDevDataType,
+                    () => IsCurrentAutoUpdateLifecycle(lifecycleTimer, generation)
+                        && IsCurrentProfile(profile));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error auto-updating tarkov.dev API data: {ex.Message}");
+            }
+        }
+
+        private static bool IsCurrentAutoUpdateLifecycle(
+            System.Timers.Timer lifecycleTimer,
+            long generation)
+        {
+            lock (updateTimerLifecycleLock)
+            {
+                return ReferenceEquals(lifecycleTimer, updateTimer)
+                    && generation == Volatile.Read(ref autoUpdateGeneration);
+            }
+        }
+
+        private static bool IsCurrentProfile(Profile expectedProfile)
+        {
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            return expectedProfile.Id == currentProfile.Id
+                && expectedProfile.AccountId == currentProfile.AccountId
+                && expectedProfile.SessionMode == currentProfile.SessionMode;
         }
 
         public class JsonApiResponse
