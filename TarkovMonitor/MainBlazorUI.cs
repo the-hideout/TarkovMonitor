@@ -1034,7 +1034,7 @@ namespace TarkovMonitor
             {
                 EftSessionMode.PVE => "PVE",
                 EftSessionMode.Regular => "Regular (PVP)",
-                EftSessionMode.Seasonal => "Seasonal -> Regular (PVP)",
+                EftSessionMode.Seasonal => "Seasonal (pvp-season)",
                 _ => profile.TarkovDevDataType.ToString(),
             };
         }

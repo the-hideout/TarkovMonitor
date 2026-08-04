@@ -71,10 +71,16 @@ namespace TarkovMonitor
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
         public static Dictionary<string, string> PlayerNames { get; private set; } = new();
 
-        private static Dictionary<ProfileType, int> ScavCooldownBaseValues = new() {
-            { ProfileType.Regular, 1500 },
-            { ProfileType.PVE, 1500 },
-        };
+        private static Dictionary<ProfileType, int> ScavCooldownBaseValues = new();
+
+        static TarkovDev()
+        {
+            // sets default values; actual values are retrieved from API
+            foreach (ProfileType profileType in Enum.GetValues<ProfileType>())
+            {
+                ScavCooldownBaseValues[profileType] = 1500;
+            }
+        }
 
         private async static Task<JObject> GetJObject(string path) {
             var response = await jsonClient.GetAsync(path);
@@ -148,7 +154,7 @@ namespace TarkovMonitor
         public async static Task<List<Task>> GetTasks(ProfileType? profileType = null)
         {
             var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
-            var response = await JsonApiRequest<TasksResponse>($"{targetProfileType.ToString().ToLower()}/tasks", Properties.Settings.Default.language);
+            var response = await JsonApiRequest<TasksResponse>($"{targetProfileType.ToApiString()}/tasks", Properties.Settings.Default.language);
             Tasks = response.data.tasks.Values.ToList();
             return Tasks;
         }
@@ -156,14 +162,14 @@ namespace TarkovMonitor
         public async static Task<List<Map>> GetMaps(ProfileType? profileType = null)
         {
             var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
-            var response = await JsonApiRequest<MapsResponse>($"{targetProfileType.ToString().ToLower()}/maps", Properties.Settings.Default.language);
+            var response = await JsonApiRequest<MapsResponse>($"{targetProfileType.ToApiString()}/maps", Properties.Settings.Default.language);
             Maps = response.data.maps.Values.ToList();
             return Maps;
         }
         public async static Task<List<Item>> GetItems(ProfileType? profileType = null)
         {
             var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
-            var response = await JsonApiRequest<ItemsResponse>($"{targetProfileType.ToString().ToLower()}/items", Properties.Settings.Default.language);
+            var response = await JsonApiRequest<ItemsResponse>($"{targetProfileType.ToApiString()}/items", Properties.Settings.Default.language);
             Items = response.data.items.Values.ToList();
             foreach (var item in Items)
             {
@@ -190,14 +196,14 @@ namespace TarkovMonitor
         public async static Task<List<Trader>> GetTraders(ProfileType? profileType = null)
         {
             var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
-            var response = await JsonApiRequest<TradersResponse>($"{targetProfileType.ToString().ToLower()}/traders", Properties.Settings.Default.language);
+            var response = await JsonApiRequest<TradersResponse>($"{targetProfileType.ToApiString()}/traders", Properties.Settings.Default.language);
             Traders = response.data.Values.ToList();
             return Traders;
         }
         public async static Task<List<HideoutStation>> GetHideout(ProfileType? profileType = null)
         {
             var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
-            var response = await JsonApiRequest<HideoutResponse>($"{targetProfileType.ToString().ToLower()}/hideout", Properties.Settings.Default.language);
+            var response = await JsonApiRequest<HideoutResponse>($"{targetProfileType.ToApiString()}/hideout", Properties.Settings.Default.language);
             Stations = response.data.Values.ToList();
             return Stations;
         }
@@ -226,7 +232,7 @@ namespace TarkovMonitor
                     }
                     ClearProfileDataForRouteChange(targetProfileType);
                 }
-                var route = targetProfileType.ToString().ToLower();
+                var route = targetProfileType.ToApiString();
                 var tasksRequest = JsonApiRequest<TasksResponse>($"{route}/tasks", Properties.Settings.Default.language);
                 var mapsRequest = JsonApiRequest<MapsResponse>($"{route}/maps", Properties.Settings.Default.language);
                 var itemsRequest = JsonApiRequest<ItemsResponse>($"{route}/items", Properties.Settings.Default.language);
@@ -322,7 +328,7 @@ namespace TarkovMonitor
         {
             try
             {
-                return await api.SubmitQueueTime(new QueueTimeBody() { map = mapNameId, time = queueTime, type = type, gameMode = gameMode.ToString().ToLower() });
+                return await api.SubmitQueueTime(new QueueTimeBody() { map = mapNameId, time = queueTime, type = type, gameMode = gameMode.ToApiString() });
             }
             catch (ApiException ex)
             {
@@ -342,7 +348,7 @@ namespace TarkovMonitor
         {
             try
             {
-                return await api.SubmitGoonsSighting(new GoonsBody() { map = mapNameId, gameMode = profileType.ToString().ToLower(), timestamp = ((DateTimeOffset)date).ToUnixTimeMilliseconds(), accountId = accountId });
+                return await api.SubmitGoonsSighting(new GoonsBody() { map = mapNameId, gameMode = profileType.ToApiString(), timestamp = ((DateTimeOffset)date).ToUnixTimeMilliseconds(), accountId = accountId });
             }
             catch (ApiException ex)
             {

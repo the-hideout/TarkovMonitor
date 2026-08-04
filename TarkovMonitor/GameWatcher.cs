@@ -407,7 +407,7 @@ namespace TarkovMonitor
             {
                 EftSessionMode.PVE => ProfileType.PVE,
                 EftSessionMode.Regular => ProfileType.Regular,
-                EftSessionMode.Seasonal => ProfileType.Seasonal,
+                EftSessionMode.Seasonal => ProfileType.PvpSeason,
                 _ => ProfileType.Unknown,
             };
         }
@@ -1403,7 +1403,7 @@ namespace TarkovMonitor
         Unknown,
         PVE,
         Regular,
-        Seasonal,
+        PvpSeason,
     }
 
     public enum EftSessionMode
@@ -1419,6 +1419,15 @@ namespace TarkovMonitor
         SessionMode,
         Identity,
         SessionReset,
+    }
+
+    public static class ProfileTypeExtensions
+    {
+        public static string ToApiString(this ProfileType profileType) => profileType switch
+        {
+            ProfileType.PvpSeason => "pvp-season",
+            _ => profileType.ToString().ToLower(),
+        };
     }
 
     public class Profile
@@ -1441,11 +1450,15 @@ namespace TarkovMonitor
         public bool HasIdentity => !string.IsNullOrWhiteSpace(AccountId);
         public bool HasTarkovDevPlayerRoute => HasIdentity
             && SessionMode is EftSessionMode.PVE or EftSessionMode.Regular;
-        // Tarkov.dev has no Seasonal data route yet. Reads use its Regular dataset,
-        // while Type and SessionMode retain the truthful Seasonal identity.
-        public ProfileType TarkovDevDataType => SessionMode == EftSessionMode.PVE
-            ? ProfileType.PVE
-            : ProfileType.Regular;
+        // Keep service routing separate from the raw EFT session identity. Seasonal
+        // reads now use tarkov.dev's explicit pvp-season route, while tracker writes
+        // remain disabled until the live EFT/TarkovTracker release gate is cleared.
+        public ProfileType TarkovDevDataType => SessionMode switch
+        {
+            EftSessionMode.PVE => ProfileType.PVE,
+            EftSessionMode.Seasonal => ProfileType.PvpSeason,
+            _ => ProfileType.Regular,
+        };
 
         public Profile Snapshot()
         {
