@@ -69,11 +69,16 @@ namespace TarkovMonitor
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
         public static Dictionary<string, string> PlayerNames { get; private set; } = new();
 
-        private static Dictionary<ProfileType, int> ScavCooldownBaseValues = new() {
-            { ProfileType.Regular, 1500 },
-            { ProfileType.PVE, 1500 },
-            { ProfileType.PvpSeason, 1500 },
-        };
+        private static Dictionary<ProfileType, int> ScavCooldownBaseValues = new();
+
+        static TarkovDev()
+        {
+            // sets default values; actual values are retrieved from API
+            foreach (ProfileType profileType in Enum.GetValues<ProfileType>())
+            {
+                ScavCooldownBaseValues[profileType] = 1500;
+            }
+        }
 
         private async static Task<JObject> GetJObject(string path) {
             var response = await jsonClient.GetAsync(path);
