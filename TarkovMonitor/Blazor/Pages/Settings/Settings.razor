@@ -622,8 +622,11 @@
 
     private async Task ReactivateCurrentTrackerProfile()
     {
-        if (!eft.IsGameRunning || GameWatcher.CurrentProfile.Id == "")
+        if (!eft.IsGameRunning
+            || !GameWatcher.CurrentProfile.SupportsTarkovTrackerWrites
+            || GameWatcher.CurrentProfile.Id == "")
         {
+            TarkovTracker.DeactivateProfile();
             return;
         }
         try

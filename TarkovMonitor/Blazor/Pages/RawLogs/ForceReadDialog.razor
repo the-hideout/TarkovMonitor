@@ -1,5 +1,6 @@
 ﻿@using System.ComponentModel
 @using Humanizer
+@inject GameWatcher eft
 @inject MessageLog messageLog
 @inject LocalizationService LocalizationService
 
@@ -7,11 +8,28 @@
     <DialogContent>
         <MudText>
             @LocalizationService.GetString("CurrentProfile"):
-            <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.Type)</MudLink>
+            @if (GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute)
+            {
+                <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.DisplayName)</MudLink>
+            }
+            else if (GameWatcher.CurrentProfile.HasIdentity)
+            {
+                <span>@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.DisplayName)</span>
+            }
+            else
+            {
+                <span>@GameWatcher.CurrentProfile.DisplayName</span>
+            }
         </MudText>
         <MudText>
             @LocalizationService.GetString("IfYouWantToUpdateProgressForDifferentProfile")
         </MudText>
+        @if (eft.IsGameRunning)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                Read Past Logs is unavailable while Escape from Tarkov is running. Close EFT before importing historical task updates.
+            </MudAlert>
+        }
         @if (customWatcher.LogsPath != "")
         {
             if (breakpoints != null)
@@ -91,29 +109,52 @@
         {
             return;
         }
-        if (!TarkovTracker.ValidToken)
+        if (eft.IsGameRunning)
         {
-            messageLog.AddMessage("You must have a valid Tarkov Tracker API token to read past logs.", "exception");
+            messageLog.AddMessage(
+                "Read Past Logs was not started because Escape from Tarkov is running. Close EFT before importing historical task updates.",
+                "warning");
+            return;
+        }
+        if (!selectedBreakpoint.Profile.SupportsTarkovTrackerWrites)
+        {
+            messageLog.AddMessage($"Tarkov Tracker does not currently support {selectedBreakpoint.Profile.DisplayName} task updates. No historical task updates were sent.", "warning");
+            return;
+        }
+        try
+        {
+            await TarkovTracker.SetProfile(selectedBreakpoint.Profile, forceRefresh: true);
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Unable to activate the selected Tarkov Tracker profile: {ex.Message}", "exception");
+            return;
+        }
+        if (!TarkovTracker.ValidToken
+            || TarkovTracker.CurrentProfileId != selectedBreakpoint.Profile.Id
+            || TarkovTracker.CurrentSessionMode != selectedBreakpoint.Profile.SessionMode)
+        {
+            messageLog.AddMessage($"A verified {selectedBreakpoint.Profile.DisplayName} Tarkov Tracker API key is required to read past logs.", "exception");
+            TarkovTracker.DeactivateProfile();
+            return;
         }
         SubmitDisabled = true;
         GameWatcher.ReadingPastLogs = true;
         TaskStatuses.Clear();
         var totalTasks = 0;
         Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
+        Profile currentProfile = new()
+        {
+            Id = GameWatcher.CurrentProfile.Id,
+            Type = GameWatcher.CurrentProfile.Type,
+            SessionMode = GameWatcher.CurrentProfile.SessionMode,
+            AccountId = GameWatcher.CurrentProfile.AccountId,
+        };
         try
         {
             //eft.ProcessLogs(selectedPath);
             customWatcher.TaskModified += UpdateTaskStatus;
-            Profile currentProfile = new()
-            {
-                Id = GameWatcher.CurrentProfile.Id,
-                Type = GameWatcher.CurrentProfile.Type,
-                AccountId = GameWatcher.CurrentProfile.AccountId,
-                SessionMode = GameWatcher.CurrentProfile.SessionMode,
-            };
             customWatcher.ProcessLogsFromBreakpoint(selectedBreakpoint);
-            GameWatcher.CurrentProfile = currentProfile;
-            customWatcher.TaskModified -= UpdateTaskStatus;
             foreach (var kvp in TaskStatuses)
             {
                 if (kvp.Value == TarkovMonitor.TaskStatus.Started)
@@ -154,17 +195,23 @@
         catch (Exception ex)
         {
             messageLog.AddMessage($"Error compiling task updates: {ex.Message}", "exception");
+            TarkovTracker.DeactivateProfile();
             return;
         }
         finally
         {
+            GameWatcher.CurrentProfile = currentProfile;
+            customWatcher.TaskModified -= UpdateTaskStatus;
             GameWatcher.ReadingPastLogs = false;
         }
         try
         {
             if (updateTasks.Count > 0)
             {
-                await TarkovTracker.SetTaskStatuses(updateTasks);
+                await TarkovTracker.SetTaskStatuses(
+                    updateTasks,
+                    selectedBreakpoint.Profile.Id,
+                    selectedBreakpoint.Profile.SessionMode);
             }
             messageLog.AddMessage($"Of {totalTasks} tasks found in logs, {updateTasks.Count} require status updates in Tarkov Tracker.", "info");
             MudDialog.Close(DialogResult.Ok(true));
@@ -173,10 +220,20 @@
         {
             messageLog.AddMessage($"Error updating tasks: {ex.Message}", "exception");
         }
+        finally
+        {
+            TarkovTracker.DeactivateProfile();
+        }
     }
 
     private void UpdateTaskStatus(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
     {
+        if (selectedBreakpoint == null
+            || e.Profile.Id != selectedBreakpoint.Profile.Id
+            || e.Profile.SessionMode != selectedBreakpoint.Profile.SessionMode)
+        {
+            return;
+        }
         TaskStatuses[e.LogContent.TaskId] = e.LogContent.Status;
     }
 }
