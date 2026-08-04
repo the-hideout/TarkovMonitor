@@ -147,7 +147,7 @@ namespace TarkovMonitor
 
         public async static Task<List<Task>> GetTasks(ProfileType? profileType = null)
         {
-            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
             var response = await JsonApiRequest<TasksResponse>($"{targetProfileType.ToString().ToLower()}/tasks", Properties.Settings.Default.language);
             Tasks = response.data.tasks.Values.ToList();
             return Tasks;
@@ -155,14 +155,14 @@ namespace TarkovMonitor
 
         public async static Task<List<Map>> GetMaps(ProfileType? profileType = null)
         {
-            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
             var response = await JsonApiRequest<MapsResponse>($"{targetProfileType.ToString().ToLower()}/maps", Properties.Settings.Default.language);
             Maps = response.data.maps.Values.ToList();
             return Maps;
         }
         public async static Task<List<Item>> GetItems(ProfileType? profileType = null)
         {
-            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
             var response = await JsonApiRequest<ItemsResponse>($"{targetProfileType.ToString().ToLower()}/items", Properties.Settings.Default.language);
             Items = response.data.items.Values.ToList();
             foreach (var item in Items)
@@ -189,14 +189,14 @@ namespace TarkovMonitor
         }
         public async static Task<List<Trader>> GetTraders(ProfileType? profileType = null)
         {
-            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
             var response = await JsonApiRequest<TradersResponse>($"{targetProfileType.ToString().ToLower()}/traders", Properties.Settings.Default.language);
             Traders = response.data.Values.ToList();
             return Traders;
         }
         public async static Task<List<HideoutStation>> GetHideout(ProfileType? profileType = null)
         {
-            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
             var response = await JsonApiRequest<HideoutResponse>($"{targetProfileType.ToString().ToLower()}/hideout", Properties.Settings.Default.language);
             Stations = response.data.Values.ToList();
             return Stations;
@@ -209,7 +209,7 @@ namespace TarkovMonitor
                 // Capture one compatibility route for the entire refresh. This prevents
                 // a mode change during the requests from mixing PVE and Regular data.
                 // Fetch into locals so a failed request cannot publish a partial dataset.
-                var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+                var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
                 var route = targetProfileType.ToString().ToLower();
                 var tasksRequest = JsonApiRequest<TasksResponse>($"{route}/tasks", Properties.Settings.Default.language);
                 var mapsRequest = JsonApiRequest<MapsResponse>($"{route}/maps", Properties.Settings.Default.language);
@@ -574,7 +574,7 @@ namespace TarkovMonitor
 
         public static int ScavCooldownSeconds()
         {
-            return ScavCooldownSeconds(GameWatcher.CurrentProfile.Type, TarkovTracker.Progress);
+            return ScavCooldownSeconds(GameWatcher.CurrentProfile.TarkovDevDataType, TarkovTracker.Progress);
         }
 
         internal static int ScavCooldownSeconds(
@@ -622,7 +622,7 @@ namespace TarkovMonitor
 
         public static int ResetScavCoolDown()
         {
-            return ResetScavCoolDown(GameWatcher.CurrentProfile.Type, TarkovTracker.Progress);
+            return ResetScavCoolDown(GameWatcher.CurrentProfile.TarkovDevDataType, TarkovTracker.Progress);
         }
 
         internal static int ResetScavCoolDown(

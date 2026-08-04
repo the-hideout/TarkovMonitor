@@ -175,7 +175,18 @@
                 <MudAlert Severity="Severity.Warning" Class="mb-3">TarkovTracker.io has been retired. We recommend moving to TarkovTracker.org for continued support and session-based API key switching.</MudAlert>
                 <MudText Typo="Typo.body2" Class="mb-2">Legacy TarkovTracker.io compatibility uses the original profile-based key format.</MudText>
                 <MudText>@LocalizationService.GetString("CurrentProfile"):</MudText>
-                <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.Type)</MudLink>
+                @if (GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute)
+                {
+                    <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.DisplayName)</MudLink>
+                }
+                else if (GameWatcher.CurrentProfile.HasIdentity)
+                {
+                    <MudText>@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.DisplayName)</MudText>
+                }
+                else
+                {
+                    <MudText>@GameWatcher.CurrentProfile.DisplayName</MudText>
+                }
                 <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick" />
                 <MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
             }
@@ -689,7 +700,12 @@
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is TarkovTracker.ImportedToken importedToken)
         {
-            messageLog.AddMessage($"Validated and migrated the saved {importedToken.DisplayName} TarkovTracker.org API key.", "update");
+            var cleanupSucceeded = TarkovTracker.CompletePendingTokenMigration(pendingToken, importedToken);
+            messageLog.AddMessage(
+                cleanupSucceeded
+                    ? $"Validated and migrated the saved {importedToken.DisplayName} TarkovTracker.org API key."
+                    : $"Validated and saved the {importedToken.DisplayName} TarkovTracker.org API key, but the old duplicate could not be removed safely.",
+                cleanupSucceeded ? "update" : "warning");
             await ReactivateCurrentTrackerProfile();
             StateHasChanged();
         }

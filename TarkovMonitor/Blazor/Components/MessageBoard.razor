@@ -8,11 +8,11 @@
 @inject NavigationManager NavManager
 <MudPaper Class="app-surface dashboard-notification-surface" Elevation="3">
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="pa-3">
-    @if (messageLog.Messages.Count == 0)
+    @if (messages.Count == 0)
     {
         <MudAlert Severity="Severity.Info">@LocalizationService.GetString("ThereArentAnyMessagesYet")</MudAlert>
     }else{
-        @foreach (MonitorMessage message in messageLog.Messages.ToList())
+        @foreach (MonitorMessage message in messages)
         {
             <div class="dashboard-message">
                 <div class="d-block dashboard-message__paper">
@@ -30,7 +30,7 @@
                             }
                         </div>
                         <div class="d-flex align-center">
-                            @foreach (MonitorMessageSelect select in message.Selects)
+                            @foreach (MonitorMessageSelect select in message.Selects.GetSnapshot())
                             {
 
                                 <MudSelect T="MonitorMessageSelectOption" Placeholder="@select.Placeholder" SelectedValuesChanged="@((e) => MessageSelectChanged(select, e) )">
@@ -40,7 +40,7 @@
                                     }
                                 </MudSelect>
                             }
-                            @foreach (MonitorMessageButton button in message.Buttons)
+                            @foreach (MonitorMessageButton button in message.Buttons.GetSnapshot())
                             {
                                 <MudButton Variant="Variant.Filled" Color="@button.Color" StartIcon="@button.Icon" OnClick="@((e) => MessageButtonClick(button) )">@button.Text</MudButton>
                             }
@@ -60,6 +60,7 @@
 @code {
     // Refresh once per minute to update relative timestamps.
     Timer? timer;  
+    IReadOnlyList<MonitorMessage> messages = Array.Empty<MonitorMessage>();
 
     protected override void OnInitialized()
     {
@@ -69,6 +70,7 @@
         // timestamp refreshes. Listen to the source directly so the card redraws
         // as soon as a message is recorded.
         messageLog.newMessage += MessageLog_NewMessage;
+        messages = messageLog.GetSnapshot();
         timer = new Timer(RefreshCallback, null, 60000, 60000);
     }
 
@@ -76,7 +78,11 @@
     {
         // Log callbacks are not guaranteed to run on Blazor's renderer thread.
         // InvokeAsync safely schedules the redraw on the correct dispatcher.
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(() =>
+        {
+            messages = messageLog.GetSnapshot();
+            StateHasChanged();
+        });
     }
 
     private string GetTypeIcon(string type)

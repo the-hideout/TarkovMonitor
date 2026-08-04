@@ -84,6 +84,10 @@ namespace TarkovMonitor
             // Singleton message log used to record and display messages for TarkovMonitor
             messageLog = new MessageLog();
             messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            foreach (var storageWarning in TarkovTracker.GetStorageWarnings())
+            {
+                messageLog.AddMessage(storageWarning, "warning");
+            }
             if (!TarkovTracker.IsLegacyService && TarkovTracker.GetPendingTokenValidations().Count > 0)
             {
                 messageLog.AddMessage(
@@ -354,7 +358,7 @@ namespace TarkovMonitor
                     TarkovDev.StartAutoUpdates();
                     await Task.WhenAll(
                         UpdatePlayerNamesSafely(),
-                        UpdateTarkovDevApiData(profile.Type));
+                        UpdateTarkovDevApiData(profile.TarkovDevDataType));
                     return;
                 }
 
@@ -366,19 +370,19 @@ namespace TarkovMonitor
                 // tracker profile so an existing user keeps their saved token.
                 if (TarkovTracker.IsLegacyService
                     && Properties.Settings.Default.tarkovTrackerToken != ""
+                    && !TarkovTracker.IsImportableToken(Properties.Settings.Default.tarkovTrackerToken)
                     && profile.Id != "")
                 {
                     try
                     {
                         TarkovTracker.SetToken(profile.Id, Properties.Settings.Default.tarkovTrackerToken);
+                        Properties.Settings.Default.tarkovTrackerToken = "";
+                        Properties.Settings.Default.Save();
                     }
                     catch (Exception ex)
                     {
                         messageLog.AddMessage($"Error setting token from previously saved settings {ex.Message}", "exception");
                     }
-
-                    Properties.Settings.Default.tarkovTrackerToken = "";
-                    Properties.Settings.Default.Save();
                 }
 
                 TarkovDev.StartAutoUpdates();
@@ -430,7 +434,7 @@ namespace TarkovMonitor
                     return;
                 }
 
-                await UpdateTarkovDevApiData(profile.Type);
+                await UpdateTarkovDevApiData(profile.TarkovDevDataType);
             }
             finally
             {
@@ -490,7 +494,7 @@ namespace TarkovMonitor
                 var trackerNeedsUpdate = profile.SupportsTarkovTrackerWrites
                     && !string.IsNullOrWhiteSpace(profile.Id)
                     && (profile.Id != trackerProfileId || profile.SessionMode != trackerSessionMode);
-                var tarkovDevNeedsUpdate = TarkovDev.LoadedProfileType != profile.Type;
+                var tarkovDevNeedsUpdate = TarkovDev.LoadedProfileType != profile.TarkovDevDataType;
                 if (!trackerNeedsUpdate && !tarkovDevNeedsUpdate)
                     return;
 
@@ -524,7 +528,7 @@ namespace TarkovMonitor
                 // uses the Regular compatibility route because no Seasonal read route exists.
                 if (tarkovDevNeedsUpdate)
                 {
-                    await UpdateTarkovDevApiData(profile.Type);
+                    await UpdateTarkovDevApiData(profile.TarkovDevDataType);
                 }
             }
             finally
@@ -807,6 +811,7 @@ namespace TarkovMonitor
             TarkovTracker.DeactivateProfile();
             trackerProfileId = "";
             trackerSessionMode = EftSessionMode.Unknown;
+            displayedSessionMode = EftSessionMode.Unknown;
             messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
             AddLastDetectedSessionMessage();
         }
@@ -828,7 +833,7 @@ namespace TarkovMonitor
 
         private async Task<bool> UpdateTarkovDevApiData(ProfileType? profileType = null)
         {
-            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
             try
             {
                 await TarkovDev.UpdateApiData(targetProfileType);

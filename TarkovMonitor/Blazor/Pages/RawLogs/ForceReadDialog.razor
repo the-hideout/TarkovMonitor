@@ -37,7 +37,7 @@
                 <MudSelect @bind-Value="selectedBreakpoint" Label="@LocalizationService.GetString("ReadPreviousLogsLabel")" HelperText="@LocalizationService.GetString("ChooseStartingPointHelperText")" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
                     @foreach (LogDetails breakpoint in breakpoints)
                     {
-                        <MudSelectItem Value="@breakpoint">@breakpoint.Version | @breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()</MudSelectItem>
+                        <MudSelectItem Value="@breakpoint">@breakpoint.Profile.DisplayName | @breakpoint.Version | @breakpoint.Date.ToLongDateString() - @breakpoint.Date.Humanize()</MudSelectItem>
                     }
                 </MudSelect>
                 <p>@LocalizationService.GetString("SelectStartingPointDescription")</p>
@@ -62,7 +62,7 @@
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
-    internal GameWatcher customWatcher = new();
+    internal GameWatcher customWatcher = new(historicalReplay: true);
     LogDetails? _selectedBreakpoint;
     LogDetails? selectedBreakpoint {
         get
@@ -121,21 +121,22 @@
             messageLog.AddMessage($"Tarkov Tracker does not currently support {selectedBreakpoint.Profile.DisplayName} task updates. No historical task updates were sent.", "warning");
             return;
         }
+        TarkovTracker.ProfileActivationLease trackerLease;
         try
         {
-            await TarkovTracker.SetProfile(selectedBreakpoint.Profile, forceRefresh: true);
+            trackerLease = await TarkovTracker.AcquireProfileLease(selectedBreakpoint.Profile);
         }
         catch (Exception ex)
         {
             messageLog.AddMessage($"Unable to activate the selected Tarkov Tracker profile: {ex.Message}", "exception");
             return;
         }
-        if (!TarkovTracker.ValidToken
-            || TarkovTracker.CurrentProfileId != selectedBreakpoint.Profile.Id
-            || TarkovTracker.CurrentSessionMode != selectedBreakpoint.Profile.SessionMode)
+        if (eft.IsGameRunning)
         {
-            messageLog.AddMessage($"A verified {selectedBreakpoint.Profile.DisplayName} Tarkov Tracker API key is required to read past logs.", "exception");
-            TarkovTracker.DeactivateProfile();
+            messageLog.AddMessage(
+                "Read Past Logs was cancelled because Escape from Tarkov started before historical processing began.",
+                "warning");
+            TarkovTracker.ReleaseProfileLease(trackerLease);
             return;
         }
         SubmitDisabled = true;
@@ -143,13 +144,6 @@
         TaskStatuses.Clear();
         var totalTasks = 0;
         Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
-        Profile currentProfile = new()
-        {
-            Id = GameWatcher.CurrentProfile.Id,
-            Type = GameWatcher.CurrentProfile.Type,
-            SessionMode = GameWatcher.CurrentProfile.SessionMode,
-            AccountId = GameWatcher.CurrentProfile.AccountId,
-        };
         try
         {
             //eft.ProcessLogs(selectedPath);
@@ -170,7 +164,7 @@
                 }
                 totalTasks++;
                 TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
-                var taskProgress = TarkovTracker.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
+                var taskProgress = trackerLease.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
                 if (taskProgress != null)
                 {
                     if (taskProgress.failed)
@@ -195,23 +189,26 @@
         catch (Exception ex)
         {
             messageLog.AddMessage($"Error compiling task updates: {ex.Message}", "exception");
-            TarkovTracker.DeactivateProfile();
+            TarkovTracker.ReleaseProfileLease(trackerLease);
             return;
         }
         finally
         {
-            GameWatcher.CurrentProfile = currentProfile;
             customWatcher.TaskModified -= UpdateTaskStatus;
             GameWatcher.ReadingPastLogs = false;
         }
         try
         {
+            if (eft.IsGameRunning)
+            {
+                messageLog.AddMessage(
+                    "Read Past Logs was cancelled because Escape from Tarkov started before task updates were sent.",
+                    "warning");
+                return;
+            }
             if (updateTasks.Count > 0)
             {
-                await TarkovTracker.SetTaskStatuses(
-                    updateTasks,
-                    selectedBreakpoint.Profile.Id,
-                    selectedBreakpoint.Profile.SessionMode);
+                await TarkovTracker.SetTaskStatuses(updateTasks, trackerLease);
             }
             messageLog.AddMessage($"Of {totalTasks} tasks found in logs, {updateTasks.Count} require status updates in Tarkov Tracker.", "info");
             MudDialog.Close(DialogResult.Ok(true));
@@ -222,7 +219,7 @@
         }
         finally
         {
-            TarkovTracker.DeactivateProfile();
+            TarkovTracker.ReleaseProfileLease(trackerLease);
         }
     }
 

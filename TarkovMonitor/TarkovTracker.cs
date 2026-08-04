@@ -17,25 +17,38 @@ namespace TarkovMonitor
             HttpClient Client { get; }
 
             [Get("/token")]
-            Task<TokenResponse> TestToken([Header("Authorization")] string authorization);
+            Task<TokenResponse> TestToken([Header("Authorization")] string authorization, CancellationToken cancellationToken = default);
 
             [Get("/progress")]
-            Task<ProgressResponse> GetProgress([Header("Authorization")] string authorization);
+            Task<ProgressResponse> GetProgress([Header("Authorization")] string authorization, CancellationToken cancellationToken = default);
 
             [Post("/progress/task/{id}")]
-            Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body, [Header("Authorization")] string authorization);
+            Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body, [Header("Authorization")] string authorization, CancellationToken cancellationToken = default);
 
             [Post("/progress/tasks")]
-            Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body, [Header("Authorization")] string authorization);
+            Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body, [Header("Authorization")] string authorization, CancellationToken cancellationToken = default);
         }
 
         private static readonly HttpClient tokenInspectionClient = new();
-        private readonly record struct ActiveRequest(
+        internal readonly record struct ActiveRequest(
             string ProfileId,
             EftSessionMode SessionMode,
             string Token,
             long Generation,
-            ITarkovTrackerAPI Api);
+            ITarkovTrackerAPI Api,
+            CancellationToken CancellationToken);
+
+        internal sealed class ProfileActivationLease
+        {
+            internal ActiveRequest Request { get; }
+            public ProgressResponse Progress { get; }
+
+            internal ProfileActivationLease(ActiveRequest request, ProgressResponse progress)
+            {
+                Request = request;
+                Progress = progress;
+            }
+        }
 
         public sealed class ProgressRetrievedEventArgs : EventArgs
         {
@@ -53,6 +66,7 @@ namespace TarkovMonitor
 
         private static readonly object stateLock = new();
         private static long activationGeneration;
+        private static CancellationTokenSource activeRequestCancellation = new();
         private static ITarkovTrackerAPI api = InitAPI();
 
         public static ProgressResponse Progress { get; private set; } = new();
@@ -63,6 +77,10 @@ namespace TarkovMonitor
         private static Dictionary<string, string> modeTokens = new(StringComparer.OrdinalIgnoreCase);
         // Fingerprints recorded here prove which exact .org tokens passed the /token endpoint.
         private static Dictionary<string, string> verifiedModeTokenHashes = new(StringComparer.OrdinalIgnoreCase);
+        private static bool legacyTokenStoreLoaded;
+        private static bool modeTokenStoreLoaded;
+        private static bool verificationStoreLoaded;
+        private static readonly List<string> storageWarnings = new();
         private static string currentProfile = "";
         private static EftSessionMode currentSessionMode = EftSessionMode.Unknown;
         private static string activeToken = "";
@@ -102,20 +120,68 @@ namespace TarkovMonitor
 
         static TarkovTracker() {
             tokenInspectionClient.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
-            tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
-            var storedModeTokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerModeTokens);
-            if (storedModeTokens != null)
+            legacyTokenStoreLoaded = TryDeserializeTokenStore(
+                Properties.Settings.Default.tarkovTrackerTokens,
+                StringComparer.Ordinal,
+                nameof(Properties.Settings.Default.tarkovTrackerTokens),
+                out tokens);
+            modeTokenStoreLoaded = TryDeserializeTokenStore(
+                Properties.Settings.Default.tarkovTrackerModeTokens,
+                StringComparer.OrdinalIgnoreCase,
+                nameof(Properties.Settings.Default.tarkovTrackerModeTokens),
+                out modeTokens);
+            verificationStoreLoaded = TryDeserializeTokenStore(
+                Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes,
+                StringComparer.OrdinalIgnoreCase,
+                nameof(Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes),
+                out verifiedModeTokenHashes);
+            if (modeTokenStoreLoaded && verificationStoreLoaded)
             {
-                modeTokens = new Dictionary<string, string>(storedModeTokens, StringComparer.OrdinalIgnoreCase);
-                MigrateModeTokenKeys();
-                RemoveInvalidPrefixAssignments();
+                RemoveStaleVerificationRecords();
             }
-            var storedVerifiedModeTokenHashes = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes);
-            if (storedVerifiedModeTokenHashes != null)
+        }
+
+        private static bool TryDeserializeTokenStore(
+            string rawValue,
+            IEqualityComparer<string> comparer,
+            string settingName,
+            out Dictionary<string, string> store)
+        {
+            store = new Dictionary<string, string>(comparer);
+            try
             {
-                verifiedModeTokenHashes = new Dictionary<string, string>(storedVerifiedModeTokenHashes, StringComparer.OrdinalIgnoreCase);
+                if (string.IsNullOrWhiteSpace(rawValue))
+                {
+                    throw new JsonException("The stored value is empty.");
+                }
+
+                var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(rawValue)
+                    ?? throw new JsonException("The stored value is null.");
+                if (parsed.Any(pair => pair.Key is null || pair.Value is null))
+                {
+                    throw new JsonException("The stored value contains a null key or value.");
+                }
+
+                store = new Dictionary<string, string>(parsed, comparer);
+                return true;
             }
-            RemoveStaleVerificationRecords();
+            catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
+            {
+                var blockedAction = settingName == nameof(Properties.Settings.Default.tarkovTrackerTokens)
+                    ? "Legacy key changes and cleanup are disabled"
+                    : "TarkovTracker.org key import and removal are disabled";
+                storageWarnings.Add(
+                    $"Tarkov Tracker storage setting {settingName} could not be read. Its original value was preserved and Tarkov Monitor will not overwrite it. {blockedAction} until the setting is repaired.");
+                return false;
+            }
+        }
+
+        public static IReadOnlyList<string> GetStorageWarnings()
+        {
+            lock (stateLock)
+            {
+                return storageWarnings.ToList();
+            }
         }
 
         private static void RemoveStaleVerificationRecords()
@@ -133,23 +199,65 @@ namespace TarkovMonitor
             {
                 verifiedModeTokenHashes.Remove(prefix);
             }
-            SaveVerifiedModeTokens();
         }
 
         public static IReadOnlyList<PendingTokenValidation> GetPendingTokenValidations()
         {
-            var candidates = new List<string>();
-            candidates.AddRange(modeTokens
-                .Where(pair => !IsTokenVerified(pair.Key, pair.Value))
-                .Select(pair => pair.Value));
-            return candidates
-                .Where(token => !string.IsNullOrWhiteSpace(token) && IsImportablePrefix(GetTokenPrefix(token)))
-                .Select(token => token.Trim())
-                .Distinct(StringComparer.Ordinal)
-                .Select(token => new PendingTokenValidation(
-                    token,
-                    GetPrefixDisplayName(GetTokenPrefix(token))))
-                .ToList();
+            lock (stateLock)
+            {
+                var candidates = new Dictionary<string, List<PendingTokenSource>>(StringComparer.Ordinal);
+
+                void AddCandidate(string token, PendingTokenSource source)
+                {
+                    var trimmedToken = token?.Trim() ?? "";
+                    if (!IsImportableToken(trimmedToken))
+                    {
+                        return;
+                    }
+
+                    var prefix = GetTokenPrefix(trimmedToken);
+                    if (string.Equals(GetImportedToken(prefix), trimmedToken, StringComparison.Ordinal))
+                    {
+                        return;
+                    }
+
+                    if (!candidates.TryGetValue(trimmedToken, out var sources))
+                    {
+                        sources = new List<PendingTokenSource>();
+                        candidates[trimmedToken] = sources;
+                    }
+                    sources.Add(source);
+                }
+
+                if (modeTokenStoreLoaded && verificationStoreLoaded)
+                {
+                    foreach (var pair in modeTokens.Where(pair => !IsTokenVerified(pair.Key, pair.Value)))
+                    {
+                        AddCandidate(pair.Value, new(PendingTokenSourceKind.ModePrefix, pair.Key));
+                    }
+                }
+
+                if (!IsLegacyService)
+                {
+                    AddCandidate(
+                        Properties.Settings.Default.tarkovTrackerToken,
+                        new(PendingTokenSourceKind.LegacySingleton, ""));
+                    if (legacyTokenStoreLoaded)
+                    {
+                        foreach (var pair in tokens)
+                        {
+                            AddCandidate(pair.Value, new(PendingTokenSourceKind.LegacyProfile, pair.Key));
+                        }
+                    }
+                }
+
+                return candidates
+                    .Select(pair => new PendingTokenValidation(
+                        pair.Key,
+                        GetPrefixDisplayName(GetTokenPrefix(pair.Key)),
+                        pair.Value.ToList()))
+                    .ToList();
+            }
         }
 
         private static bool IsTokenVerified(string prefix, string token)
@@ -163,61 +271,6 @@ namespace TarkovMonitor
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim())));
         }
 
-        private static void SaveVerifiedModeTokens()
-        {
-            Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = JsonSerializer.Serialize(verifiedModeTokenHashes);
-            Properties.Settings.Default.Save();
-        }
-
-        private static void MarkTokenVerified(string prefix, string token)
-        {
-            verifiedModeTokenHashes[prefix] = ComputeTokenFingerprint(token);
-            SaveVerifiedModeTokens();
-        }
-
-        private static void MigrateModeTokenKeys()
-        {
-            var changed = false;
-            if (modeTokens.Remove("Regular", out var regularToken))
-            {
-                if (!modeTokens.ContainsKey("PVP"))
-                {
-                    modeTokens["PVP"] = regularToken;
-                }
-                changed = true;
-            }
-            if (modeTokens.Remove("Seasonal", out var seasonalToken))
-            {
-                if (!modeTokens.ContainsKey("SN1"))
-                {
-                    modeTokens["SN1"] = seasonalToken;
-                }
-                changed = true;
-            }
-            if (changed)
-            {
-                SaveModeTokens();
-            }
-        }
-
-        private static void RemoveInvalidPrefixAssignments()
-        {
-            var invalidPrefixes = modeTokens
-                .Where(pair => !IsSupportedPrefix(pair.Key)
-                    || !string.Equals(GetTokenPrefix(pair.Value), pair.Key, StringComparison.OrdinalIgnoreCase))
-                .Select(pair => pair.Key)
-                .ToList();
-            if (invalidPrefixes.Count == 0)
-            {
-                return;
-            }
-            foreach (var prefix in invalidPrefixes)
-            {
-                modeTokens.Remove(prefix);
-            }
-            SaveModeTokens();
-        }
-
         public static string GetApiBaseUrl(string trackerDomain)
         {
             if (trackerDomain == "tarkovtracker.org")
@@ -225,6 +278,14 @@ namespace TarkovMonitor
                 return "https://api.tarkovtracker.org";
             }
             return $"https://{trackerDomain}/api/v2";
+        }
+
+        private static long BeginNewActivationLocked()
+        {
+            activeRequestCancellation.Cancel();
+            activeRequestCancellation.Dispose();
+            activeRequestCancellation = new CancellationTokenSource();
+            return ++activationGeneration;
         }
 
         public static ITarkovTrackerAPI InitAPI()
@@ -235,7 +296,7 @@ namespace TarkovMonitor
             lock (stateLock)
             {
                 api = nextApi;
-                activationGeneration++;
+                BeginNewActivationLocked();
                 currentProfile = "";
                 currentSessionMode = EftSessionMode.Unknown;
                 activeToken = "";
@@ -276,7 +337,7 @@ namespace TarkovMonitor
             {
                 return "Seasonal";
             }
-            return string.IsNullOrWhiteSpace(trimmedMode) ? "Regular" : trimmedMode;
+            return string.IsNullOrWhiteSpace(trimmedMode) ? "Unknown" : trimmedMode;
         }
 
         public static string NormalizeSessionMode(EftSessionMode sessionMode)
@@ -307,33 +368,51 @@ namespace TarkovMonitor
 
         public static string GetImportedToken(string prefix)
         {
-            modeTokens.TryGetValue(prefix.ToUpperInvariant(), out var token);
-            if (token == null
-                || !string.Equals(GetTokenPrefix(token), prefix, StringComparison.OrdinalIgnoreCase)
-                || !IsTokenVerified(prefix, token))
+            lock (stateLock)
             {
-                return "";
+                modeTokens.TryGetValue(prefix.ToUpperInvariant(), out var token);
+                if (token == null
+                    || !string.Equals(GetTokenPrefix(token), prefix, StringComparison.OrdinalIgnoreCase)
+                    || !IsTokenVerified(prefix, token))
+                {
+                    return "";
+                }
+                return token;
             }
-            return token;
         }
 
         public static IReadOnlyDictionary<string, string> GetImportedTokens()
         {
-            return modeTokens;
+            lock (stateLock)
+            {
+                return new Dictionary<string, string>(modeTokens, StringComparer.OrdinalIgnoreCase);
+            }
         }
 
-        private static void SaveModeTokens()
+        private static void EnsureOrgStoresWritable()
         {
-            Properties.Settings.Default.tarkovTrackerModeTokens = JsonSerializer.Serialize(modeTokens);
-            Properties.Settings.Default.Save();
+            if (!modeTokenStoreLoaded || !verificationStoreLoaded)
+            {
+                throw new InvalidOperationException("Tarkov Tracker API key storage needs repair before keys can be imported or removed. The unreadable saved value was preserved.");
+            }
         }
 
         public static void SetImportedToken(string prefix, string token)
         {
+            StoreImportedToken(prefix, token, markVerified: false);
+        }
+
+        private static void StoreImportedToken(string prefix, string token, bool markVerified)
+        {
+            EnsureOrgStoresWritable();
             var normalizedPrefix = prefix.Trim().ToUpperInvariant();
             var trimmedToken = token.Trim();
             lock (stateLock)
             {
+                var originalModeTokens = new Dictionary<string, string>(modeTokens, StringComparer.OrdinalIgnoreCase);
+                var originalVerificationHashes = new Dictionary<string, string>(verifiedModeTokenHashes, StringComparer.OrdinalIgnoreCase);
+                var originalModeSetting = Properties.Settings.Default.tarkovTrackerModeTokens;
+                var originalVerificationSetting = Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes;
                 if (string.IsNullOrWhiteSpace(trimmedToken))
                 {
                     modeTokens.Remove(normalizedPrefix);
@@ -342,10 +421,29 @@ namespace TarkovMonitor
                 else
                 {
                     modeTokens[normalizedPrefix] = trimmedToken;
-                    if (!IsTokenVerified(normalizedPrefix, trimmedToken))
+                    if (markVerified)
+                    {
+                        verifiedModeTokenHashes[normalizedPrefix] = ComputeTokenFingerprint(trimmedToken);
+                    }
+                    else if (!IsTokenVerified(normalizedPrefix, trimmedToken))
                     {
                         verifiedModeTokenHashes.Remove(normalizedPrefix);
                     }
+                }
+
+                try
+                {
+                    Properties.Settings.Default.tarkovTrackerModeTokens = JsonSerializer.Serialize(modeTokens);
+                    Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = JsonSerializer.Serialize(verifiedModeTokenHashes);
+                    Properties.Settings.Default.Save();
+                }
+                catch
+                {
+                    modeTokens = originalModeTokens;
+                    verifiedModeTokenHashes = originalVerificationHashes;
+                    Properties.Settings.Default.tarkovTrackerModeTokens = originalModeSetting;
+                    Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = originalVerificationSetting;
+                    throw;
                 }
 
                 if (!IsLegacyService
@@ -356,13 +454,11 @@ namespace TarkovMonitor
                     && !string.Equals(activeToken, GetImportedToken(normalizedPrefix), StringComparison.Ordinal))
                 {
                     activeToken = "";
-                    activationGeneration++;
+                    BeginNewActivationLocked();
                     ValidToken = false;
                     Progress = new();
                 }
             }
-            SaveModeTokens();
-            SaveVerifiedModeTokens();
         }
 
         public static string GetTokenPrefix(string apiToken)
@@ -425,9 +521,23 @@ namespace TarkovMonitor
                 ;
         }
 
+        public static bool IsImportableToken(string apiToken)
+        {
+            try
+            {
+                ValidateImportTokenLocally(apiToken);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static async Task<ImportedToken> ImportToken(string apiToken)
         {
             ValidateImportTokenLocally(apiToken);
+            EnsureOrgStoresWritable();
             var trimmedToken = apiToken.Trim();
             var suppliedPrefix = GetTokenPrefix(trimmedToken);
             if (modeTokens.TryGetValue(suppliedPrefix, out var storedToken)
@@ -446,8 +556,7 @@ namespace TarkovMonitor
                     throw new Exception("This API key is valid but does not have write permission.");
                 }
                 var prefix = GetVerifiedImportPrefix(trimmedToken, response);
-                SetImportedToken(prefix, trimmedToken);
-                MarkTokenVerified(prefix, trimmedToken);
+                StoreImportedToken(prefix, trimmedToken, markVerified: true);
                 CompleteImportValidationCall(true);
                 return new ImportedToken(prefix, GetPrefixDisplayName(prefix));
             }
@@ -606,7 +715,118 @@ namespace TarkovMonitor
             {
             }
         }
-        public record PendingTokenValidation(string Token, string DisplayName);
+        public enum PendingTokenSourceKind
+        {
+            ModePrefix,
+            LegacySingleton,
+            LegacyProfile,
+        }
+
+        public record PendingTokenSource(PendingTokenSourceKind Kind, string Key);
+        public record PendingTokenValidation(
+            string Token,
+            string DisplayName,
+            IReadOnlyList<PendingTokenSource> Sources);
+
+        public static bool CompletePendingTokenMigration(
+            PendingTokenValidation pendingToken,
+            ImportedToken importedToken)
+        {
+            if (IsLegacyService)
+            {
+                return false;
+            }
+            var prefix = GetTokenPrefix(pendingToken.Token);
+            if (!string.Equals(prefix, importedToken.Prefix, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(GetImportedToken(prefix), pendingToken.Token, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            lock (stateLock)
+            {
+                var legacyProfileSources = pendingToken.Sources
+                    .Where(source => source.Kind == PendingTokenSourceKind.LegacyProfile)
+                    .ToList();
+                if (legacyProfileSources.Count > 0 && !legacyTokenStoreLoaded)
+                {
+                    return false;
+                }
+
+                var originalTokens = new Dictionary<string, string>(tokens, StringComparer.Ordinal);
+                var originalModeTokens = new Dictionary<string, string>(modeTokens, StringComparer.OrdinalIgnoreCase);
+                var originalVerificationHashes = new Dictionary<string, string>(verifiedModeTokenHashes, StringComparer.OrdinalIgnoreCase);
+                var originalSingleton = Properties.Settings.Default.tarkovTrackerToken;
+                var originalSerializedTokens = Properties.Settings.Default.tarkovTrackerTokens;
+                var originalModeSetting = Properties.Settings.Default.tarkovTrackerModeTokens;
+                var originalVerificationSetting = Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes;
+                var changed = false;
+                var legacyProfilesChanged = false;
+                var modeStoreChanged = false;
+
+                foreach (var source in pendingToken.Sources)
+                {
+                    if (source.Kind == PendingTokenSourceKind.LegacySingleton
+                        && string.Equals(
+                            Properties.Settings.Default.tarkovTrackerToken,
+                            pendingToken.Token,
+                            StringComparison.Ordinal))
+                    {
+                        Properties.Settings.Default.tarkovTrackerToken = "";
+                        changed = true;
+                    }
+                    else if (source.Kind == PendingTokenSourceKind.LegacyProfile
+                        && tokens.TryGetValue(source.Key, out var storedToken)
+                        && string.Equals(storedToken, pendingToken.Token, StringComparison.Ordinal))
+                    {
+                        tokens.Remove(source.Key);
+                        changed = true;
+                        legacyProfilesChanged = true;
+                    }
+                    else if (source.Kind == PendingTokenSourceKind.ModePrefix
+                        && !string.Equals(source.Key, importedToken.Prefix, StringComparison.OrdinalIgnoreCase)
+                        && modeTokens.TryGetValue(source.Key, out var modeToken)
+                        && string.Equals(modeToken, pendingToken.Token, StringComparison.Ordinal))
+                    {
+                        modeTokens.Remove(source.Key);
+                        verifiedModeTokenHashes.Remove(source.Key);
+                        changed = true;
+                        modeStoreChanged = true;
+                    }
+                }
+
+                if (!changed)
+                {
+                    return true;
+                }
+
+                try
+                {
+                    if (legacyProfilesChanged)
+                    {
+                        Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
+                    }
+                    if (modeStoreChanged)
+                    {
+                        Properties.Settings.Default.tarkovTrackerModeTokens = JsonSerializer.Serialize(modeTokens);
+                        Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = JsonSerializer.Serialize(verifiedModeTokenHashes);
+                    }
+                    Properties.Settings.Default.Save();
+                    return true;
+                }
+                catch
+                {
+                    tokens = originalTokens;
+                    modeTokens = originalModeTokens;
+                    verifiedModeTokenHashes = originalVerificationHashes;
+                    Properties.Settings.Default.tarkovTrackerToken = originalSingleton;
+                    Properties.Settings.Default.tarkovTrackerTokens = originalSerializedTokens;
+                    Properties.Settings.Default.tarkovTrackerModeTokens = originalModeSetting;
+                    Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = originalVerificationSetting;
+                    return false;
+                }
+            }
+        }
 
         public static void SetToken(string profileId, string token)
         {
@@ -614,26 +834,38 @@ namespace TarkovMonitor
             {
                 throw new Exception("No EFT profile initialized, please launch Escape from Tarkov first");
             }
+            if (!legacyTokenStoreLoaded)
+            {
+                throw new InvalidOperationException("Legacy Tarkov Tracker token storage could not be read, so it was not overwritten.");
+            }
 
-            string serializedTokens;
             lock (stateLock)
             {
+                var originalTokens = new Dictionary<string, string>(tokens, StringComparer.Ordinal);
+                var originalSetting = Properties.Settings.Default.tarkovTrackerTokens;
                 var previousToken = tokens.TryGetValue(profileId, out var storedToken) ? storedToken : "";
                 tokens[profileId] = token;
-                serializedTokens = JsonSerializer.Serialize(tokens);
-
-                // Editing the active profile's token immediately revokes the previous
-                // activation. No task write may use the old verified state afterward.
-                if (profileId == currentProfile && previousToken != token)
+                try
                 {
-                    activationGeneration++;
+                    Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
+                    Properties.Settings.Default.Save();
+                }
+                catch
+                {
+                    tokens = originalTokens;
+                    Properties.Settings.Default.tarkovTrackerTokens = originalSetting;
+                    throw;
+                }
+
+                // Editing the active legacy profile's token immediately revokes the
+                // previous activation. The separate .org store is unaffected.
+                if (IsLegacyService && profileId == currentProfile && previousToken != token)
+                {
+                    BeginNewActivationLocked();
                     ValidToken = false;
                     Progress = new();
                 }
             }
-
-            Properties.Settings.Default.tarkovTrackerTokens = serializedTokens;
-            Properties.Settings.Default.Save();
         }
 
         public static void DeactivateProfile()
@@ -643,7 +875,7 @@ namespace TarkovMonitor
                 currentProfile = "";
                 currentSessionMode = EftSessionMode.Unknown;
                 activeToken = "";
-                activationGeneration++;
+                BeginNewActivationLocked();
                 ValidToken = false;
                 Progress = new();
             }
@@ -661,14 +893,6 @@ namespace TarkovMonitor
             }
         }
 
-        public static ProgressResponse? GetActiveProgressSnapshot(string expectedProfileId)
-        {
-            lock (stateLock)
-            {
-                return ValidToken && currentProfile == expectedProfileId ? Progress : null;
-            }
-        }
-
         public static async Task<ProgressResponse> SetProfile(Profile profile, bool forceRefresh = false)
         {
             if (profile.Id == "")
@@ -680,6 +904,7 @@ namespace TarkovMonitor
             var newToken = GetTokenForProfile(profile);
             long generation;
             ITarkovTrackerAPI targetApi;
+            CancellationToken requestCancellation;
             lock (stateLock)
             {
                 if (currentProfile == profileSnapshot.Id
@@ -694,8 +919,9 @@ namespace TarkovMonitor
                 currentProfile = profileSnapshot.Id;
                 currentSessionMode = profileSnapshot.SessionMode;
                 activeToken = newToken;
-                generation = ++activationGeneration;
+                generation = BeginNewActivationLocked();
                 targetApi = api;
+                requestCancellation = activeRequestCancellation.Token;
 
                 // Clear the previous profile before the first await. Until both token
                 // inspection and progress retrieval finish, writes must remain disabled.
@@ -713,21 +939,44 @@ namespace TarkovMonitor
                 profileSnapshot.SessionMode,
                 newToken,
                 generation,
-                targetApi));
+                targetApi,
+                requestCancellation));
             lock (stateLock)
             {
                 return Progress;
             }
         }
 
-        public static Task<ProgressResponse> SetProfile(string profileId, bool forceRefresh = false)
+        public static async Task<ProfileActivationLease> AcquireProfileLease(Profile profile)
         {
-            EftSessionMode sessionMode;
+            await SetProfile(profile, forceRefresh: true);
+            var request = CaptureActiveRequest(profile.Id, profile.SessionMode);
             lock (stateLock)
             {
-                sessionMode = currentSessionMode;
+                if (!IsCurrentLocked(request))
+                {
+                    throw new Exception("Tarkov Tracker profile changed before historical processing could begin");
+                }
+                return new ProfileActivationLease(request, Progress);
             }
-            return SetProfile(new Profile { Id = profileId, SessionMode = sessionMode }, forceRefresh);
+        }
+
+        public static void ReleaseProfileLease(ProfileActivationLease lease)
+        {
+            lock (stateLock)
+            {
+                if (!IsCurrentLocked(lease.Request))
+                {
+                    return;
+                }
+
+                currentProfile = "";
+                currentSessionMode = EftSessionMode.Unknown;
+                activeToken = "";
+                BeginNewActivationLocked();
+                ValidToken = false;
+                Progress = new();
+            }
         }
 
         private static string Bearer(string token) => $"Bearer {token}";
@@ -753,7 +1002,13 @@ namespace TarkovMonitor
                     throw new Exception("Invalid token");
                 }
 
-                return new ActiveRequest(currentProfile, currentSessionMode, activeToken, activationGeneration, api);
+                return new ActiveRequest(
+                    currentProfile,
+                    currentSessionMode,
+                    activeToken,
+                    activationGeneration,
+                    api,
+                    activeRequestCancellation.Token);
             }
         }
 
@@ -765,6 +1020,7 @@ namespace TarkovMonitor
                 SessionMode = request.SessionMode,
             });
             return request.Generation == activationGeneration
+                && !request.CancellationToken.IsCancellationRequested
                 && request.ProfileId == currentProfile
                 && request.SessionMode == currentSessionMode
                 && request.Token == activeToken
@@ -791,7 +1047,7 @@ namespace TarkovMonitor
 
                 Progress = new();
                 ValidToken = false;
-                activationGeneration++;
+                BeginNewActivationLocked();
                 return true;
             }
         }
@@ -831,9 +1087,17 @@ namespace TarkovMonitor
 
         private static async Task SendTaskStatus(ActiveRequest request, string questId, TaskStatus status)
         {
+            if (!IsCurrent(request))
+            {
+                throw new Exception("Tarkov Tracker profile changed before the task update could be sent");
+            }
             try
             {
-                await request.Api.SetTaskStatus(questId, TaskStatusBody.From(status), Bearer(request.Token));
+                await request.Api.SetTaskStatus(
+                    questId,
+                    TaskStatusBody.From(status),
+                    Bearer(request.Token),
+                    request.CancellationToken);
                 lock (stateLock)
                 {
                     if (IsCurrent(request))
@@ -893,7 +1157,7 @@ namespace TarkovMonitor
                             {
                                 continue;
                             }
-                            if (failCondition.task == questId && failCondition.status.Contains("complete"))
+                            if (failCondition.task == questId && failCondition.status?.Contains("complete") == true)
                             {
                                 foreach (var taskStatus in Progress.data.tasksProgress)
                                 {
@@ -952,6 +1216,24 @@ namespace TarkovMonitor
             EftSessionMode? expectedSessionMode = null)
         {
             var request = CaptureActiveRequest(expectedProfileId, expectedSessionMode);
+            return await SetTaskStatuses(statuses, request);
+        }
+
+        public static async Task<string> SetTaskStatuses(
+            Dictionary<string, TaskStatus> statuses,
+            ProfileActivationLease lease)
+        {
+            if (!IsCurrent(lease.Request))
+            {
+                throw new Exception("Tarkov Tracker profile changed before historical task updates could be sent");
+            }
+            return await SetTaskStatuses(statuses, lease.Request);
+        }
+
+        private static async Task<string> SetTaskStatuses(
+            Dictionary<string, TaskStatus> statuses,
+            ActiveRequest request)
+        {
             List<TaskStatusBody> body = new();
             foreach (var kvp in statuses)
             {
@@ -959,9 +1241,13 @@ namespace TarkovMonitor
                 status.id = kvp.Key;
                 body.Add(status);
             }
+            if (!IsCurrent(request))
+            {
+                throw new Exception("Tarkov Tracker profile changed before task updates could be sent");
+            }
             try
             {
-                await request.Api.SetTaskStatuses(body, Bearer(request.Token));
+                await request.Api.SetTaskStatuses(body, Bearer(request.Token), request.CancellationToken);
                 lock (stateLock)
                 {
                     if (IsCurrent(request))
@@ -997,7 +1283,7 @@ namespace TarkovMonitor
             var request = CaptureActiveRequest();
             try
             {
-                var progress = await request.Api.GetProgress(Bearer(request.Token));
+                var progress = await request.Api.GetProgress(Bearer(request.Token), request.CancellationToken);
                 if (TryPublishProgress(request, progress))
                 {
                     ProgressRetrieved?.Invoke(null, new(request.ProfileId, request.SessionMode, progress));
@@ -1045,8 +1331,9 @@ namespace TarkovMonitor
                     currentProfile,
                     currentSessionMode,
                     trimmedToken,
-                    ++activationGeneration,
-                    api);
+                    BeginNewActivationLocked(),
+                    api,
+                    activeRequestCancellation.Token);
             }
 
             return await ActivateProfile(request);
@@ -1095,7 +1382,7 @@ namespace TarkovMonitor
         {
             try
             {
-                var response = await request.Api.TestToken(Bearer(request.Token));
+                var response = await request.Api.TestToken(Bearer(request.Token), request.CancellationToken);
                 if (!response.permissions.Contains("WP"))
                 {
                     if (TryInvalidate(request))
@@ -1107,7 +1394,7 @@ namespace TarkovMonitor
 
                 // A token is not active until its matching progress has also loaded.
                 // This prevents old progress from being exposed during a mode switch.
-                var progress = await request.Api.GetProgress(Bearer(request.Token));
+                var progress = await request.Api.GetProgress(Bearer(request.Token), request.CancellationToken);
                 if (TryPublishProgress(request, progress))
                 {
                     TokenValidated?.Invoke(null, new EventArgs());

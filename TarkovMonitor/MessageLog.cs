@@ -28,31 +28,45 @@ namespace TarkovMonitor
     internal class MessageLog
     {
         internal const int MaxMessageLength = 2048;
+        internal const int MaxMessages = 200;
         private const string ShortenedMessageSuffix = "\n[Message shortened by Tarkov Monitor.]";
+        private readonly object messagesLock = new();
+        private readonly List<MonitorMessage> messages = new();
         public event NewLogMessage newMessage = delegate { };
 
-        public MessageLog()
+        public IReadOnlyList<MonitorMessage> GetSnapshot()
         {
-            Messages = new List<MonitorMessage>();
+            lock (messagesLock)
+            {
+                return messages.ToList();
+            }
         }
-        public List<MonitorMessage> Messages { get; set; }
-        
+
         public void AddMessage(MonitorMessage message)
         {
             message.Message = LimitMessageLength(message.Message);
-            Messages.Add(message);
-
-            // Throw event to let watchers know something has changed
-            newMessage(this, new NewLogMessageArgs(message));
+            AddMessageCore(message);
         }
 
         public void AddMessage(string message, string? type = "", string? url = null, string? linkText = null)
         {
             var monMessage = new MonitorMessage(LimitMessageLength(message), type, url, linkText);
-            Messages.Add(monMessage);
+            AddMessageCore(monMessage);
+        }
 
-            // Throw event to let watchers know something has changed
-            newMessage(this, new NewLogMessageArgs(monMessage));
+        private void AddMessageCore(MonitorMessage message)
+        {
+            lock (messagesLock)
+            {
+                messages.Add(message);
+                if (messages.Count > MaxMessages)
+                {
+                    messages.RemoveRange(0, messages.Count - MaxMessages);
+                }
+            }
+
+            // Notify after releasing the lock so render callbacks can safely take a snapshot.
+            newMessage(this, new NewLogMessageArgs(message));
         }
 
         private static string LimitMessageLength(string message)

@@ -100,7 +100,9 @@ namespace TarkovMonitor
         private void TarkovTracker_ProgressRetrieved(object? sender, TarkovTracker.ProgressRetrievedEventArgs e)
         {
             var profile = GameWatcher.CurrentProfile.Snapshot();
-            if (e.ProfileId != profile.Id || !profile.SupportsScavCooldown)
+            if (e.ProfileId != profile.Id
+                || e.SessionMode != profile.SessionMode
+                || !profile.SupportsScavCooldown)
             {
                 return;
             }
@@ -108,9 +110,7 @@ namespace TarkovMonitor
             ScavCooldownTime = TimeSpan.FromSeconds(TarkovDev.ScavCooldownSeconds(profile.Type, e.Progress));
             Debug.WriteLine($"ScavCooldownTime: {ScavCooldownTime}");
 
-            // A named handler can actually be removed; subtracting a new lambda (the
-            // previous implementation) leaves the original subscription attached.
-            TarkovTracker.ProgressRetrieved -= TarkovTracker_ProgressRetrieved;
+            // Keep listening: PVP/PVE profile changes can publish a different cooldown.
         }
 
         private void Eft_RaidStarted(object? sender, RaidInfoEventArgs e)
