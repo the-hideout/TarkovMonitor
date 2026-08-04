@@ -492,7 +492,11 @@ namespace TarkovMonitor
                     //System.Diagnostics.Debug.WriteLine(eventLine);
                     if (eventLine.Contains("Session mode: "))
                     {
-                        var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>\w+)");
+                        // Capture the complete mode token even when a future EFT season
+                        // introduces punctuation. Unknown values must reach
+                        // ResolveSessionMode so the active profile fails closed instead
+                        // of silently retaining the previous writable session mode.
+                        var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>[^\s|]+)");
                         if (!modeMatch.Success)
                         {
                             continue;
@@ -961,7 +965,10 @@ namespace TarkovMonitor
             {
                 return logDetails;
             }
-            var profileTypeMatches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|Session mode: (?<profileType>\w+)", RegexOptions.Multiline);
+            // Keep historical replay aligned with live monitoring: future punctuated
+            // mode tokens must be preserved and resolved as Unknown until explicitly
+            // supported, rather than being skipped and inheriting stale mode state.
+            var profileTypeMatches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|Session mode: (?<profileType>[^\s|]+)", RegexOptions.Multiline);
             for (var i = 0; i < matches.Count; i++)
             {
                 Match match = matches[i];

@@ -7,7 +7,21 @@ namespace TarkovMonitor
 {
     internal static class Stats
     {
-        public static string DatabasePath => Path.Join(Application.UserAppDataPath, "..", "TarkovMonitor.db");
+        internal const string DataRootEnvironmentVariable = "TARKOVMONITOR_DATA_ROOT";
+
+        public static string DatabasePath
+        {
+            get
+            {
+                var isolatedDataRoot = Environment.GetEnvironmentVariable(DataRootEnvironmentVariable);
+                if (!string.IsNullOrWhiteSpace(isolatedDataRoot))
+                {
+                    return Path.Combine(Path.GetFullPath(isolatedDataRoot), "TarkovMonitor.db");
+                }
+
+                return Path.Join(Application.UserAppDataPath, "..", "TarkovMonitor.db");
+            }
+        }
         private static readonly Lazy<StatsDatabase> Database = new(() => new StatsDatabase(DatabasePath));
 
         public static void ClearData() => Database.Value.ClearData();
