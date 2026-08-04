@@ -16,20 +16,43 @@ namespace TarkovMonitor
         {
             HttpClient Client { get; }
 
+            [Get("/token")]
+            Task<TokenResponse> TestToken([Header("Authorization")] string authorization);
+
             [Get("/progress")]
-            [Headers("Authorization: Bearer")]
-            Task<ProgressResponse> GetProgress();
+            Task<ProgressResponse> GetProgress([Header("Authorization")] string authorization);
 
             [Post("/progress/task/{id}")]
-            [Headers("Authorization: Bearer")]
-            Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body);
+            Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body, [Header("Authorization")] string authorization);
 
             [Post("/progress/tasks")]
-            [Headers("Authorization: Bearer")]
-            Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
+            Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body, [Header("Authorization")] string authorization);
         }
 
         private static readonly HttpClient tokenInspectionClient = new();
+        private readonly record struct ActiveRequest(
+            string ProfileId,
+            EftSessionMode SessionMode,
+            string Token,
+            long Generation,
+            ITarkovTrackerAPI Api);
+
+        public sealed class ProgressRetrievedEventArgs : EventArgs
+        {
+            public string ProfileId { get; }
+            public EftSessionMode SessionMode { get; }
+            public ProgressResponse Progress { get; }
+
+            public ProgressRetrievedEventArgs(string profileId, EftSessionMode sessionMode, ProgressResponse progress)
+            {
+                ProfileId = profileId;
+                SessionMode = sessionMode;
+                Progress = progress;
+            }
+        }
+
+        private static readonly object stateLock = new();
+        private static long activationGeneration;
         private static ITarkovTrackerAPI api = InitAPI();
 
         public static ProgressResponse Progress { get; private set; } = new();
@@ -41,19 +64,37 @@ namespace TarkovMonitor
         // Fingerprints recorded here prove which exact .org tokens passed the /token endpoint.
         private static Dictionary<string, string> verifiedModeTokenHashes = new(StringComparer.OrdinalIgnoreCase);
         private static string currentProfile = "";
-        private static string currentSessionMode = "Regular";
+        private static EftSessionMode currentSessionMode = EftSessionMode.Unknown;
         private static string activeToken = "";
         private static readonly object importValidationLock = new();
         private static DateTimeOffset nextImportValidationAllowedAt = DateTimeOffset.MinValue;
         private static bool importValidationInProgress;
         private static readonly TimeSpan importValidationInterval = TimeSpan.FromMinutes(1);
-        public static string CurrentProfileId { get { return currentProfile; } }
-        public static string CurrentSessionMode { get { return currentSessionMode; } }
+        public static string CurrentProfileId
+        {
+            get
+            {
+                lock (stateLock)
+                {
+                    return currentProfile;
+                }
+            }
+        }
+        public static EftSessionMode CurrentSessionMode
+        {
+            get
+            {
+                lock (stateLock)
+                {
+                    return currentSessionMode;
+                }
+            }
+        }
         public static bool IsLegacyService => Properties.Settings.Default.tarkovTrackerDomain == "tarkovtracker.io";
 
         public static event EventHandler<EventArgs>? TokenValidated;
         public static event EventHandler<EventArgs>? TokenInvalid;
-        public static event EventHandler<EventArgs>? ProgressRetrieved;
+        public static event EventHandler<ProgressRetrievedEventArgs>? ProgressRetrieved;
         public static Dictionary<string, string> Domains = new() {
             { "tarkovtracker.io", "TarkovTracker.io" },
             { "tarkovtracker.org", "TarkovTracker.org" },
@@ -188,33 +229,33 @@ namespace TarkovMonitor
 
         public static ITarkovTrackerAPI InitAPI()
         {
-            api = RestService.For<ITarkovTrackerAPI>(GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain),
-                new RefitSettings {
-                    AuthorizationHeaderValueGetter = (rq, cr) => {
-                        return Task.Run<string>(() => {
-                            return activeToken;
-                        });
-                    },
-                }
-            );
-            api.Client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
-            return api;
+            var nextApi = RestService.For<ITarkovTrackerAPI>(GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain));
+            nextApi.Client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+
+            lock (stateLock)
+            {
+                api = nextApi;
+                activationGeneration++;
+                currentProfile = "";
+                currentSessionMode = EftSessionMode.Unknown;
+                activeToken = "";
+                ValidToken = false;
+                Progress = new();
+                return api;
+            }
         }
 
         public static void ResetActiveProfile()
         {
-            activeToken = "";
-            ValidToken = false;
-            Progress = new();
+            DeactivateProfile();
         }
 
         public static string GetToken(string profileId)
         {
-            if (!tokens.ContainsKey(profileId))
+            lock (stateLock)
             {
-                return "";
+                return tokens.TryGetValue(profileId, out var token) ? token : "";
             }
-            return tokens[profileId];
         }
 
         public static string NormalizeSessionMode(string sessionMode)
@@ -229,8 +270,18 @@ namespace TarkovMonitor
             {
                 return "PVE";
             }
-            // if (string.Equals(trimmedMode, "Seasonal", StringComparison.OrdinalIgnoreCase)) return "Seasonal";
+            if (string.Equals(trimmedMode, "Seasonal", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmedMode, "PvpSeason", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmedMode, "SN1", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Seasonal";
+            }
             return string.IsNullOrWhiteSpace(trimmedMode) ? "Regular" : trimmedMode;
+        }
+
+        public static string NormalizeSessionMode(EftSessionMode sessionMode)
+        {
+            return sessionMode.ToString();
         }
 
         public static string GetPrefixForSessionMode(string sessionMode)
@@ -247,6 +298,11 @@ namespace TarkovMonitor
             // if (string.Equals(normalizedMode, "Seasonal", StringComparison.OrdinalIgnoreCase)) return "SN1";
             // Enable only after EFT's released Seasonal Session mode value is confirmed.
             return "";
+        }
+
+        public static string GetPrefixForSessionMode(EftSessionMode sessionMode)
+        {
+            return GetPrefixForSessionMode(NormalizeSessionMode(sessionMode));
         }
 
         public static string GetImportedToken(string prefix)
@@ -275,17 +331,34 @@ namespace TarkovMonitor
         public static void SetImportedToken(string prefix, string token)
         {
             var normalizedPrefix = prefix.Trim().ToUpperInvariant();
-            if (string.IsNullOrWhiteSpace(token))
+            var trimmedToken = token.Trim();
+            lock (stateLock)
             {
-                modeTokens.Remove(normalizedPrefix);
-                verifiedModeTokenHashes.Remove(normalizedPrefix);
-            }
-            else
-            {
-                modeTokens[normalizedPrefix] = token.Trim();
-                if (!IsTokenVerified(normalizedPrefix, token))
+                if (string.IsNullOrWhiteSpace(trimmedToken))
                 {
+                    modeTokens.Remove(normalizedPrefix);
                     verifiedModeTokenHashes.Remove(normalizedPrefix);
+                }
+                else
+                {
+                    modeTokens[normalizedPrefix] = trimmedToken;
+                    if (!IsTokenVerified(normalizedPrefix, trimmedToken))
+                    {
+                        verifiedModeTokenHashes.Remove(normalizedPrefix);
+                    }
+                }
+
+                if (!IsLegacyService
+                    && string.Equals(
+                        GetPrefixForSessionMode(currentSessionMode),
+                        normalizedPrefix,
+                        StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(activeToken, GetImportedToken(normalizedPrefix), StringComparison.Ordinal))
+                {
+                    activeToken = "";
+                    activationGeneration++;
+                    ValidToken = false;
+                    Progress = new();
                 }
             }
             SaveModeTokens();
@@ -325,12 +398,16 @@ namespace TarkovMonitor
             {
                 return "Regular (PVP)";
             }
-            // if (string.Equals(normalizedMode, "Seasonal", StringComparison.OrdinalIgnoreCase)
-            //     || string.Equals(normalizedMode, "SN1", StringComparison.OrdinalIgnoreCase))
-            // {
-            //     return "Seasonal";
-            // }
+            if (string.Equals(normalizedMode, "Seasonal", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Seasonal";
+            }
             return "Unknown";
+        }
+
+        public static string GetSessionDisplayName(EftSessionMode sessionMode)
+        {
+            return GetSessionDisplayName(NormalizeSessionMode(sessionMode));
         }
 
         public static bool IsSupportedPrefix(string prefix)
@@ -537,48 +614,190 @@ namespace TarkovMonitor
             {
                 throw new Exception("No EFT profile initialized, please launch Escape from Tarkov first");
             }
-            tokens[profileId] = token;
-            Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
+
+            string serializedTokens;
+            lock (stateLock)
+            {
+                var previousToken = tokens.TryGetValue(profileId, out var storedToken) ? storedToken : "";
+                tokens[profileId] = token;
+                serializedTokens = JsonSerializer.Serialize(tokens);
+
+                // Editing the active profile's token immediately revokes the previous
+                // activation. No task write may use the old verified state afterward.
+                if (profileId == currentProfile && previousToken != token)
+                {
+                    activationGeneration++;
+                    ValidToken = false;
+                    Progress = new();
+                }
+            }
+
+            Properties.Settings.Default.tarkovTrackerTokens = serializedTokens;
             Properties.Settings.Default.Save();
         }
 
-        public static async Task<ProgressResponse> SetProfile(Profile profile)
+        public static void DeactivateProfile()
         {
-            if (profile.Id == "") {
+            lock (stateLock)
+            {
+                currentProfile = "";
+                currentSessionMode = EftSessionMode.Unknown;
+                activeToken = "";
+                activationGeneration++;
+                ValidToken = false;
+                Progress = new();
+            }
+        }
+
+        public static ProgressResponse? GetActiveProgressSnapshot(Profile expectedProfile)
+        {
+            lock (stateLock)
+            {
+                return ValidToken
+                    && currentProfile == expectedProfile.Id
+                    && currentSessionMode == expectedProfile.SessionMode
+                    ? Progress
+                    : null;
+            }
+        }
+
+        public static ProgressResponse? GetActiveProgressSnapshot(string expectedProfileId)
+        {
+            lock (stateLock)
+            {
+                return ValidToken && currentProfile == expectedProfileId ? Progress : null;
+            }
+        }
+
+        public static async Task<ProgressResponse> SetProfile(Profile profile, bool forceRefresh = false)
+        {
+            if (profile.Id == "")
+            {
                 throw new Exception("Can't set the EFT profile, please launch Escape from Tarkov and then restart this application");
             }
 
-            var newSessionMode = NormalizeSessionMode(profile.SessionMode);
+            var profileSnapshot = profile.Snapshot();
             var newToken = GetTokenForProfile(profile);
-            if (currentProfile == profile.Id
-                && string.Equals(currentSessionMode, newSessionMode, StringComparison.OrdinalIgnoreCase)
-                && activeToken == newToken)
+            long generation;
+            ITarkovTrackerAPI targetApi;
+            lock (stateLock)
             {
-                return Progress;
-            }
-            var oldToken = activeToken;
-            currentProfile = profile.Id;
-            currentSessionMode = newSessionMode;
-            activeToken = newToken;
-            if (oldToken == newToken && ValidToken)
-            {
-                return Progress;
-            }
-            if (string.IsNullOrWhiteSpace(newToken))
-            {
+                if (currentProfile == profileSnapshot.Id
+                    && currentSessionMode == profileSnapshot.SessionMode
+                    && activeToken == newToken
+                    && !forceRefresh
+                    && (ValidToken || string.IsNullOrWhiteSpace(newToken)))
+                {
+                    return Progress;
+                }
+
+                currentProfile = profileSnapshot.Id;
+                currentSessionMode = profileSnapshot.SessionMode;
+                activeToken = newToken;
+                generation = ++activationGeneration;
+                targetApi = api;
+
+                // Clear the previous profile before the first await. Until both token
+                // inspection and progress retrieval finish, writes must remain disabled.
                 ValidToken = false;
                 Progress = new();
+            }
+
+            if (string.IsNullOrWhiteSpace(newToken))
+            {
                 return Progress;
             }
-            await TestToken(newToken, true);
-            return Progress;
+
+            await ActivateProfile(new ActiveRequest(
+                profileSnapshot.Id,
+                profileSnapshot.SessionMode,
+                newToken,
+                generation,
+                targetApi));
+            lock (stateLock)
+            {
+                return Progress;
+            }
         }
 
-        public static Task<ProgressResponse> SetProfile(string profileId)
+        public static Task<ProgressResponse> SetProfile(string profileId, bool forceRefresh = false)
         {
-            return SetProfile(new Profile { Id = profileId, SessionMode = currentSessionMode });
+            EftSessionMode sessionMode;
+            lock (stateLock)
+            {
+                sessionMode = currentSessionMode;
+            }
+            return SetProfile(new Profile { Id = profileId, SessionMode = sessionMode }, forceRefresh);
         }
 
+        private static string Bearer(string token) => $"Bearer {token}";
+
+        private static ActiveRequest CaptureActiveRequest(
+            string? expectedProfileId = null,
+            EftSessionMode? expectedSessionMode = null)
+        {
+            lock (stateLock)
+            {
+                if (expectedProfileId != null && expectedProfileId != currentProfile)
+                {
+                    throw new Exception("Tarkov Tracker profile changed before the task update; the update was not sent");
+                }
+                if (expectedSessionMode != null && expectedSessionMode != currentSessionMode)
+                {
+                    throw new Exception("Tarkov Tracker session mode changed before the task update; the update was not sent");
+                }
+                if (!ValidToken
+                    || string.IsNullOrWhiteSpace(currentProfile)
+                    || string.IsNullOrWhiteSpace(activeToken))
+                {
+                    throw new Exception("Invalid token");
+                }
+
+                return new ActiveRequest(currentProfile, currentSessionMode, activeToken, activationGeneration, api);
+            }
+        }
+
+        private static bool IsCurrentLocked(ActiveRequest request)
+        {
+            var selectedToken = GetTokenForProfile(new Profile
+            {
+                Id = request.ProfileId,
+                SessionMode = request.SessionMode,
+            });
+            return request.Generation == activationGeneration
+                && request.ProfileId == currentProfile
+                && request.SessionMode == currentSessionMode
+                && request.Token == activeToken
+                && request.Token == selectedToken
+                && ReferenceEquals(request.Api, api);
+        }
+
+        private static bool IsCurrent(ActiveRequest request)
+        {
+            lock (stateLock)
+            {
+                return IsCurrentLocked(request);
+            }
+        }
+
+        private static bool TryInvalidate(ActiveRequest request)
+        {
+            lock (stateLock)
+            {
+                if (!IsCurrentLocked(request))
+                {
+                    return false;
+                }
+
+                Progress = new();
+                ValidToken = false;
+                activationGeneration++;
+                return true;
+            }
+        }
+
+        // stateLock must be held by the caller so an old request cannot update a
+        // newly activated profile's in-memory progress.
         private static void SyncStoredStatus(string questId, TaskStatus status)
         {
             var storedStatus = Progress.data.tasksProgress.Find(ts => ts.id == questId);
@@ -610,22 +829,155 @@ namespace TarkovMonitor
             }
         }
 
-        public static async Task<string> SetTaskStatus(string questId, TaskStatus status)
+        private static async Task SendTaskStatus(ActiveRequest request, string questId, TaskStatus status)
         {
-            if (!ValidToken)
-            {
-                throw new Exception("Invalid token");
-            }
             try
             {
-                await api.SetTaskStatus(questId, TaskStatusBody.From(status));
-                SyncStoredStatus(questId, status);
+                await request.Api.SetTaskStatus(questId, TaskStatusBody.From(status), Bearer(request.Token));
+                lock (stateLock)
+                {
+                    if (IsCurrent(request))
+                    {
+                        SyncStoredStatus(questId, status);
+                    }
+                }
             }
             catch (ApiException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    InvalidTokenException();
+                    InvalidTokenException(request);
+                }
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"TarkovTracker API error: {ex.Message}");
+            }
+        }
+
+        public static async Task<string> SetTaskStatus(
+            string questId,
+            TaskStatus status,
+            string? expectedProfileId = null,
+            EftSessionMode? expectedSessionMode = null)
+        {
+            await SendTaskStatus(CaptureActiveRequest(expectedProfileId, expectedSessionMode), questId, status);
+            return "success";
+        }
+
+        public static async Task<string> SetTaskComplete(
+            string questId,
+            string? expectedProfileId = null,
+            EftSessionMode? expectedSessionMode = null)
+        {
+            var request = CaptureActiveRequest(expectedProfileId, expectedSessionMode);
+            await SendTaskStatus(request, questId, TaskStatus.Finished);
+            try
+            {
+                lock (stateLock)
+                {
+                    if (!IsCurrent(request))
+                    {
+                        return "success";
+                    }
+
+                    TarkovDev.Tasks.ForEach(task => {
+                        foreach (var failCondition in task.failConditions)
+                        {
+                            if (failCondition.task == null)
+                            {
+                                continue;
+                            }
+                            if (failCondition.task == questId && failCondition.status.Contains("complete"))
+                            {
+                                foreach (var taskStatus in Progress.data.tasksProgress)
+                                {
+                                    if (taskStatus.id == failCondition.task)
+                                    {
+                                        taskStatus.failed = true;
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    });
+                }
+            }
+            catch (Exception)
+            {
+                // Preserve the successful remote update if optional local inference fails.
+            }
+            return "success";
+        }
+
+        public static async Task<string> SetTaskFailed(
+            string questId,
+            string? expectedProfileId = null,
+            EftSessionMode? expectedSessionMode = null)
+        {
+            return await SetTaskStatus(questId, TaskStatus.Failed, expectedProfileId, expectedSessionMode);
+        }
+
+        public static async Task<string> SetTaskStarted(
+            string questId,
+            string? expectedProfileId = null,
+            EftSessionMode? expectedSessionMode = null)
+        {
+            ActiveRequest request;
+            bool shouldWrite;
+            lock (stateLock)
+            {
+                request = CaptureActiveRequest(expectedProfileId, expectedSessionMode);
+                shouldWrite = Progress.data.tasksProgress.Any(taskStatus => taskStatus.id == questId && taskStatus.failed);
+            }
+
+            if (!shouldWrite)
+            {
+                return "task not marked as failed";
+            }
+
+            await SendTaskStatus(request, questId, TaskStatus.Started);
+            return "success";
+        }
+
+        public static async Task<string> SetTaskStatuses(
+            Dictionary<string, TaskStatus> statuses,
+            string? expectedProfileId = null,
+            EftSessionMode? expectedSessionMode = null)
+        {
+            var request = CaptureActiveRequest(expectedProfileId, expectedSessionMode);
+            List<TaskStatusBody> body = new();
+            foreach (var kvp in statuses)
+            {
+                TaskStatusBody status = TaskStatusBody.From(kvp.Value);
+                status.id = kvp.Key;
+                body.Add(status);
+            }
+            try
+            {
+                await request.Api.SetTaskStatuses(body, Bearer(request.Token));
+                lock (stateLock)
+                {
+                    if (IsCurrent(request))
+                    {
+                        foreach (var kvp in statuses)
+                        {
+                            SyncStoredStatus(kvp.Key, kvp.Value);
+                        }
+                    }
+                }
+            }
+            catch (ApiException ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    InvalidTokenException(request);
                 }
                 if (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
@@ -640,119 +992,23 @@ namespace TarkovMonitor
             return "success";
         }
 
-        public static async Task<string> SetTaskComplete(string questId)
-        {
-            await SetTaskStatus(questId, TaskStatus.Finished);
-            try
-            {
-                TarkovDev.Tasks.ForEach(task => {
-                    foreach (var failCondition in task.failConditions)
-                    {
-                        if (failCondition.task == null)
-                        {
-                            continue;
-                        }
-                        if (failCondition.task == questId && failCondition.status.Contains("complete"))
-                        {
-                            foreach (var taskStatus in Progress.data.tasksProgress)
-                            {
-                                if (taskStatus.id == failCondition.task)
-                                {
-                                    taskStatus.failed = true;
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                });
-            } 
-            catch (Exception)
-            {
-                // do something?
-            }
-            return "success";
-        }
-
-        public static async Task<string> SetTaskFailed(string questId)
-        {
-            return await SetTaskStatus(questId, TaskStatus.Failed);
-        }
-
-        public static async Task<string> SetTaskStarted(string questId)
-        {
-            foreach (var taskStatus in Progress.data.tasksProgress)
-            {
-                if (taskStatus.id != questId)
-                {
-                    continue;
-                }
-                if (taskStatus.failed)
-                {
-                    return await SetTaskStatus(questId, TaskStatus.Started);
-                }
-                break;
-            }
-            return "task not marked as failed";
-        }
-
-        public static async Task<string> SetTaskStatuses(Dictionary<string, TaskStatus> statuses)
-        {
-			if (!ValidToken)
-			{
-				throw new Exception("Invalid token");
-			}
-            List<TaskStatusBody> body = new();
-            foreach (var kvp in statuses)
-            {
-                TaskStatusBody status = TaskStatusBody.From(kvp.Value);
-                status.id = kvp.Key;
-                body.Add(status);
-            }
-			try
-			{
-				await api.SetTaskStatuses(body);
-                foreach( var kvp in statuses)
-                {
-                    SyncStoredStatus(kvp.Key, kvp.Value);
-                }
-			}
-			catch (ApiException ex)
-			{
-				if (ex.StatusCode == HttpStatusCode.Unauthorized)
-				{
-					InvalidTokenException();
-                }
-                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    throw new Exception("Rate limited by Tarkov Tracker API");
-                }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
-			}
-			catch (Exception ex)
-			{
-				throw new Exception($"TarkovTracker API error: {ex.Message}");
-			}
-			return "success";
-		}
-
         public static async Task<ProgressResponse> GetProgress()
-		{
-			if (!ValidToken)
-			{
-				throw new Exception("Invalid token");
-			}
+        {
+            var request = CaptureActiveRequest();
             try
             {
-                Progress = await api.GetProgress();
-                ProgressRetrieved?.Invoke(null, new EventArgs());
-                return Progress;
+                var progress = await request.Api.GetProgress(Bearer(request.Token));
+                if (TryPublishProgress(request, progress))
+                {
+                    ProgressRetrieved?.Invoke(null, new(request.ProfileId, request.SessionMode, progress));
+                }
+                return progress;
             }
             catch (ApiException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    InvalidTokenException();
+                    InvalidTokenException(request);
                 }
                 if (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
@@ -768,10 +1024,40 @@ namespace TarkovMonitor
 
         public static async Task<TokenResponse> TestToken(string apiToken, bool activate = false)
         {
+            var trimmedToken = apiToken.Trim();
+            if (!activate)
+            {
+                return await InspectToken(trimmedToken);
+            }
+
+            ActiveRequest request;
+            lock (stateLock)
+            {
+                if (string.IsNullOrWhiteSpace(currentProfile))
+                {
+                    throw new Exception("No EFT profile initialized, please launch Escape from Tarkov first");
+                }
+
+                activeToken = trimmedToken;
+                ValidToken = false;
+                Progress = new();
+                request = new ActiveRequest(
+                    currentProfile,
+                    currentSessionMode,
+                    trimmedToken,
+                    ++activationGeneration,
+                    api);
+            }
+
+            return await ActivateProfile(request);
+        }
+
+        private static async Task<TokenResponse> InspectToken(string apiToken)
+        {
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
                 $"{GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain).TrimEnd('/')}/token");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiToken.Trim());
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiToken);
 
             HttpResponseMessage httpResponse;
             try
@@ -787,10 +1073,6 @@ namespace TarkovMonitor
             {
                 if (httpResponse.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    if (activate)
-                    {
-                        InvalidTokenException();
-                    }
                     throw new Exception("Tarkov Tracker API token is invalid");
                 }
                 if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
@@ -805,31 +1087,73 @@ namespace TarkovMonitor
                 var responseBody = await httpResponse.Content.ReadAsStringAsync();
                 var response = JsonSerializer.Deserialize<TokenResponse>(responseBody)
                     ?? throw new Exception("TarkovTracker returned an empty token response.");
-                if (response.permissions.Contains("WP"))
-                {
-                    if (activate)
-                    {
-                        activeToken = apiToken.Trim();
-                        ValidToken = true;
-                        await GetProgress();
-                        TokenValidated?.Invoke(null, new EventArgs());
-                    }
-                }
-                else if (activate)
-                {
-                    Progress = new();
-                    ValidToken = false;
-                    TokenInvalid?.Invoke(null, new EventArgs());
-                }
                 return response;
             }
         }
 
-        private static void InvalidTokenException()
+        private static async Task<TokenResponse> ActivateProfile(ActiveRequest request)
         {
-            Progress = new();
-            ValidToken = false;
-            TokenInvalid?.Invoke(null, new EventArgs());
+            try
+            {
+                var response = await request.Api.TestToken(Bearer(request.Token));
+                if (!response.permissions.Contains("WP"))
+                {
+                    if (TryInvalidate(request))
+                    {
+                        TokenInvalid?.Invoke(null, new EventArgs());
+                    }
+                    return response;
+                }
+
+                // A token is not active until its matching progress has also loaded.
+                // This prevents old progress from being exposed during a mode switch.
+                var progress = await request.Api.GetProgress(Bearer(request.Token));
+                if (TryPublishProgress(request, progress))
+                {
+                    TokenValidated?.Invoke(null, new EventArgs());
+                    ProgressRetrieved?.Invoke(null, new(request.ProfileId, request.SessionMode, progress));
+                }
+                return response;
+            }
+            catch (ApiException ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    InvalidTokenException(request);
+                }
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"TarkovTracker API error: {ex.Message}");
+            }
+        }
+
+        private static bool TryPublishProgress(ActiveRequest request, ProgressResponse progress)
+        {
+            lock (stateLock)
+            {
+                if (!IsCurrentLocked(request))
+                {
+                    return false;
+                }
+
+                Progress = progress;
+                ValidToken = true;
+                return true;
+            }
+        }
+
+        private static void InvalidTokenException(ActiveRequest request)
+        {
+            if (TryInvalidate(request))
+            {
+                TokenInvalid?.Invoke(null, new EventArgs());
+            }
             throw new Exception("Tarkov Tracker API token is invalid");
         }
 
