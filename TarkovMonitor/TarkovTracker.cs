@@ -55,9 +55,9 @@ namespace TarkovMonitor
             api = RestService.For<ITarkovTrackerAPI>($"https://{Properties.Settings.Default.tarkovTrackerDomain}/api/v2",
                 new RefitSettings {
                     AuthorizationHeaderValueGetter = (rq, cr) => {
-                        return Task.Run<string>(() => {
+                        return new ValueTask<string>(Task.Run<string>(() => {
                             return GetToken(currentProfile ?? "");
-                        });
+                        }));
                     },
                 }
             );

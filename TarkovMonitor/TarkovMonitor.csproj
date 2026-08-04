@@ -33,9 +33,9 @@
     <PackageReference Include="MudBlazor" Version="6.19.1" />
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="Refit" Version="7.2.22" />
+    <PackageReference Include="Refit" Version="14.0.1" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
-    <PackageReference Include="System.Data.SQLite" Version="2.0.3" />
+    <PackageReference Include="System.Data.SQLite" Version="2.0.4" />
     <PackageReference Include="Websocket.Client" Version="5.5.0" />
     <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
   </ItemGroup>
