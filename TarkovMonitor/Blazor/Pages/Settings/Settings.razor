@@ -8,6 +8,7 @@
 @inject IDialogService DialogService
 @inject LocalizationService LocalizationService
 @inject TimersManager timersManager
+@inject MainBlazorUI WindowHost
 @layout AppLayout
 @implements IDisposable
 
@@ -263,6 +264,7 @@
         LocalizationService.LanguageChanged += OnLanguageChanged;
         eft.GameStarted += OnGameClientStateChanged;
         eft.GameStopped += OnGameClientStateChanged;
+        eft.ProfileChanged += OnGameClientStateChanged;
     }
 
     protected override void OnParametersSet()
@@ -284,6 +286,7 @@
         LocalizationService.LanguageChanged -= OnLanguageChanged;
         eft.GameStarted -= OnGameClientStateChanged;
         eft.GameStopped -= OnGameClientStateChanged;
+        eft.ProfileChanged -= OnGameClientStateChanged;
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)
@@ -618,10 +621,20 @@
             {
                 return;
             }
-            Properties.Settings.Default.tarkovTrackerDomain = value;
-            TarkovTracker.ResetActiveProfile();
-            TarkovTracker.InitAPI();
-            Properties.Settings.Default.Save();
+            // Revoke the old service before changing the setting. Otherwise an old
+            // .io completion could observe the new .org domain during this handoff.
+            WindowHost.BeginTrackerStatusTransition();
+            try
+            {
+                TarkovTracker.ResetActiveProfile();
+                Properties.Settings.Default.tarkovTrackerDomain = value;
+                TarkovTracker.InitAPI();
+                Properties.Settings.Default.Save();
+            }
+            finally
+            {
+                WindowHost.CompleteTrackerStatusTransition();
+            }
             _ = ReactivateCurrentTrackerProfile();
         }
     }
@@ -638,11 +651,13 @@
             || GameWatcher.CurrentProfile.Id == "")
         {
             TarkovTracker.DeactivateProfile();
+            WindowHost.RefreshTarkovTrackerStatusNotice();
             return;
         }
         try
         {
             await TarkovTracker.SetProfile(GameWatcher.CurrentProfile);
+            WindowHost.RefreshTarkovTrackerStatusNotice();
         }
         catch (Exception ex)
         {
@@ -657,7 +672,8 @@
 
     private string ActivePrefixMarker(string prefix)
     {
-        return string.Equals(TarkovTracker.GetPrefixForSessionMode(GameWatcher.CurrentProfile.SessionMode), prefix, StringComparison.OrdinalIgnoreCase)
+        return GameWatcher.CurrentProfile.HasIdentity
+            && string.Equals(TarkovTracker.GetPrefixForSessionMode(GameWatcher.CurrentProfile.SessionMode), prefix, StringComparison.OrdinalIgnoreCase)
             ? "• Active session"
             : "";
     }
@@ -717,12 +733,30 @@
             TarkovTracker.GetPrefixForSessionMode(GameWatcher.CurrentProfile.SessionMode),
             prefix,
             StringComparison.OrdinalIgnoreCase);
-        TarkovTracker.SetImportedToken(prefix, "");
-        if (removedWasActive && GameWatcher.CurrentProfile.Id != "")
+        bool removed;
+        try
         {
-            await TarkovTracker.SetProfile(GameWatcher.CurrentProfile);
+            removed = TarkovTracker.RemoveImportedToken(prefix);
         }
-        messageLog.AddMessage($"Removed the saved {TarkovTracker.GetPrefixDisplayName(prefix)} TarkovTracker.org API key.", "update");
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Could not remove the saved {TarkovTracker.GetPrefixDisplayName(prefix)} TarkovTracker.org API key: {ex.Message}", "exception");
+            StateHasChanged();
+            return;
+        }
+
+        if (!removed)
+        {
+            messageLog.AddMessage($"The saved {TarkovTracker.GetPrefixDisplayName(prefix)} TarkovTracker.org API key was already absent.", "warning");
+            StateHasChanged();
+            return;
+        }
+
+        messageLog.AddMessage($"Removed the saved {TarkovTracker.GetPrefixDisplayName(prefix)} TarkovTracker.org API key and any matching old copies.", "update");
+        if (removedWasActive)
+        {
+            await ReactivateCurrentTrackerProfile();
+        }
         StateHasChanged();
     }
 

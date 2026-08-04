@@ -62,12 +62,29 @@ namespace TarkovMonitor
         private readonly HashSet<string> reportedStatsFailures = new();
         private readonly object reportedStatsFailuresLock = new();
         private readonly SemaphoreSlim profileChangeLock = new(1, 1);
+        private readonly object trackerStatusNoticeLock = new();
         private long profileChangeGeneration;
+        private long trackerStatusNoticeEpoch;
+        private int trackerStatusTransitionDepth;
+        private bool eftProfileMutationPending;
         private string trackerProfileId = "";
         private EftSessionMode trackerSessionMode = EftSessionMode.Unknown;
         private EftSessionMode displayedSessionMode = EftSessionMode.Unknown;
+        private TrackerStatusNotice? displayedTrackerStatusNotice;
         private LocalizationService localizationService;
         private bool inRaid;
+
+        private enum TrackerStatusKind
+        {
+            Active,
+            MissingKey,
+            SeasonalInactive,
+        }
+
+        private readonly record struct TrackerStatusNotice(
+            TrackerStatusKind Kind,
+            string ProfileId,
+            EftSessionMode SessionMode);
 
         public MainBlazorUI()
         {
@@ -160,6 +177,7 @@ namespace TarkovMonitor
             eft.MapLoading += Eft_MapLoading_NavigateToMap;
             eft.MatchFound += Eft_MatchFound;
             eft.PlayerPosition += Eft_PlayerPosition;
+            eft.ProfileChanging += Eft_ProfileChanging;
             eft.ProfileChanged += Eft_ProfileChanged;
             eft.ControlSettings += Eft_ControlSettings;
 
@@ -182,6 +200,12 @@ namespace TarkovMonitor
                 if (e.PropertyName == "customLogsPath")
                 {
                     eft.LogsPath = Properties.Settings.Default.customLogsPath;
+                }
+                if (e.PropertyName == "tarkovTrackerDomain"
+                    || e.PropertyName == "tarkovTrackerModeTokens"
+                    || e.PropertyName == "tarkovTrackerVerifiedModeTokenHashes")
+                {
+                    ResetTrackerStatusNotice();
                 }
             };
 
@@ -337,6 +361,7 @@ namespace TarkovMonitor
 
         private void Eft_InitialReadComplete(object? sender, ProfileEventArgs e)
         {
+            CompleteEftProfileMutationBoundary();
             // Event handlers must return void. Keep the asynchronous implementation
             // in a Task-returning method so every failure can be contained there.
             _ = InitializeAfterLogReadAsync(e.Profile.Snapshot());
@@ -353,18 +378,17 @@ namespace TarkovMonitor
                     TarkovTracker.DeactivateProfile();
                     trackerProfileId = "";
                     trackerSessionMode = EftSessionMode.Unknown;
+                    ResetTrackerStatusNotice();
                     messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
                     AddLastDetectedSessionMessage();
-                    TarkovDev.StartAutoUpdates();
-                    await Task.WhenAll(
-                        UpdatePlayerNamesSafely(),
-                        UpdateTarkovDevApiData(profile.TarkovDevDataType));
+                    await UpdatePlayerNamesSafely();
                     return;
                 }
 
                 // This is local state and must be visible immediately. Network calls
                 // below are optional startup work and must never delay this message.
                 AnnounceProfile(profile, force: true);
+                AnnounceSeasonalTrackerInactive(profile);
 
                 // Migrate the original single-token setting before initializing the
                 // tracker profile so an existing user keeps their saved token.
@@ -384,8 +408,6 @@ namespace TarkovMonitor
                         messageLog.AddMessage($"Error setting token from previously saved settings {ex.Message}", "exception");
                     }
                 }
-
-                TarkovDev.StartAutoUpdates();
 
                 // Player names are independent. Profile-bound services share the same
                 // latest-wins lane used by live mode changes so startup cannot reactivate
@@ -428,13 +450,21 @@ namespace TarkovMonitor
                     return;
                 }
 
-                await InitializeProgress(profile);
-                if (generation != Volatile.Read(ref profileChangeGeneration))
+                // The profile-specific tarkov.dev dataset feeds tracker-derived timers,
+                // tasks, maps, and hideout calculations. Load it only after EFT has
+                // confirmed an identity, and before retrieving tracker progress.
+                if (ShouldLoadTarkovDevData(profile))
                 {
-                    return;
+                    await UpdateTarkovDevApiData(profile, generation);
+                    if (generation != Volatile.Read(ref profileChangeGeneration)
+                        || profile.Id != GameWatcher.CurrentProfile.Id
+                        || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode)
+                    {
+                        return;
+                    }
                 }
 
-                await UpdateTarkovDevApiData(profile.TarkovDevDataType);
+                await InitializeProgress(profile, generation);
             }
             finally
             {
@@ -444,9 +474,18 @@ namespace TarkovMonitor
 
         private void AnnounceProfile(Profile profile, bool force = false)
         {
-            // The visible text describes the session mode, not the internal profile ID.
-            // A mode-only event is therefore announced once; the later identity marker
-            // can activate services without adding a duplicate message.
+            // EFT emits a mode-only record while its profile selector is still open.
+            // The later identity marker is the deterministic proof that the user made
+            // a selection, so do not describe the pending mode as the active profile.
+            if (string.IsNullOrWhiteSpace(profile.Id)
+                || profile.SessionMode == EftSessionMode.Unknown)
+                return;
+
+            var modeChanged = profile.SessionMode != displayedSessionMode;
+            if (modeChanged)
+            {
+                ResetTrackerStatusNotice();
+            }
             if (!force && profile.SessionMode == displayedSessionMode)
                 return;
 
@@ -454,22 +493,74 @@ namespace TarkovMonitor
             displayedSessionMode = profile.SessionMode;
         }
 
+        private void Eft_ProfileChanging(object? sender, ProfileChangingEventArgs e)
+        {
+            // GameWatcher invokes this synchronously before it mutates the live Profile.
+            // Close both publication lanes at that before-mutation boundary.
+            TarkovDev.InvalidatePendingProfileDataUpdates();
+            lock (trackerStatusNoticeLock)
+            {
+                Interlocked.Increment(ref profileChangeGeneration);
+                eftProfileMutationPending = true;
+            }
+
+            // GameWatcher raises this synchronously before mutating its live Profile.
+            // First block status publication, then revoke the old tracker activation.
+            // Once publication is unblocked, the old request generation is already
+            // cancelled, so nothing can label the pre-change key as the new profile.
+            // Seasonal inactivity is independent of profile identity. Preserve that
+            // one notice while its later identity marker arrives so the same session
+            // does not produce a second user-visible message.
+            if (e.Kind == ProfileTransitionKind.SessionReset)
+            {
+                // A new application log means EFT is presenting a fresh selector.
+                // The user may choose the same mode as last time, so allow the later
+                // identity marker to publish one new confirmed-profile message.
+                displayedSessionMode = EftSessionMode.Unknown;
+            }
+            var preserveSeasonalNotice = e.Kind == ProfileTransitionKind.Identity
+                && e.PreviousProfile.SessionMode == EftSessionMode.Seasonal
+                && e.NextProfile.SessionMode == EftSessionMode.Seasonal;
+            BeginTrackerStatusTransitionCore(preserveSeasonalNotice);
+            try
+            {
+                TarkovTracker.DeactivateProfile();
+                trackerProfileId = "";
+                trackerSessionMode = EftSessionMode.Unknown;
+            }
+            finally
+            {
+                CompleteTrackerStatusTransition();
+            }
+        }
+
         private async void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
+            CompleteEftProfileMutationBoundary();
             var profile = e.Profile.Snapshot();
             var generation = Interlocked.Increment(ref profileChangeGeneration);
             var trackerMustBeInactive = !profile.SupportsTarkovTrackerWrites
                 || string.IsNullOrWhiteSpace(profile.Id);
 
             // Mode transitions are local facts and must not wait behind a previous
-            // profile's network request. Announce the mode and revoke the old tracker
-            // activation before entering the serialized service-update lane.
+            // profile's network request. Revoke the old tracker activation immediately;
+            // AnnounceProfile publishes only after the matching identity arrives.
             AnnounceProfile(profile);
             if (trackerMustBeInactive)
             {
                 TarkovTracker.DeactivateProfile();
                 trackerProfileId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
+                if (profile.SessionMode == EftSessionMode.Seasonal)
+                {
+                    AnnounceSeasonalTrackerInactive(profile);
+                }
+                else
+                {
+                    // Unknown and identity-incomplete PVE/PVP records are transition
+                    // states, not evidence that a current key is active or missing.
+                    ResetTrackerStatusNotice();
+                }
             }
 
             await profileChangeLock.WaitAsync();
@@ -494,9 +585,22 @@ namespace TarkovMonitor
                 var trackerNeedsUpdate = profile.SupportsTarkovTrackerWrites
                     && !string.IsNullOrWhiteSpace(profile.Id)
                     && (profile.Id != trackerProfileId || profile.SessionMode != trackerSessionMode);
-                var tarkovDevNeedsUpdate = TarkovDev.LoadedProfileType != profile.TarkovDevDataType;
+                var tarkovDevNeedsUpdate = ShouldLoadTarkovDevData(profile);
                 if (!trackerNeedsUpdate && !tarkovDevNeedsUpdate)
                     return;
+
+                // A newly confirmed session must own the matching static dataset before
+                // tracker progress can derive cooldown, task, map, or hideout state.
+                if (tarkovDevNeedsUpdate)
+                {
+                    await UpdateTarkovDevApiData(profile, generation);
+                    if (generation != Volatile.Read(ref profileChangeGeneration)
+                        || profile.Id != GameWatcher.CurrentProfile.Id
+                        || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode)
+                    {
+                        return;
+                    }
+                }
 
                 if (trackerNeedsUpdate)
                 {
@@ -514,6 +618,7 @@ namespace TarkovMonitor
                         }
                         trackerProfileId = profile.Id;
                         trackerSessionMode = profile.SessionMode;
+                        AnnounceMissingTrackerKey(profile, generation);
                     }
                     catch (Exception ex)
                     {
@@ -521,15 +626,6 @@ namespace TarkovMonitor
                     }
                 }
 
-                if (generation != Volatile.Read(ref profileChangeGeneration))
-                    return;
-
-                // PVE and Regular use different Tarkov.dev datasets. Seasonal currently
-                // uses the Regular compatibility route because no Seasonal read route exists.
-                if (tarkovDevNeedsUpdate)
-                {
-                    await UpdateTarkovDevApiData(profile.TarkovDevDataType);
-                }
             }
             finally
             {
@@ -785,13 +881,20 @@ namespace TarkovMonitor
 
         private void TarkovTracker_ProgressRetrieved(object? sender, TarkovTracker.ProgressRetrievedEventArgs e)
         {
+            var expectedStatusEpoch = CaptureTrackerStatusNoticeEpoch();
+            var expectedDomain = Properties.Settings.Default.tarkovTrackerDomain;
+            var expectedLegacyService = TarkovTracker.IsLegacyService;
             if (e.ProfileId != TarkovTracker.CurrentProfileId
                 || e.SessionMode != TarkovTracker.CurrentSessionMode)
             {
                 return;
             }
 
-            messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovTracker"), e.Progress.data.displayName, e.Progress.data.playerLevel, e.Progress.data.pmcFaction), "update", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+            PublishTrackerProgressMessages(
+                e,
+                expectedStatusEpoch,
+                expectedDomain,
+                expectedLegacyService);
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
@@ -802,16 +905,25 @@ namespace TarkovMonitor
 
         private void Eft_GameStarted(object? sender, EventArgs e)
         {
+            TarkovDev.StartAutoUpdates();
             messageLog.AddMessage("EFT client detected. Waiting for the active session profile.", "info");
         }
 
         private void Eft_GameStopped(object? sender, EventArgs e)
         {
-            Interlocked.Increment(ref profileChangeGeneration);
+            TarkovDev.InvalidatePendingProfileDataUpdates();
+            lock (trackerStatusNoticeLock)
+            {
+                Interlocked.Increment(ref profileChangeGeneration);
+                eftProfileMutationPending = false;
+                trackerStatusNoticeEpoch = unchecked(trackerStatusNoticeEpoch + 1);
+            }
             TarkovTracker.DeactivateProfile();
             trackerProfileId = "";
             trackerSessionMode = EftSessionMode.Unknown;
             displayedSessionMode = EftSessionMode.Unknown;
+            ResetTrackerStatusNotice();
+            TarkovDev.StopAutoUpdates();
             messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
             AddLastDetectedSessionMessage();
         }
@@ -831,29 +943,110 @@ namespace TarkovMonitor
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
         }
 
-        private async Task<bool> UpdateTarkovDevApiData(ProfileType? profileType = null)
+        private async Task<bool> UpdateTarkovDevApiData(Profile profile, long generation)
         {
-            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.TarkovDevDataType;
+            if (!ShouldLoadTarkovDevData(profile))
+            {
+                return false;
+            }
+
+            var targetProfileType = profile.TarkovDevDataType;
             try
             {
-                await TarkovDev.UpdateApiData(targetProfileType);
-                messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovDev"), String.Format("{0:n0}", TarkovDev.Items.Count), TarkovDev.Maps.Count, TarkovDev.Traders.Count, TarkovDev.Tasks.Count, TarkovDev.Stations.Count), "update");
-                return true;
+                var datasetPublished = await TarkovDev.TryUpdateApiData(
+                    targetProfileType,
+                    () => IsCurrentProfileGeneration(profile, generation));
+                if (!datasetPublished)
+                {
+                    // A superseded request neither publishes static data nor announces
+                    // success for the profile that replaced it.
+                    return false;
+                }
+
+                var retrievedMessage = string.Format(
+                    localizationService.GetString("RetrievedDataFromTarkovDev"),
+                    string.Format("{0:n0}", TarkovDev.Items.Count),
+                    TarkovDev.Maps.Count,
+                    TarkovDev.Traders.Count,
+                    TarkovDev.Tasks.Count,
+                    TarkovDev.Stations.Count);
+                return TryPublishTarkovDevMessage(
+                    profile,
+                    generation,
+                    $"{retrievedMessage} [{GetTarkovDevDatasetMarker(profile)}]",
+                    "update");
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage($"Error updating tarkov.dev API data: {ex.Message}");
+                TryPublishTarkovDevMessage(
+                    profile,
+                    generation,
+                    $"Error updating tarkov.dev API data: {ex.Message}",
+                    "exception");
                 return false;
             }
         }
 
-        private async Task InitializeProgress(Profile profile)
+        private static bool HasConfirmedEftProfile(Profile profile)
+        {
+            return profile.SessionMode != EftSessionMode.Unknown
+                && !string.IsNullOrWhiteSpace(profile.Id)
+                && profile.HasIdentity;
+        }
+
+        private static bool ShouldLoadTarkovDevData(Profile profile)
+        {
+            return HasConfirmedEftProfile(profile)
+                && TarkovDev.LoadedProfileType != profile.TarkovDevDataType;
+        }
+
+        private bool IsCurrentProfileGeneration(Profile profile, long generation)
+        {
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            return generation == Volatile.Read(ref profileChangeGeneration)
+                && profile.Id == currentProfile.Id
+                && profile.AccountId == currentProfile.AccountId
+                && profile.SessionMode == currentProfile.SessionMode;
+        }
+
+        private bool TryPublishTarkovDevMessage(
+            Profile profile,
+            long generation,
+            string message,
+            string type)
+        {
+            lock (trackerStatusNoticeLock)
+            {
+                if (eftProfileMutationPending
+                    || !IsCurrentProfileGeneration(profile, generation))
+                {
+                    return false;
+                }
+
+                messageLog.AddMessage(message, type);
+                return true;
+            }
+        }
+
+        private static string GetTarkovDevDatasetMarker(Profile profile)
+        {
+            return profile.SessionMode switch
+            {
+                EftSessionMode.PVE => "PVE",
+                EftSessionMode.Regular => "Regular (PVP)",
+                EftSessionMode.Seasonal => "Seasonal -> Regular (PVP)",
+                _ => profile.TarkovDevDataType.ToString(),
+            };
+        }
+
+        private async Task InitializeProgress(Profile profile, long generation)
         {
             if (!eft.IsGameRunning)
             {
                 TarkovTracker.DeactivateProfile();
                 trackerProfileId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
+                ResetTrackerStatusNotice();
                 return;
             }
             if (!profile.SupportsTarkovTrackerWrites || string.IsNullOrWhiteSpace(profile.Id))
@@ -861,13 +1054,24 @@ namespace TarkovMonitor
                 TarkovTracker.DeactivateProfile();
                 trackerProfileId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
+                if (profile.SessionMode == EftSessionMode.Seasonal)
+                {
+                    AnnounceSeasonalTrackerInactive(profile);
+                }
+                else
+                {
+                    ResetTrackerStatusNotice();
+                }
                 return;
             }
 
             try
             {
                 await TarkovTracker.SetProfile(profile);
-                if (profile.Id != TarkovTracker.CurrentProfileId
+                if (generation != Volatile.Read(ref profileChangeGeneration)
+                    || profile.Id != GameWatcher.CurrentProfile.Id
+                    || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode
+                    || profile.Id != TarkovTracker.CurrentProfileId
                     || profile.SessionMode != TarkovTracker.CurrentSessionMode)
                 {
                     return;
@@ -882,6 +1086,13 @@ namespace TarkovMonitor
             }
             if (TarkovTracker.GetTokenForProfile(profile) == "")
             {
+                if (!TarkovTracker.IsLegacyService)
+                {
+                    AnnounceMissingTrackerKey(profile, generation);
+                    return;
+                }
+
+                // Preserve the original profile-based prompt for retired .io users.
                 messageLog.AddMessage(localizationService.GetString("ToAutomaticallyTrackTaskProgress"));
                 return;
             }
@@ -898,6 +1109,288 @@ namespace TarkovMonitor
                 messageLog.AddMessage($"Error updating progress: {ex.Message}");
                 return;
             }*/
+        }
+
+        private void PublishTrackerProgressMessages(
+            TarkovTracker.ProgressRetrievedEventArgs e,
+            long expectedStatusEpoch,
+            string expectedDomain,
+            bool expectedLegacyService)
+        {
+            var liveOrgActivation = !expectedLegacyService
+                && eft.IsGameRunning
+                && IsCurrentLiveTrackerProgress(e);
+            if (!expectedLegacyService
+                && eft.IsGameRunning
+                && !liveOrgActivation)
+            {
+                return;
+            }
+
+            lock (trackerStatusNoticeLock)
+            {
+                // Recheck the reset epoch and service identity while reset and
+                // publication are mutually exclusive. This prevents an old completion
+                // from appearing after a mode, key, or service transition.
+                if (trackerStatusNoticeEpoch != expectedStatusEpoch
+                    || trackerStatusTransitionDepth != 0
+                    || eftProfileMutationPending
+                    || !string.Equals(
+                        Properties.Settings.Default.tarkovTrackerDomain,
+                        expectedDomain,
+                        StringComparison.OrdinalIgnoreCase)
+                    || TarkovTracker.IsLegacyService != expectedLegacyService)
+                {
+                    return;
+                }
+
+                messageLog.AddMessage(
+                    string.Format(
+                        localizationService.GetString("RetrievedDataFromTarkovTracker"),
+                        e.Progress.data.displayName,
+                        e.Progress.data.playerLevel,
+                        e.Progress.data.pmcFaction),
+                    "update",
+                    $"https://{expectedDomain}",
+                    "Tarkov Tracker");
+
+                // Keep the retired .io service's original retrieved-data message, but
+                // never attach the new mode-key status system to it.
+                if (expectedLegacyService || !liveOrgActivation)
+                {
+                    return;
+                }
+
+                var notice = new TrackerStatusNotice(
+                    TrackerStatusKind.Active,
+                    e.ProfileId,
+                    e.SessionMode);
+                if (displayedTrackerStatusNotice == notice)
+                {
+                    return;
+                }
+
+                displayedTrackerStatusNotice = notice;
+                messageLog.AddMessage(
+                    $"TarkovTracker.org active key: {TarkovTracker.GetSessionDisplayName(e.SessionMode)}.",
+                    "update");
+            }
+        }
+
+        private void AnnounceMissingTrackerKey(Profile profile, long generation)
+        {
+            var expectedStatusEpoch = CaptureTrackerStatusNoticeEpoch();
+            if (TarkovTracker.IsLegacyService
+                || generation != Volatile.Read(ref profileChangeGeneration)
+                || !eft.IsGameRunning
+                || !profile.SupportsTarkovTrackerWrites
+                || string.IsNullOrWhiteSpace(profile.Id)
+                || profile.Id != GameWatcher.CurrentProfile.Id
+                || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode
+                || profile.Id != TarkovTracker.CurrentProfileId
+                || profile.SessionMode != TarkovTracker.CurrentSessionMode
+                || !string.IsNullOrWhiteSpace(TarkovTracker.GetTokenForProfile(profile)))
+            {
+                return;
+            }
+
+            var displayName = TarkovTracker.GetSessionDisplayName(profile.SessionMode);
+            AddTrackerStatusNotice(
+                new(TrackerStatusKind.MissingKey, profile.Id, profile.SessionMode),
+                $"TarkovTracker.org inactive: no verified {displayName} API key is available.",
+                "warning",
+                expectedStatusEpoch,
+                "/settings#tarkov-tracker",
+                "Click here to import or validate an API key.");
+        }
+
+        private void AnnounceSeasonalTrackerInactive(Profile profile)
+        {
+            var expectedStatusEpoch = CaptureTrackerStatusNoticeEpoch();
+            if (TarkovTracker.IsLegacyService
+                || !eft.IsGameRunning
+                || string.IsNullOrWhiteSpace(profile.Id)
+                || profile.SessionMode != EftSessionMode.Seasonal
+                || profile.Id != GameWatcher.CurrentProfile.Id
+                || GameWatcher.CurrentProfile.SessionMode != EftSessionMode.Seasonal)
+            {
+                return;
+            }
+
+            // The visible notice waits for a selected identity. It remains keyed only
+            // by mode so repeated identity markers cannot duplicate the same status.
+            AddTrackerStatusNotice(
+                new(TrackerStatusKind.SeasonalInactive, "", EftSessionMode.Seasonal),
+                "TarkovTracker.org inactive: Seasonal API keys are not supported yet.",
+                "info",
+                expectedStatusEpoch);
+        }
+
+        private void AddTrackerStatusNotice(
+            TrackerStatusNotice notice,
+            string message,
+            string type,
+            long expectedStatusEpoch,
+            string? url = null,
+            string? linkText = null)
+        {
+            lock (trackerStatusNoticeLock)
+            {
+                if (trackerStatusNoticeEpoch != expectedStatusEpoch
+                    || trackerStatusTransitionDepth != 0
+                    || eftProfileMutationPending
+                    || TarkovTracker.IsLegacyService
+                    || displayedTrackerStatusNotice == notice)
+                {
+                    return;
+                }
+                displayedTrackerStatusNotice = notice;
+
+                // Publication stays inside the same lock as the epoch check. A reset
+                // therefore happens either wholly before this notice or wholly after it,
+                // never between validation and the visible Message entry.
+                messageLog.AddMessage(message, type, url, linkText);
+            }
+        }
+
+        private void ResetTrackerStatusNotice()
+        {
+            lock (trackerStatusNoticeLock)
+            {
+                trackerStatusNoticeEpoch = unchecked(trackerStatusNoticeEpoch + 1);
+                displayedTrackerStatusNotice = null;
+            }
+        }
+
+        private void CompleteEftProfileMutationBoundary()
+        {
+            lock (trackerStatusNoticeLock)
+            {
+                if (!eftProfileMutationPending)
+                {
+                    return;
+                }
+
+                // Work may sample the interim epoch after ProfileChanging returns but
+                // before GameWatcher assigns the new Profile values. Advancing again
+                // prevents that work from becoming eligible when publication reopens.
+                eftProfileMutationPending = false;
+                trackerStatusNoticeEpoch = unchecked(trackerStatusNoticeEpoch + 1);
+            }
+        }
+
+        internal void BeginTrackerStatusTransition()
+        {
+            BeginTrackerStatusTransitionCore(preserveSeasonalInactive: false);
+        }
+
+        private void BeginTrackerStatusTransitionCore(bool preserveSeasonalInactive)
+        {
+            lock (trackerStatusNoticeLock)
+            {
+                trackerStatusTransitionDepth++;
+                trackerStatusNoticeEpoch = unchecked(trackerStatusNoticeEpoch + 1);
+                var seasonalInactiveNotice = new TrackerStatusNotice(
+                    TrackerStatusKind.SeasonalInactive,
+                    "",
+                    EftSessionMode.Seasonal);
+                if (!preserveSeasonalInactive
+                    || displayedTrackerStatusNotice != seasonalInactiveNotice)
+                {
+                    displayedTrackerStatusNotice = null;
+                }
+            }
+        }
+
+        internal void CompleteTrackerStatusTransition()
+        {
+            lock (trackerStatusNoticeLock)
+            {
+                // Advancing again prevents work that sampled state during the
+                // transition from becoming eligible as soon as the block is lifted.
+                if (trackerStatusTransitionDepth <= 0)
+                {
+                    throw new InvalidOperationException("TarkovTracker status transition completed without a matching start.");
+                }
+                trackerStatusNoticeEpoch = unchecked(trackerStatusNoticeEpoch + 1);
+                trackerStatusTransitionDepth--;
+            }
+        }
+
+        private long CaptureTrackerStatusNoticeEpoch()
+        {
+            lock (trackerStatusNoticeLock)
+            {
+                return trackerStatusNoticeEpoch;
+            }
+        }
+
+        private bool IsCurrentLiveTrackerProgress(TarkovTracker.ProgressRetrievedEventArgs e)
+        {
+            if (TarkovTracker.IsLegacyService
+                || !eft.IsGameRunning
+                || !IsSupportedTrackerSession(e.SessionMode)
+                || string.IsNullOrWhiteSpace(e.ProfileId))
+            {
+                return false;
+            }
+
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            return e.ProfileId == currentProfile.Id
+                && e.SessionMode == currentProfile.SessionMode
+                && TarkovTracker.GetActiveProgressSnapshot(currentProfile) != null;
+        }
+
+        internal void RefreshTarkovTrackerStatusNotice()
+        {
+            var expectedStatusEpoch = CaptureTrackerStatusNoticeEpoch();
+            if (TarkovTracker.IsLegacyService)
+            {
+                ResetTrackerStatusNotice();
+                return;
+            }
+
+            var profile = GameWatcher.CurrentProfile.Snapshot();
+            if (!eft.IsGameRunning)
+            {
+                ResetTrackerStatusNotice();
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(profile.Id))
+            {
+                ResetTrackerStatusNotice();
+                return;
+            }
+            if (profile.SessionMode == EftSessionMode.Seasonal)
+            {
+                AnnounceSeasonalTrackerInactive(profile);
+                return;
+            }
+            if (!profile.SupportsTarkovTrackerWrites)
+            {
+                ResetTrackerStatusNotice();
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(TarkovTracker.GetTokenForProfile(profile)))
+            {
+                AnnounceMissingTrackerKey(profile, Volatile.Read(ref profileChangeGeneration));
+                return;
+            }
+            if (TarkovTracker.GetActiveProgressSnapshot(profile) == null)
+            {
+                return;
+            }
+
+            AddTrackerStatusNotice(
+                new(TrackerStatusKind.Active, profile.Id, profile.SessionMode),
+                $"TarkovTracker.org active key: {TarkovTracker.GetSessionDisplayName(profile.SessionMode)}.",
+                "update",
+                expectedStatusEpoch);
+        }
+
+        private static bool IsSupportedTrackerSession(EftSessionMode sessionMode)
+        {
+            return sessionMode is EftSessionMode.PVE or EftSessionMode.Regular;
         }
 
         private void Eft_MatchFound(object? sender, RaidInfoEventArgs e)

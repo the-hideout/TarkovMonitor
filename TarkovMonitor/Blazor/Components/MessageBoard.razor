@@ -23,6 +23,12 @@
                             {
                                 <span class="dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.Message</span>
                             }
+                            else if (message.Message.Contains(message.LinkText, StringComparison.Ordinal))
+                            {
+                                var linkStart = message.Message.IndexOf(message.LinkText, StringComparison.Ordinal);
+                                var linkEnd = linkStart + message.LinkText.Length;
+                                <span class="dashboard-message__text">@(message.Message[..linkStart])<span @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>@(message.Message[linkEnd..])</span>
+                            }
                             else
                             {
                                 <span class="dashboard-message__text">@message.Message</span>

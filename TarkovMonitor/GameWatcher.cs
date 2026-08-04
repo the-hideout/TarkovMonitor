@@ -168,12 +168,15 @@ namespace TarkovMonitor
         public event EventHandler<LogContentEventArgs<FleaSoldMessageLogContent>>? FleaSold;
         public event EventHandler<LogContentEventArgs<FleaExpiredMessageLogContent>>? FleaOfferExpired;
         public event EventHandler<PlayerPositionEventArgs>? PlayerPosition;
+        public event EventHandler<ProfileChangingEventArgs>? ProfileChanging;
         public event EventHandler<ProfileEventArgs> ProfileChanged;
         public event EventHandler<ProfileEventArgs> InitialReadComplete;
         public event EventHandler<ControlSettingsEventArgs> ControlSettings;
 
         private static string logPatternPrefix = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?<tzoffset> [+-]\d{2}:\d{2})?\|";
         private static string logPattern = @$"{logPatternPrefix}(?<message>.+$)\s*(?<json>^{{[\s\S]+?^}})?";
+        private const string ProfileSelectionMarkerPattern = @"\b(?:Select(?:ed)?Profile|PrepareSelectedProfileLocally|CompleteSelectedProfile) ProfileId:";
+        private const string ProfileSelectionPattern = ProfileSelectionMarkerPattern + @"(?<profileId>\w+) AccountId:(?<accountId>\d+)";
 
         public static string GetDefaultLogsFolder()
         {
@@ -412,9 +415,7 @@ namespace TarkovMonitor
         private static LogParsingStage GetLogParsingStage(string eventLine)
         {
             if (eventLine.Contains("Session mode: ")) return LogParsingStage.SessionMode;
-            if (eventLine.Contains("SelectProfile ProfileId:")
-                || eventLine.Contains("SelectedProfile ProfileId:")
-                || eventLine.Contains("PrepareSelectedProfileLocally ProfileId:")) return LogParsingStage.Profile;
+            if (Regex.IsMatch(eventLine, ProfileSelectionMarkerPattern)) return LogParsingStage.Profile;
             if (eventLine.Contains("Control settings:")) return LogParsingStage.ControlSettings;
             if (eventLine.Contains("Got notification | Group")) return LogParsingStage.Group;
             if (eventLine.Contains("scene preset path:")) return LogParsingStage.MapLoading;
@@ -500,16 +501,25 @@ namespace TarkovMonitor
                         var modeChanged = ActiveProfile.SessionMode != sessionMode;
                         if (modeChanged)
                         {
+                            // Let consumers revoke status derived from the old profile
+                            // before any live identity field changes.
+                            var nextProfile = ActiveProfile.Snapshot();
+                            nextProfile.Id = "";
+                            nextProfile.AccountId = "";
+                            nextProfile.SessionMode = sessionMode;
+                            nextProfile.Type = ResolveProfileType(sessionMode);
+                            ProfileChanging?.Invoke(
+                                this,
+                                new(
+                                    ProfileTransitionKind.SessionMode,
+                                    ActiveProfile,
+                                    nextProfile));
                             // The mode record arrives before EFT identifies the matching profile.
                             // Do not carry the previous mode's identity through that transition.
                             ActiveProfile.Id = "";
                             ActiveProfile.AccountId = "";
                         }
                         ActiveProfile.SessionMode = sessionMode;
-                        if (!historicalReplay)
-                        {
-                            RememberSessionMode(sessionMode);
-                        }
                         ActiveProfile.Type = ResolveProfileType(sessionMode);
                         if (raidInfo.StartedTime == null || raidInfo.EndedTime != null)
                         {
@@ -522,15 +532,21 @@ namespace TarkovMonitor
                         continue;
                     }
                     // Profile selection messages have changed names across EFT versions.
-                    if (eventLine.Contains("SelectProfile ProfileId:")
-                        || eventLine.Contains("SelectedProfile ProfileId:")
-                        || eventLine.Contains("PrepareSelectedProfileLocally ProfileId:"))
+                    // The word boundary prevents CompleteSelectedProfile from being
+                    // accidentally suffix-matched as SelectedProfile. It is listed
+                    // explicitly because it can also be a valid standalone identity
+                    // or post-raid completion marker.
+                    if (Regex.IsMatch(eventLine, ProfileSelectionMarkerPattern))
                     {
-                        var profileIdMatch = Regex.Match(eventLine, @"(?:Select(?:ed)?Profile|PrepareSelectedProfileLocally) ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)");
+                        var profileIdMatch = Regex.Match(eventLine, ProfileSelectionPattern);
                         if (!profileIdMatch.Success)
                         {
                             continue;
                         }
+                        var selectedProfileId = profileIdMatch.Groups["profileId"].Value;
+                        var selectedAccountId = profileIdMatch.Groups["accountId"].Value;
+                        var profileIdentityChanged = ActiveProfile.Id != selectedProfileId
+                            || ActiveProfile.AccountId != selectedAccountId;
                         var completedRaidProfile = raidInfo.Profile.Snapshot();
                         var raidWasActive = raidInfo.StartedTime != null && raidInfo.EndedTime == null;
                         if (!e.InitialRead && raidWasActive)
@@ -539,9 +555,31 @@ namespace TarkovMonitor
                             RaidEnded?.Invoke(this, new(raidInfo, completedRaidProfile));
                         }
 
-                        ActiveProfile.Id = profileIdMatch.Groups["profileId"].Value;
-                        ActiveProfile.AccountId = profileIdMatch.Groups["accountId"].Value;
-                        if (!e.InitialRead)
+                        // RaidEnded synchronously captures the completed raid's tracker
+                        // progress before the old activation is revoked. Publication is
+                        // still blocked before the live profile identity mutates.
+                        if (profileIdentityChanged)
+                        {
+                            var nextProfile = ActiveProfile.Snapshot();
+                            nextProfile.Id = selectedProfileId;
+                            nextProfile.AccountId = selectedAccountId;
+                            ProfileChanging?.Invoke(
+                                this,
+                                new(
+                                    ProfileTransitionKind.Identity,
+                                    ActiveProfile,
+                                    nextProfile));
+                        }
+                        ActiveProfile.Id = selectedProfileId;
+                        ActiveProfile.AccountId = selectedAccountId;
+                        if (!historicalReplay)
+                        {
+                            // A mode-only record is emitted while EFT is still showing
+                            // the profile selector. Remember the mode only after EFT
+                            // supplies the selected profile identity.
+                            RememberSessionMode(ActiveProfile.SessionMode);
+                        }
+                        if (!e.InitialRead && profileIdentityChanged)
                         {
                             if (!raidWasActive)
                             {
@@ -1156,6 +1194,12 @@ namespace TarkovMonitor
             if (path.Contains("application.log") || path.Contains("application_000.log"))
             {
                 newType = GameLogType.Application;
+                ProfileChanging?.Invoke(
+                    this,
+                    new(
+                        ProfileTransitionKind.SessionReset,
+                        CurrentProfile,
+                        new Profile()));
                 CurrentProfile = new();
             }
             if (path.Contains("notifications.log") || path.Contains("notifications_000.log"))
@@ -1370,6 +1414,13 @@ namespace TarkovMonitor
         Seasonal,
     }
 
+    public enum ProfileTransitionKind
+    {
+        SessionMode,
+        Identity,
+        SessionReset,
+    }
+
     public class Profile
     {
         public string Id { get; set; } = "";
@@ -1414,6 +1465,23 @@ namespace TarkovMonitor
         public ProfileEventArgs(Profile profile)
         {
             Profile = profile.Snapshot();
+        }
+    }
+
+    public class ProfileChangingEventArgs : EventArgs
+    {
+        public ProfileTransitionKind Kind { get; }
+        public Profile PreviousProfile { get; }
+        public Profile NextProfile { get; }
+
+        public ProfileChangingEventArgs(
+            ProfileTransitionKind kind,
+            Profile previousProfile,
+            Profile nextProfile)
+        {
+            Kind = kind;
+            PreviousProfile = previousProfile.Snapshot();
+            NextProfile = nextProfile.Snapshot();
         }
     }
 
