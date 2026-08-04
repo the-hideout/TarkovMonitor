@@ -39,12 +39,22 @@ jobs:
         shell: pwsh
         run: |
           $executable = "$Env:GITHUB_WORKSPACE\publish\TarkovMonitor.exe"
+          $sqliteNativeProvider = "$Env:GITHUB_WORKSPACE\publish\e_sqlite3.dll"
 
           if (-not (Test-Path -LiteralPath $executable)) {
             throw "Published executable was not found: $executable"
           }
 
+          if (-not (Test-Path -LiteralPath $sqliteNativeProvider)) {
+            throw "Published SQLite native provider was not found: $sqliteNativeProvider"
+          }
+
+          if ((Get-Item -LiteralPath $sqliteNativeProvider).Length -le 0) {
+            throw "Published SQLite native provider was empty: $sqliteNativeProvider"
+          }
+
           Write-Output "Verified published executable: $executable"
+          Write-Output "Verified SQLite native provider: $sqliteNativeProvider"
 
       - name: Create build release archive
         shell: pwsh
