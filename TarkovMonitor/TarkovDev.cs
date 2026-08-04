@@ -58,12 +58,14 @@ namespace TarkovMonitor
             Enabled = false, 
             Interval = TimeSpan.FromMinutes(20).TotalMilliseconds
         };
+        private static readonly SemaphoreSlim updateLock = new(1, 1);
 
         public static List<Task> Tasks { get; private set; } = new();
         public static List<Map> Maps { get; private set; } = new();
         public static List<Item> Items { get; private set; } = new();
         public static List<Trader> Traders { get; private set; } = new();
         public static List<HideoutStation> Stations { get; private set; } = new();
+        public static ProfileType? LoadedProfileType { get; private set; }
         public static List<PlayerLevel> PlayerLevels { get; private set; } = new();
         public static DateTime ScavAvailableTime { get; set; } = DateTime.Now;
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
@@ -143,22 +145,25 @@ namespace TarkovMonitor
             return data.ToObject<T>();
         }
 
-        public async static Task<List<Task>> GetTasks()
+        public async static Task<List<Task>> GetTasks(ProfileType? profileType = null)
         {
-            var response = await JsonApiRequest<TasksResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/tasks", Properties.Settings.Default.language);
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var response = await JsonApiRequest<TasksResponse>($"{targetProfileType.ToString().ToLower()}/tasks", Properties.Settings.Default.language);
             Tasks = response.data.tasks.Values.ToList();
             return Tasks;
         }
 
-        public async static Task<List<Map>> GetMaps()
+        public async static Task<List<Map>> GetMaps(ProfileType? profileType = null)
         {
-            var response = await JsonApiRequest<MapsResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/maps", Properties.Settings.Default.language);
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var response = await JsonApiRequest<MapsResponse>($"{targetProfileType.ToString().ToLower()}/maps", Properties.Settings.Default.language);
             Maps = response.data.maps.Values.ToList();
             return Maps;
         }
-        public async static Task<List<Item>> GetItems()
+        public async static Task<List<Item>> GetItems(ProfileType? profileType = null)
         {
-            var response = await JsonApiRequest<ItemsResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/items", Properties.Settings.Default.language);
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var response = await JsonApiRequest<ItemsResponse>($"{targetProfileType.ToString().ToLower()}/items", Properties.Settings.Default.language);
             Items = response.data.items.Values.ToList();
             foreach (var item in Items)
             {
@@ -179,31 +184,76 @@ namespace TarkovMonitor
                 }
             }
             PlayerLevels = response.data.playerLevels;
-            ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type] = response.data.settings.scavCooldownSeconds;
+            ScavCooldownBaseValues[targetProfileType] = response.data.settings.scavCooldownSeconds;
             return Items;
         }
-        public async static Task<List<Trader>> GetTraders()
+        public async static Task<List<Trader>> GetTraders(ProfileType? profileType = null)
         {
-            var response = await JsonApiRequest<TradersResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/traders", Properties.Settings.Default.language);
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var response = await JsonApiRequest<TradersResponse>($"{targetProfileType.ToString().ToLower()}/traders", Properties.Settings.Default.language);
             Traders = response.data.Values.ToList();
             return Traders;
         }
-        public async static Task<List<HideoutStation>> GetHideout()
+        public async static Task<List<HideoutStation>> GetHideout(ProfileType? profileType = null)
         {
-            var response = await JsonApiRequest<HideoutResponse>($"{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/hideout", Properties.Settings.Default.language);
+            var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+            var response = await JsonApiRequest<HideoutResponse>($"{targetProfileType.ToString().ToLower()}/hideout", Properties.Settings.Default.language);
             Stations = response.data.Values.ToList();
             return Stations;
         }
-        public async static System.Threading.Tasks.Task UpdateApiData()
+        public async static System.Threading.Tasks.Task UpdateApiData(ProfileType? profileType = null)
         {
-            List<System.Threading.Tasks.Task> tasks = new() { 
-                GetTasks(),
-                GetMaps(),
-                GetItems(),
-                GetTraders(),
-                GetHideout(),
-            };
-            await System.Threading.Tasks.Task.WhenAll(tasks);
+            await updateLock.WaitAsync();
+            try
+            {
+                // Capture one compatibility route for the entire refresh. This prevents
+                // a mode change during the requests from mixing PVE and Regular data.
+                // Fetch into locals so a failed request cannot publish a partial dataset.
+                var targetProfileType = profileType ?? GameWatcher.CurrentProfile.Type;
+                var route = targetProfileType.ToString().ToLower();
+                var tasksRequest = JsonApiRequest<TasksResponse>($"{route}/tasks", Properties.Settings.Default.language);
+                var mapsRequest = JsonApiRequest<MapsResponse>($"{route}/maps", Properties.Settings.Default.language);
+                var itemsRequest = JsonApiRequest<ItemsResponse>($"{route}/items", Properties.Settings.Default.language);
+                var tradersRequest = JsonApiRequest<TradersResponse>($"{route}/traders", Properties.Settings.Default.language);
+                var hideoutRequest = JsonApiRequest<HideoutResponse>($"{route}/hideout", Properties.Settings.Default.language);
+
+                await System.Threading.Tasks.Task.WhenAll(tasksRequest, mapsRequest, itemsRequest, tradersRequest, hideoutRequest);
+
+                var nextTasks = tasksRequest.Result.data.tasks.Values.ToList();
+                var nextMaps = mapsRequest.Result.data.maps.Values.ToList();
+                var nextItems = itemsRequest.Result.data.items.Values.ToList();
+                foreach (var item in nextItems)
+                {
+                    if (!item.types.Contains("gun") || item.properties?.defaultPreset == null)
+                        continue;
+
+                    var defaultPreset = nextItems.Find(candidate => candidate.id == item.properties.defaultPreset);
+                    if (defaultPreset == null)
+                        continue;
+
+                    item.width = defaultPreset.width;
+                    item.height = defaultPreset.height;
+                    item.iconLink = defaultPreset.iconLink;
+                    item.gridImageLink = defaultPreset.gridImageLink;
+                }
+                var nextTraders = tradersRequest.Result.data.Values.ToList();
+                var nextStations = hideoutRequest.Result.data.Values.ToList();
+                var nextPlayerLevels = itemsRequest.Result.data.playerLevels;
+                var nextScavCooldown = itemsRequest.Result.data.settings.scavCooldownSeconds;
+
+                Tasks = nextTasks;
+                Maps = nextMaps;
+                Items = nextItems;
+                Traders = nextTraders;
+                Stations = nextStations;
+                PlayerLevels = nextPlayerLevels;
+                ScavCooldownBaseValues[targetProfileType] = nextScavCooldown;
+                LoadedProfileType = targetProfileType;
+            }
+            finally
+            {
+                updateLock.Release();
+            }
         }
 
         public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type, ProfileType gameMode)
@@ -524,7 +574,14 @@ namespace TarkovMonitor
 
         public static int ScavCooldownSeconds()
         {
-            decimal baseTimer = Convert.ToDecimal(ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type]);
+            return ScavCooldownSeconds(GameWatcher.CurrentProfile.Type, TarkovTracker.Progress);
+        }
+
+        internal static int ScavCooldownSeconds(
+            ProfileType profileType,
+            TarkovTracker.ProgressResponse trackerProgress)
+        {
+            decimal baseTimer = Convert.ToDecimal(ScavCooldownBaseValues[profileType]);
 
             decimal hideoutBonus = 0;
             foreach (var station in Stations)
@@ -536,11 +593,7 @@ namespace TarkovMonitor
                     {
                         continue;
                     }
-                    if (TarkovTracker.Progress == null)
-                    {
-                        continue;
-                    }
-                    var built = TarkovTracker.Progress.data.hideoutModulesProgress.Find(m => m.id == level.id && m.complete);
+                    var built = trackerProgress.data.hideoutModulesProgress.Find(m => m.id == level.id && m.complete);
                     if (built == null)
                     {
                         continue;
@@ -569,7 +622,14 @@ namespace TarkovMonitor
 
         public static int ResetScavCoolDown()
         {
-            var cooldownSeconds = ScavCooldownSeconds();
+            return ResetScavCoolDown(GameWatcher.CurrentProfile.Type, TarkovTracker.Progress);
+        }
+
+        internal static int ResetScavCoolDown(
+            ProfileType profileType,
+            TarkovTracker.ProgressResponse trackerProgress)
+        {
+            var cooldownSeconds = ScavCooldownSeconds(profileType, trackerProgress);
             ScavAvailableTime = DateTime.Now.AddSeconds(cooldownSeconds);
             return cooldownSeconds;
         }
