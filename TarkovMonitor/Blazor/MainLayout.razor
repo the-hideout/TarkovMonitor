@@ -12,18 +12,18 @@
 
 	protected override void OnInitialized()
 	{
-		currentTheme = darkTheme;
+		currentTheme = defaultTheme;
 	}
 
 	MudTheme currentTheme = new();
 
 	MudTheme defaultTheme = new()
 	{
-		Palette = new PaletteLight()
+		PaletteLight = new PaletteLight()
 		{
 			Black = "#27272f",
 			Background = "#c7c5b3",
-			BackgroundGrey = "#27272f",
+			BackgroundGray = "#27272f",
 			Surface = "#373740",
 			DrawerBackground = "#2f2f2d",
 			DrawerText = "rgba(255,255,255, 0.50)",
@@ -44,15 +44,11 @@
 			Secondary = "#5f553b",
 			SecondaryLighten= "#988a66"
 		},
-	};
-
-	MudTheme darkTheme = new()
-	{
-		Palette = new PaletteDark()
+		PaletteDark = new PaletteDark()
 		{
 			Black = "#27272f",
 			Background = "#c7c5b3",
-			BackgroundGrey = "#27272f",
+			BackgroundGray = "#27272f",
 			Surface = "#1e1e1e",
 			DrawerBackground = "#2f2f2d",
 			DrawerText = "rgba(255,255,255, 0.50)",
@@ -71,8 +67,7 @@
 			LinesInputs = "rgba(255,255,255, 0.3)",
 			TextDisabled = "rgba(255,255,255, 0.2)",
 			Secondary = "#5f553b",
-			SecondaryLighten= "#988a66"
+			SecondaryLighten = "#988a66"
 		},
 	};
-
 }

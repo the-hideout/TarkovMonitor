@@ -201,7 +201,7 @@
 
 		Snackbar.Add(e.Message.Message, severity, configuration =>
 		{
-			configuration.Onclick = snackbar =>
+			configuration.OnClick = snackbar =>
 			{
 				NavigationManager.NavigateTo("/");
 				return Task.CompletedTask;
