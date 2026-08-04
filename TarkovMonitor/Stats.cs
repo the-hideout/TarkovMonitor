@@ -12,17 +12,60 @@ namespace TarkovMonitor
 
         public static void ClearData() => Database.Value.ClearData();
 
+        public static bool TryClearData(out Exception? exception) =>
+            TryOperation(ClearData, out exception);
+
         public static void AddFleaSale(FleaSoldMessageLogContent e, Profile profile) =>
             Database.Value.AddFleaSale(e, profile);
 
         public static int GetTotalSales(string currency) => Database.Value.GetTotalSales(currency);
 
+        public static bool TryGetTotalSales(string currency, out int total, out Exception? exception) =>
+            TryOperation(() => GetTotalSales(currency), out total, out exception);
+
         public static void AddRaid(RaidInfoEventArgs e) => Database.Value.AddRaid(e);
 
         public static int GetTotalRaids(string mapNameId) => Database.Value.GetTotalRaids(mapNameId);
 
+        public static bool TryGetTotalRaids(string mapNameId, out int total, out Exception? exception) =>
+            TryOperation(() => GetTotalRaids(mapNameId), out total, out exception);
+
         public static Dictionary<string, int> GetTotalRaidsPerMap(RaidType raidType) =>
             Database.Value.GetTotalRaidsPerMap(raidType, TarkovDev.Maps);
+
+        public static string CreateFailureMessage(string reportCode, string description, Exception exception) =>
+            $"{reportCode} | {description} | Exception: {exception.GetType().Name} | Monitoring continued. Copy this message when reporting the issue.";
+
+        private static bool TryOperation(Action operation, out Exception? exception)
+        {
+            try
+            {
+                operation();
+                exception = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                exception = ex;
+                return false;
+            }
+        }
+
+        private static bool TryOperation<T>(Func<T> operation, out T result, out Exception? exception)
+        {
+            try
+            {
+                result = operation();
+                exception = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                result = default!;
+                exception = ex;
+                return false;
+            }
+        }
     }
 
     internal sealed class StatsDatabase : IDisposable

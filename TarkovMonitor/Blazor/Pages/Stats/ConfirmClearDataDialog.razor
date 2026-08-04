@@ -1,9 +1,14 @@
 ﻿@inject GameWatcher eft
 @inject LocalizationService LocalizationService
+@inject MessageLog messageLog
 
 <MudDialog>
     <DialogContent>
         <MudText>@LocalizationService.GetString("AreYouSureYouWantToClearAllData")</MudText>
+        @if (!string.IsNullOrWhiteSpace(failureMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@failureMessage</MudAlert>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">@LocalizationService.GetString("Cancel")</MudButton>
@@ -12,12 +17,22 @@
 </MudDialog>
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    private string? failureMessage;
 
     void Cancel() => MudDialog.Cancel();
 
     public void Submit()
     {
-        TarkovMonitor.Stats.ClearData();
-        MudDialog.Close(DialogResult.Ok(true));
+        if (TarkovMonitor.Stats.TryClearData(out var exception))
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+            return;
+        }
+
+        failureMessage = TarkovMonitor.Stats.CreateFailureMessage(
+            "TM-STATS-004",
+            "Statistics could not be cleared",
+            exception!);
+        messageLog.AddMessage(failureMessage, "exception");
     }
 }

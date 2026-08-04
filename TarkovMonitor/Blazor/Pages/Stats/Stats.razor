@@ -80,7 +80,14 @@
     {
         return (builder) =>
         {
-            builder.AddContent(0, TarkovMonitor.Stats.GetTotalSales(currId).ToString("C0", System.Globalization.CultureInfo.CreateSpecificCulture(formatCode)));
+            if (TarkovMonitor.Stats.TryGetTotalSales(currId, out var total, out var exception))
+            {
+                builder.AddContent(0, total.ToString("C0", System.Globalization.CultureInfo.CreateSpecificCulture(formatCode)));
+                return;
+            }
+
+            ReportStatsFailure(exception!);
+            builder.AddContent(0, "Unavailable");
         };
     }
 
@@ -88,8 +95,28 @@
     {
         return (builder) =>
         {
-            builder.AddContent(0, TarkovMonitor.Stats.GetTotalRaids(mapNameId).ToString());
+            if (TarkovMonitor.Stats.TryGetTotalRaids(mapNameId, out var total, out var exception))
+            {
+                builder.AddContent(0, total.ToString());
+                return;
+            }
+
+            ReportStatsFailure(exception!);
+            builder.AddContent(0, "Unavailable");
         };
+    }
+
+    private bool statsFailureReported;
+
+    private void ReportStatsFailure(Exception exception)
+    {
+        if (statsFailureReported)
+            return;
+
+        statsFailureReported = true;
+        messageLog.AddMessage(
+            TarkovMonitor.Stats.CreateFailureMessage("TM-STATS-003", "Statistics could not be loaded", exception),
+            "exception");
     }
 
     void ClearData()
