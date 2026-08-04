@@ -313,6 +313,18 @@ namespace TarkovMonitor.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("{\"version\":1,\"keys\":[]}")]
+        public string tarkovTrackerOrgTokenStore {
+            get {
+                return ((string)(this["tarkovTrackerOrgTokenStore"]));
+            }
+            set {
+                this["tarkovTrackerOrgTokenStore"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string lastTarkovSessionMode {
             get {

@@ -74,6 +74,9 @@
     <Setting Name="tarkovTrackerVerifiedModeTokenHashes" Type="System.String" Scope="User">
       <Value Profile="(Default)">{}</Value>
     </Setting>
+    <Setting Name="tarkovTrackerOrgTokenStore" Type="System.String" Scope="User">
+      <Value Profile="(Default)">{"version":1,"keys":[]}</Value>
+    </Setting>
     <Setting Name="lastTarkovSessionMode" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
