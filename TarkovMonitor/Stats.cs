@@ -1,7 +1,4 @@
-using System.Data.SQLite;
-
-// System.Data.SQLite is retained until the dedicated dependency-migration phase.
-// The current package has historically required single-file publish verification.
+using Microsoft.Data.Sqlite;
 
 namespace TarkovMonitor
 {
@@ -27,11 +24,11 @@ namespace TarkovMonitor
 
     internal sealed class StatsDatabase : IDisposable
     {
-        private readonly SQLiteConnection connection;
+        private readonly SqliteConnection connection;
 
         internal StatsDatabase(string databasePath)
         {
-            connection = new SQLiteConnection($"Data Source={databasePath};Version=3;");
+            connection = new SqliteConnection($"Data Source={databasePath};");
             connection.Open();
             CreateTables();
             UpdateDatabase();
@@ -176,9 +173,9 @@ namespace TarkovMonitor
             command.ExecuteNonQuery();
         }
 
-        private SQLiteCommand CreateCommand(
+        private SqliteCommand CreateCommand(
             string sql,
-            SQLiteTransaction? transaction = null,
+            SqliteTransaction? transaction = null,
             Dictionary<string, object?>? parameters = null)
         {
             var command = connection.CreateCommand();
