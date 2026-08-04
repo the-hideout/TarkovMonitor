@@ -1,6 +1,7 @@
 ﻿@using Humanizer;
 @using System.Diagnostics;
 @using System.Threading
+@implements IDisposable
 @inject MessageLog messageLog
 @inject IDialogService DialogService
 @inject LocalizationService LocalizationService
@@ -13,19 +14,19 @@
     }else{
         @foreach (MonitorMessage message in messageLog.Messages.ToList())
         {
-            <div class="">
-                <div class="d-block">
-                    <MudPaper Class="align-center py-2 px-3 mud-theme-secondary" Elevation="3">
-                        <div class="d-flex align-center">
+            <div class="dashboard-message">
+                <div class="d-block dashboard-message__paper">
+                    <MudPaper Class="align-center py-2 px-3 mud-theme-secondary dashboard-message__paper" Elevation="3">
+                        <div class="d-flex align-center dashboard-message__row">
                             <MudIcon Icon="@GetTypeIcon(message.Type)" Title="@GetTypeTitle(message.Type)" Class="mr-2"/>
                             @if (string.IsNullOrWhiteSpace(message.LinkText))
                             {
-                                <span @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.Message</span>
+                                <span class="dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.Message</span>
                             }
                             else
                             {
-                                <span>@message.Message</span>
-                                <span class="ml-1" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>
+                                <span class="dashboard-message__text">@message.Message</span>
+                                <span class="ml-1 dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>
                             }
                         </div>
                         <div class="d-flex align-center">
@@ -57,14 +58,25 @@
 </MudPaper>
 
 @code {
-    // Force refresh every minute to update timestamps
+    // Refresh once per minute to update relative timestamps.
     Timer? timer;  
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        timer = new Timer(RefreshCallback, null, 1000, 1000);
+        // Messages can arrive from EFT log watchers and API callbacks between the
+        // timestamp refreshes. Listen to the source directly so the card redraws
+        // as soon as a message is recorded.
+        messageLog.newMessage += MessageLog_NewMessage;
+        timer = new Timer(RefreshCallback, null, 60000, 60000);
+    }
+
+    private void MessageLog_NewMessage(object source, NewLogMessageArgs e)
+    {
+        // Log callbacks are not guaranteed to run on Blazor's renderer thread.
+        // InvokeAsync safely schedules the redraw on the correct dispatcher.
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private string GetTypeIcon(string type)
@@ -168,5 +180,11 @@
         {
             messageLog.AddMessage($"Error in message select: ${ex.Message} {ex.StackTrace}", "exception");
         }
+    }
+
+    public void Dispose()
+    {
+        messageLog.newMessage -= MessageLog_NewMessage;
+        timer?.Dispose();
     }
 }

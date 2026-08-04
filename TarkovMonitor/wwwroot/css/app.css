@@ -29,6 +29,20 @@ body {
     margin: 8px 16px;
 }
 
+.dashboard-message,
+.dashboard-message__paper,
+.dashboard-message__row {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.dashboard-message__text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .dashboard-page-grid,
 .dashboard-page-item {
     height: 100%;
