@@ -68,6 +68,7 @@ namespace TarkovMonitor
         private int trackerStatusTransitionDepth;
         private bool eftProfileMutationPending;
         private string trackerProfileId = "";
+        private string trackerAccountId = "";
         private EftSessionMode trackerSessionMode = EftSessionMode.Unknown;
         private EftSessionMode displayedSessionMode = EftSessionMode.Unknown;
         private TrackerStatusNotice? displayedTrackerStatusNotice;
@@ -84,6 +85,7 @@ namespace TarkovMonitor
         private readonly record struct TrackerStatusNotice(
             TrackerStatusKind Kind,
             string ProfileId,
+            string AccountId,
             EftSessionMode SessionMode);
 
         public MainBlazorUI()
@@ -105,13 +107,13 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage(storageWarning, "warning");
             }
-            if (!TarkovTracker.IsLegacyService && TarkovTracker.GetPendingTokenValidations().Count > 0)
+            if (!TarkovTracker.IsLegacyService && TarkovTracker.HasPendingOrgKey())
             {
                 messageLog.AddMessage(
-                    "Previously saved TarkovTracker API keys must be validated before they can be used.",
+                    "A saved TarkovTracker.org API key must be bound before it can be used.",
                     "warning",
                     "/settings#tarkov-tracker",
-                    "Click here to validate saved keys.");
+                    "Click here to bind the saved key.");
             }
 
             // Singleton log repository to record, display, and analyze logs for TarkovMonitor
@@ -377,6 +379,7 @@ namespace TarkovMonitor
                 {
                     TarkovTracker.DeactivateProfile();
                     trackerProfileId = "";
+                    trackerAccountId = "";
                     trackerSessionMode = EftSessionMode.Unknown;
                     ResetTrackerStatusNotice();
                     messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
@@ -445,6 +448,7 @@ namespace TarkovMonitor
             {
                 if (generation != Volatile.Read(ref profileChangeGeneration)
                     || profile.Id != GameWatcher.CurrentProfile.Id
+                    || profile.AccountId != GameWatcher.CurrentProfile.AccountId
                     || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode)
                 {
                     return;
@@ -458,6 +462,7 @@ namespace TarkovMonitor
                     await UpdateTarkovDevApiData(profile, generation);
                     if (generation != Volatile.Read(ref profileChangeGeneration)
                         || profile.Id != GameWatcher.CurrentProfile.Id
+                        || profile.AccountId != GameWatcher.CurrentProfile.AccountId
                         || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode)
                     {
                         return;
@@ -526,6 +531,7 @@ namespace TarkovMonitor
             {
                 TarkovTracker.DeactivateProfile();
                 trackerProfileId = "";
+                trackerAccountId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
             }
             finally
@@ -550,6 +556,7 @@ namespace TarkovMonitor
             {
                 TarkovTracker.DeactivateProfile();
                 trackerProfileId = "";
+                trackerAccountId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
                 if (profile.SessionMode == EftSessionMode.Seasonal)
                 {
@@ -579,12 +586,15 @@ namespace TarkovMonitor
                     // Seasonal/Unknown sessions inactive after identity arrives.
                     TarkovTracker.DeactivateProfile();
                     trackerProfileId = "";
+                    trackerAccountId = "";
                     trackerSessionMode = EftSessionMode.Unknown;
                 }
 
                 var trackerNeedsUpdate = profile.SupportsTarkovTrackerWrites
                     && !string.IsNullOrWhiteSpace(profile.Id)
-                    && (profile.Id != trackerProfileId || profile.SessionMode != trackerSessionMode);
+                    && (profile.Id != trackerProfileId
+                        || profile.AccountId != trackerAccountId
+                        || profile.SessionMode != trackerSessionMode);
                 var tarkovDevNeedsUpdate = ShouldLoadTarkovDevData(profile);
                 if (!trackerNeedsUpdate && !tarkovDevNeedsUpdate)
                     return;
@@ -596,6 +606,7 @@ namespace TarkovMonitor
                     await UpdateTarkovDevApiData(profile, generation);
                     if (generation != Volatile.Read(ref profileChangeGeneration)
                         || profile.Id != GameWatcher.CurrentProfile.Id
+                        || profile.AccountId != GameWatcher.CurrentProfile.AccountId
                         || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode)
                     {
                         return;
@@ -609,14 +620,17 @@ namespace TarkovMonitor
                         await TarkovTracker.SetProfile(
                             profile,
                             forceRefresh: profile.Id == TarkovTracker.CurrentProfileId
+                                && profile.AccountId == TarkovTracker.CurrentAccountId
                                 && profile.SessionMode == TarkovTracker.CurrentSessionMode);
                         if (generation != Volatile.Read(ref profileChangeGeneration)
                             || profile.Id != TarkovTracker.CurrentProfileId
+                            || profile.AccountId != TarkovTracker.CurrentAccountId
                             || profile.SessionMode != TarkovTracker.CurrentSessionMode)
                         {
                             return;
                         }
                         trackerProfileId = profile.Id;
+                        trackerAccountId = profile.AccountId;
                         trackerSessionMode = profile.SessionMode;
                         AnnounceMissingTrackerKey(profile, generation);
                     }
@@ -885,6 +899,7 @@ namespace TarkovMonitor
             var expectedDomain = Properties.Settings.Default.tarkovTrackerDomain;
             var expectedLegacyService = TarkovTracker.IsLegacyService;
             if (e.ProfileId != TarkovTracker.CurrentProfileId
+                || e.AccountId != TarkovTracker.CurrentAccountId
                 || e.SessionMode != TarkovTracker.CurrentSessionMode)
             {
                 return;
@@ -920,6 +935,7 @@ namespace TarkovMonitor
             }
             TarkovTracker.DeactivateProfile();
             trackerProfileId = "";
+            trackerAccountId = "";
             trackerSessionMode = EftSessionMode.Unknown;
             displayedSessionMode = EftSessionMode.Unknown;
             ResetTrackerStatusNotice();
@@ -1045,6 +1061,7 @@ namespace TarkovMonitor
             {
                 TarkovTracker.DeactivateProfile();
                 trackerProfileId = "";
+                trackerAccountId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
                 ResetTrackerStatusNotice();
                 return;
@@ -1053,6 +1070,7 @@ namespace TarkovMonitor
             {
                 TarkovTracker.DeactivateProfile();
                 trackerProfileId = "";
+                trackerAccountId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
                 if (profile.SessionMode == EftSessionMode.Seasonal)
                 {
@@ -1070,13 +1088,16 @@ namespace TarkovMonitor
                 await TarkovTracker.SetProfile(profile);
                 if (generation != Volatile.Read(ref profileChangeGeneration)
                     || profile.Id != GameWatcher.CurrentProfile.Id
+                    || profile.AccountId != GameWatcher.CurrentProfile.AccountId
                     || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode
                     || profile.Id != TarkovTracker.CurrentProfileId
+                    || profile.AccountId != TarkovTracker.CurrentAccountId
                     || profile.SessionMode != TarkovTracker.CurrentSessionMode)
                 {
                     return;
                 }
                 trackerProfileId = profile.Id;
+                trackerAccountId = profile.AccountId;
                 trackerSessionMode = profile.SessionMode;
             }
             catch (Exception ex)
@@ -1164,6 +1185,7 @@ namespace TarkovMonitor
                 var notice = new TrackerStatusNotice(
                     TrackerStatusKind.Active,
                     e.ProfileId,
+                    e.AccountId,
                     e.SessionMode);
                 if (displayedTrackerStatusNotice == notice)
                 {
@@ -1186,8 +1208,10 @@ namespace TarkovMonitor
                 || !profile.SupportsTarkovTrackerWrites
                 || string.IsNullOrWhiteSpace(profile.Id)
                 || profile.Id != GameWatcher.CurrentProfile.Id
+                || profile.AccountId != GameWatcher.CurrentProfile.AccountId
                 || profile.SessionMode != GameWatcher.CurrentProfile.SessionMode
                 || profile.Id != TarkovTracker.CurrentProfileId
+                || profile.AccountId != TarkovTracker.CurrentAccountId
                 || profile.SessionMode != TarkovTracker.CurrentSessionMode
                 || !string.IsNullOrWhiteSpace(TarkovTracker.GetTokenForProfile(profile)))
             {
@@ -1196,7 +1220,7 @@ namespace TarkovMonitor
 
             var displayName = TarkovTracker.GetSessionDisplayName(profile.SessionMode);
             AddTrackerStatusNotice(
-                new(TrackerStatusKind.MissingKey, profile.Id, profile.SessionMode),
+                new(TrackerStatusKind.MissingKey, profile.Id, profile.AccountId, profile.SessionMode),
                 $"TarkovTracker.org inactive: no verified {displayName} API key is available.",
                 "warning",
                 expectedStatusEpoch,
@@ -1212,6 +1236,7 @@ namespace TarkovMonitor
                 || string.IsNullOrWhiteSpace(profile.Id)
                 || profile.SessionMode != EftSessionMode.Seasonal
                 || profile.Id != GameWatcher.CurrentProfile.Id
+                || profile.AccountId != GameWatcher.CurrentProfile.AccountId
                 || GameWatcher.CurrentProfile.SessionMode != EftSessionMode.Seasonal)
             {
                 return;
@@ -1220,7 +1245,7 @@ namespace TarkovMonitor
             // The visible notice waits for a selected identity. It remains keyed only
             // by mode so repeated identity markers cannot duplicate the same status.
             AddTrackerStatusNotice(
-                new(TrackerStatusKind.SeasonalInactive, "", EftSessionMode.Seasonal),
+                new(TrackerStatusKind.SeasonalInactive, "", "", EftSessionMode.Seasonal),
                 "TarkovTracker.org inactive: Seasonal API keys are not supported yet.",
                 "info",
                 expectedStatusEpoch);
@@ -1293,6 +1318,7 @@ namespace TarkovMonitor
                 var seasonalInactiveNotice = new TrackerStatusNotice(
                     TrackerStatusKind.SeasonalInactive,
                     "",
+                    "",
                     EftSessionMode.Seasonal);
                 if (!preserveSeasonalInactive
                     || displayedTrackerStatusNotice != seasonalInactiveNotice)
@@ -1337,6 +1363,7 @@ namespace TarkovMonitor
 
             var currentProfile = GameWatcher.CurrentProfile.Snapshot();
             return e.ProfileId == currentProfile.Id
+                && e.AccountId == currentProfile.AccountId
                 && e.SessionMode == currentProfile.SessionMode
                 && TarkovTracker.GetActiveProgressSnapshot(currentProfile) != null;
         }
@@ -1382,7 +1409,7 @@ namespace TarkovMonitor
             }
 
             AddTrackerStatusNotice(
-                new(TrackerStatusKind.Active, profile.Id, profile.SessionMode),
+                new(TrackerStatusKind.Active, profile.Id, profile.AccountId, profile.SessionMode),
                 $"TarkovTracker.org active key: {TarkovTracker.GetSessionDisplayName(profile.SessionMode)}.",
                 "update",
                 expectedStatusEpoch);
@@ -1444,7 +1471,11 @@ namespace TarkovMonitor
             }
             try
             {
-                await TarkovTracker.SetTaskComplete(task.id, e.Profile.Id, e.Profile.SessionMode);
+                await TarkovTracker.SetTaskComplete(
+                    task.id,
+                    e.Profile.Id,
+                    e.Profile.SessionMode,
+                    e.Profile.AccountId);
                 //messageLog.AddMessage(response, "quest");
             }
             catch (Exception ex)
@@ -1469,7 +1500,11 @@ namespace TarkovMonitor
             }
             try
             {
-                await TarkovTracker.SetTaskFailed(task.id, e.Profile.Id, e.Profile.SessionMode);
+                await TarkovTracker.SetTaskFailed(
+                    task.id,
+                    e.Profile.Id,
+                    e.Profile.SessionMode,
+                    e.Profile.AccountId);
                 //messageLog.AddMessage(response, "quest");
             }
             catch (Exception ex)
@@ -1493,7 +1528,11 @@ namespace TarkovMonitor
             }
             try
             {
-                await TarkovTracker.SetTaskStarted(e.LogContent.TaskId, e.Profile.Id, e.Profile.SessionMode);
+                await TarkovTracker.SetTaskStarted(
+                    e.LogContent.TaskId,
+                    e.Profile.Id,
+                    e.Profile.SessionMode,
+                    e.Profile.AccountId);
             }
             catch (Exception ex)
             {
@@ -1737,6 +1776,7 @@ namespace TarkovMonitor
             return profile.SupportsTarkovTrackerWrites
                 && !string.IsNullOrWhiteSpace(profile.Id)
                 && string.Equals(profile.Id, TarkovTracker.CurrentProfileId, StringComparison.Ordinal)
+                && string.Equals(profile.AccountId, TarkovTracker.CurrentAccountId, StringComparison.Ordinal)
                 && profile.SessionMode == TarkovTracker.CurrentSessionMode
                 && TarkovTracker.ValidToken;
         }

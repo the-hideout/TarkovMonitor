@@ -1,0 +1,40 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">Add a nickname to identify this bound API key. It can be added once and cannot be renamed.</MudText>
+        <MudTextField @bind-Value="nickname"
+                      Immediate="true"
+                      Label="Nickname"
+                      MaxLength="32"
+                      Counter="32"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense" />
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Info" OnClick="Save" Disabled="@string.IsNullOrWhiteSpace(nickname)">Add nickname</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    private string nickname = "";
+    private string errorMessage = "";
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        var normalizedNickname = nickname.Trim();
+        if (normalizedNickname.Length is < 1 or > 32 || normalizedNickname.Any(char.IsControl))
+        {
+            errorMessage = "Enter a nickname between 1 and 32 characters.";
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(normalizedNickname));
+    }
+}

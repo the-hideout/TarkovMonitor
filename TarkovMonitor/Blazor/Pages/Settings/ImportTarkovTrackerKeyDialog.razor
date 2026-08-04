@@ -4,7 +4,7 @@
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.body1" Class="mb-2">
-            Paste an API key created by TarkovTracker.org. Tarkov Monitor verifies it and automatically stores it as Regular (PVP) or PVE.
+            Paste an API key created by TarkovTracker.org. Tarkov Monitor verifies its mode and saves it as pending. Then bind it to the matching EFT profile.
         </MudText>
         <MudText Typo="Typo.caption" Class="mb-2">For accuracy, copy and paste the key directly instead of typing or editing it manually.</MudText>
         <MudTextField @bind-Value="apiKey"
@@ -78,7 +78,7 @@
         messageSeverity = Severity.Error;
         try
         {
-            var importedToken = await TarkovTracker.ImportToken(apiKey);
+            var importedToken = await TarkovTracker.ImportOrgToken(apiKey);
             MudDialog.Close(DialogResult.Ok(importedToken));
         }
         catch (Exception ex)
