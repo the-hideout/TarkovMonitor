@@ -16,7 +16,7 @@
     </DialogActions>
 </MudDialog>
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
     private string? failureMessage;
 
     void Cancel() => MudDialog.Cancel();

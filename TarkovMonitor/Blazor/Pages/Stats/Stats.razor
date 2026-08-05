@@ -122,6 +122,6 @@
     void ClearData()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
-        DialogService.Show<ConfirmClearDataDialog>("Clear Data?", options);
+        DialogService.ShowAsync<ConfirmClearDataDialog>("Clear Data?", options);
     }
 }

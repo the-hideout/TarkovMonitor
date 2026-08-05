@@ -108,7 +108,7 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public string KeyPrefix { get; set; } = "";
     [Parameter] public string KeyDisplayName { get; set; } = "";

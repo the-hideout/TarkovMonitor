@@ -43,7 +43,7 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public string InitialApiKey { get; set; } = "";
 
     private string apiKey = "";

@@ -165,7 +165,7 @@
                 button.OnClick?.Invoke();
                 return;
             }
-            bool? result = await DialogService.ShowMessageBox(
+            bool? result = await DialogService.ShowMessageBoxAsync(
                 button.Confirm.Title,
                 (MarkupString) button.Confirm.Message,
                 yesText: button.Confirm.YesText, 
