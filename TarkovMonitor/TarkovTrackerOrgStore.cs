@@ -7,7 +7,7 @@ namespace TarkovMonitor
 {
     internal sealed class TarkovTrackerOrgStoreDocument
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         [JsonPropertyName("version")]
         [JsonRequired]
@@ -16,6 +16,27 @@ namespace TarkovMonitor
         [JsonPropertyName("keys")]
         [JsonRequired]
         public List<TarkovTrackerOrgKey> Keys { get; set; } = new();
+
+        [JsonPropertyName("accounts")]
+        public List<TarkovTrackerOrgAccount>? Accounts { get; set; } = new();
+    }
+
+    internal sealed class TarkovTrackerOrgAccount
+    {
+        [JsonPropertyName("accountId")]
+        public string AccountId { get; set; } = "";
+
+        [JsonPropertyName("nickname")]
+        public string Nickname { get; set; } = "";
+
+        internal TarkovTrackerOrgAccount Clone()
+        {
+            return new TarkovTrackerOrgAccount
+            {
+                AccountId = AccountId,
+                Nickname = Nickname,
+            };
+        }
     }
 
     internal sealed class TarkovTrackerOrgKey
@@ -41,8 +62,11 @@ namespace TarkovMonitor
         [JsonPropertyName("verifiedTokenHash")]
         public string VerifiedTokenHash { get; set; } = "";
 
+        // Version 1 stored nicknames on individual keys. This read-only
+        // compatibility property is consumed during the version 2 migration.
         [JsonPropertyName("nickname")]
-        public string Nickname { get; set; } = "";
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? LegacyNickname { get; set; }
 
         [JsonIgnore]
         public bool IsBound => !string.IsNullOrWhiteSpace(AccountId)
@@ -60,7 +84,7 @@ namespace TarkovMonitor
                 ProfileId = ProfileId,
                 SessionMode = SessionMode,
                 VerifiedTokenHash = VerifiedTokenHash,
-                Nickname = Nickname,
+                LegacyNickname = LegacyNickname,
             };
         }
     }
@@ -68,10 +92,14 @@ namespace TarkovMonitor
     internal sealed class TarkovTrackerOrgStore
     {
         private readonly List<TarkovTrackerOrgKey> keys;
+        private readonly List<TarkovTrackerOrgAccount> accounts;
 
-        private TarkovTrackerOrgStore(IEnumerable<TarkovTrackerOrgKey>? keys = null)
+        private TarkovTrackerOrgStore(
+            IEnumerable<TarkovTrackerOrgKey>? keys = null,
+            IEnumerable<TarkovTrackerOrgAccount>? accounts = null)
         {
             this.keys = keys?.Select(key => key.Clone()).ToList() ?? new();
+            this.accounts = accounts?.Select(account => account.Clone()).ToList() ?? new();
         }
 
         public static TarkovTrackerOrgStore Empty() => new();
@@ -89,7 +117,7 @@ namespace TarkovMonitor
 
                 var document = JsonSerializer.Deserialize<TarkovTrackerOrgStoreDocument>(rawValue)
                     ?? throw new JsonException("The stored value is null.");
-                if (document.Version != TarkovTrackerOrgStoreDocument.CurrentVersion)
+                if (document.Version is not (1 or TarkovTrackerOrgStoreDocument.CurrentVersion))
                 {
                     throw new JsonException($"Unsupported store version {document.Version}.");
                 }
@@ -113,7 +141,57 @@ namespace TarkovMonitor
                     throw new JsonException("The stored key list contains duplicate identifiers.");
                 }
 
-                store = new TarkovTrackerOrgStore(normalizedKeys);
+                List<TarkovTrackerOrgAccount> normalizedAccounts;
+                if (document.Version == 1)
+                {
+                    normalizedAccounts = normalizedKeys
+                        .Where(key => key.IsBound && !string.IsNullOrWhiteSpace(key.LegacyNickname))
+                        .GroupBy(key => key.AccountId, StringComparer.Ordinal)
+                        .Select(group =>
+                        {
+                            var nicknames = group
+                                .Select(key => NormalizeNickname(key.LegacyNickname))
+                                .Distinct(StringComparer.Ordinal)
+                                .ToList();
+                            if (nicknames.Count != 1)
+                            {
+                                throw new JsonException($"Account ID {group.Key} has conflicting saved nicknames.");
+                            }
+                            return new TarkovTrackerOrgAccount
+                            {
+                                AccountId = group.Key,
+                                Nickname = nicknames[0],
+                            };
+                        })
+                        .ToList();
+                }
+                else
+                {
+                    if (document.Accounts == null)
+                    {
+                        throw new JsonException("The account list is null.");
+                    }
+                    if (document.Accounts.Any(account => account == null))
+                    {
+                        throw new JsonException("The account list contains a null record.");
+                    }
+                    normalizedAccounts = document.Accounts.Select(Normalize).ToList();
+                }
+
+                if (normalizedAccounts.GroupBy(account => account.AccountId, StringComparer.Ordinal).Any(group => group.Count() > 1))
+                {
+                    throw new JsonException("The stored account list contains duplicate Account IDs.");
+                }
+                if (normalizedAccounts.Any(account => !IsValidAccountNickname(account.AccountId, account.Nickname)))
+                {
+                    throw new JsonException("A stored account nickname record is invalid.");
+                }
+
+                foreach (var key in normalizedKeys)
+                {
+                    key.LegacyNickname = null;
+                }
+                store = new TarkovTrackerOrgStore(normalizedKeys, normalizedAccounts);
                 return true;
             }
             catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
@@ -123,13 +201,14 @@ namespace TarkovMonitor
             }
         }
 
-        public TarkovTrackerOrgStore Clone() => new(keys);
+        public TarkovTrackerOrgStore Clone() => new(keys, accounts);
 
         public string Serialize()
         {
             return JsonSerializer.Serialize(new TarkovTrackerOrgStoreDocument
             {
                 Keys = keys.Select(key => key.Clone()).ToList(),
+                Accounts = accounts.Select(account => account.Clone()).ToList(),
             });
         }
 
@@ -141,6 +220,14 @@ namespace TarkovMonitor
         public TarkovTrackerOrgKey? GetKey(string id)
         {
             return keys.FirstOrDefault(key => string.Equals(key.Id, id, StringComparison.Ordinal))?.Clone();
+        }
+
+        public string GetAccountNickname(string accountId)
+        {
+            return accounts.FirstOrDefault(account => string.Equals(
+                account.AccountId,
+                accountId,
+                StringComparison.Ordinal))?.Nickname ?? "";
         }
 
         public TarkovTrackerOrgKey? GetForProfile(Profile profile)
@@ -262,27 +349,39 @@ namespace TarkovMonitor
             return key.Clone();
         }
 
-        public TarkovTrackerOrgKey AssignNickname(string id, string nickname)
+        public string SetAccountNickname(string accountId, string nickname)
         {
-            var key = GetMutableKey(id);
-            if (!key.IsBound)
+            if (!keys.Any(key => key.IsBound
+                && string.IsNullOrEmpty(GetStoreIssue(key))
+                && string.Equals(key.AccountId, accountId, StringComparison.Ordinal)))
             {
-                throw new InvalidOperationException("Bind this key first to assign a nickname.");
-            }
-            if (!string.IsNullOrWhiteSpace(key.Nickname))
-            {
-                throw new InvalidOperationException("This API key already has a nickname.");
+                throw new InvalidOperationException("Bind an API key to this account before setting its nickname.");
             }
 
-            var normalizedNickname = nickname.Trim();
-            if (normalizedNickname.Length is < 1 or > 32
-                || normalizedNickname.Any(char.IsControl))
+            var normalizedAccountId = accountId.Trim();
+            var normalizedNickname = NormalizeNickname(nickname);
+            if (!IsValidAccountNickname(normalizedAccountId, normalizedNickname))
             {
                 throw new ArgumentException("Enter a nickname between 1 and 32 characters.", nameof(nickname));
             }
 
-            key.Nickname = normalizedNickname;
-            return key.Clone();
+            var account = accounts.FirstOrDefault(candidate => string.Equals(
+                candidate.AccountId,
+                normalizedAccountId,
+                StringComparison.Ordinal));
+            if (account == null)
+            {
+                accounts.Add(new TarkovTrackerOrgAccount
+                {
+                    AccountId = normalizedAccountId,
+                    Nickname = normalizedNickname,
+                });
+            }
+            else
+            {
+                account.Nickname = normalizedNickname;
+            }
+            return normalizedNickname;
         }
 
         public bool Remove(string id)
@@ -317,8 +416,25 @@ namespace TarkovMonitor
             key.ProfileId = key.ProfileId?.Trim() ?? "";
             key.SessionMode = key.SessionMode?.Trim() ?? "";
             key.VerifiedTokenHash = key.VerifiedTokenHash?.Trim().ToUpperInvariant() ?? "";
-            key.Nickname = key.Nickname?.Trim() ?? "";
+            key.LegacyNickname = key.LegacyNickname?.Trim();
             return key;
+        }
+
+        private static TarkovTrackerOrgAccount Normalize(TarkovTrackerOrgAccount account)
+        {
+            account.AccountId = account.AccountId?.Trim() ?? "";
+            account.Nickname = NormalizeNickname(account.Nickname);
+            return account;
+        }
+
+        private static string NormalizeNickname(string? nickname) => nickname?.Trim() ?? "";
+
+        private static bool IsValidAccountNickname(string accountId, string nickname)
+        {
+            return !string.IsNullOrWhiteSpace(accountId)
+                && accountId.All(char.IsDigit)
+                && nickname.Length is >= 1 and <= 32
+                && !nickname.Any(char.IsControl);
         }
 
         private static bool CanBindToProfile(TarkovTrackerOrgKey key, Profile profile)
@@ -393,10 +509,6 @@ namespace TarkovMonitor
                 {
                     return "The account, profile, or mode binding is invalid.";
                 }
-            }
-            if (key.Nickname.Length > 32 || key.Nickname.Any(char.IsControl))
-            {
-                return "The nickname is invalid.";
             }
             return "";
         }

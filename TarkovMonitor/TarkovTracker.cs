@@ -359,7 +359,7 @@ namespace TarkovMonitor
             string AccountId,
             string ProfileId,
             EftSessionMode SessionMode,
-            string Nickname,
+            string AccountNickname,
             bool IsLegacyRecovery,
             bool IsQuarantined);
 
@@ -582,7 +582,7 @@ namespace TarkovMonitor
             }
         }
 
-        public static OrgKeySummary AssignOrgKeyNickname(string id, string nickname)
+        public static string SetOrgAccountNickname(string accountId, string nickname)
         {
             var expectedServiceGeneration = CaptureOrgServiceGeneration();
             EnsureOrgProfileStoreWritable();
@@ -590,8 +590,7 @@ namespace TarkovMonitor
             lock (stateLock)
             {
                 EnsureOrgServiceGenerationLocked(expectedServiceGeneration);
-                var namedKey = PersistOrgStoreChangeLocked(store => store.AssignNickname(id, nickname));
-                return ToSummary(namedKey);
+                return PersistOrgStoreChangeLocked(store => store.SetAccountNickname(accountId, nickname));
             }
         }
 
@@ -609,7 +608,7 @@ namespace TarkovMonitor
                 key.AccountId,
                 key.ProfileId,
                 sessionMode,
-                key.Nickname,
+                key.IsBound ? orgTokenStore.GetAccountNickname(key.AccountId) : "",
                 false,
                 !string.IsNullOrEmpty(orgTokenStore.GetStoreIssue(key)));
         }

@@ -143,97 +143,146 @@
                     <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3">Import API Key</MudButton>
                 }
 
-                <div class="d-flex align-center mb-2">
-                    <MudText Typo="Typo.subtitle1"><b>Unbound / Pending</b></MudText>
-                    <MudTooltip Text="Log in to EFT and select the matching profile to bind this key.">
-                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-2" />
-                    </MudTooltip>
-                </div>
-                @if (PendingOrgKeys.Count == 0)
-                {
-                    <MudText Typo="Typo.body2" Class="mb-3">No unbound API key is stored.</MudText>
-                }
-                @foreach (var key in PendingOrgKeys)
-                {
-                    <MudPaper Class="pa-3 mb-3" Outlined="true" Elevation="0">
-                        <div class="d-flex align-center justify-space-between">
-                            <div>
-                                <MudText Typo="Typo.subtitle1"><b>@BoundKeyTitle(key)</b> • Not active</MudText>
-                                <MudText Typo="Typo.body2">@(string.IsNullOrWhiteSpace(key.Nickname) ? key.MaskedToken : $"{key.DisplayName} • {key.MaskedToken}")</MudText>
-                                @if (key.IsLegacyRecovery)
+                <div class="tracker-key-manager">
+                    <MudPaper Class="tracker-drawer mb-3" Elevation="0">
+                        <div class="tracker-drawer-heading">
+                            <button type="button" class="tracker-drawer-toggle" @onclick="TogglePendingDrawer" aria-expanded="@pendingDrawerExpanded.ToString().ToLowerInvariant()">
+                                <MudIcon Icon="@(pendingDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
+                                <span class="tracker-drawer-title">Unbound / Pending</span>
+                                <span class="tracker-count-badge">@PendingOrgKeys.Count</span>
+                            </button>
+                            <MudTooltip Text="Log in to EFT and select the matching profile to bind a pending key.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="tracker-help-icon" />
+                            </MudTooltip>
+                        </div>
+                        <MudCollapse Expanded="@pendingDrawerExpanded">
+                            <div class="tracker-drawer-content">
+                                @if (PendingOrgKeys.Count == 0)
                                 {
-                                    <MudText Typo="Typo.caption">Previously saved TarkovTracker.org key</MudText>
+                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No unbound API key is stored.</MudText>
+                                }
+                                @foreach (var key in PendingOrgKeys)
+                                {
+                                    <div class="tracker-pending-card">
+                                        <div class="tracker-key-copy">
+                                            <div class="d-flex align-center flex-wrap gap-2">
+                                                <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
+                                                <MudText Typo="Typo.body2"><b>Not active</b></MudText>
+                                            </div>
+                                            <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
+                                            @if (key.IsLegacyRecovery)
+                                            {
+                                                <MudText Typo="Typo.caption">Previously saved TarkovTracker.org key</MudText>
+                                            }
+                                        </div>
+                                        <div class="tracker-key-actions">
+                                            @if (CanBindPendingKey(key))
+                                            {
+                                                <MudButton @onclick="@(async () => await BindOrgKey(key))" Variant="Variant.Text" Color="Color.Info">Bind to current profile</MudButton>
+                                            }
+                                            else
+                                            {
+                                                <MudTooltip Text="@PendingBindTooltip(key)">
+                                                    <span><MudButton Disabled="true" Variant="Variant.Text">Bind to current profile</MudButton></span>
+                                                </MudTooltip>
+                                            }
+                                            <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error">Remove</MudButton>
+                                        </div>
+                                        @if (key.IsQuarantined)
+                                        {
+                                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">This key is inactive because its saved record is ambiguous or invalid.</MudAlert>
+                                        }
+                                    </div>
                                 }
                             </div>
-                            <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Default">Remove</MudButton>
-                        </div>
-                        @if (key.IsQuarantined)
-                        {
-                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">This key is inactive because its saved record is ambiguous or invalid.</MudAlert>
-                        }
-                        <div class="d-flex align-center mt-2">
-                            @if (CanBindPendingKey(key))
-                            {
-                                <MudButton @onclick="@(async () => await BindOrgKey(key))" Variant="Variant.Text" Color="Color.Info">Bind to current profile</MudButton>
-                            }
-                            else
-                            {
-                                <MudTooltip Text="@PendingBindTooltip(key)">
-                                    <span><MudButton Disabled="true" Variant="Variant.Text">Bind to current profile</MudButton></span>
-                                </MudTooltip>
-                            }
-                            @if (string.IsNullOrWhiteSpace(key.Nickname))
-                            {
-                                <MudTooltip Text="Bind this key first to assign a nickname.">
-                                    <span><MudButton Disabled="true" Variant="Variant.Text">Add nickname</MudButton></span>
-                                </MudTooltip>
-                            }
-                        </div>
+                        </MudCollapse>
                     </MudPaper>
-                }
 
-                <MudText Typo="Typo.subtitle1" Class="mb-2"><b>Bound keys</b> (@BoundOrgKeys.Count)</MudText>
-                @if (BoundOrgKeys.Count == 0)
-                {
-                    <MudText Typo="Typo.body2">No TarkovTracker.org API keys are bound.</MudText>
-                }
-                else
-                {
-                    @if (BoundOrgKeys.Count > 4)
-                    {
-                        <MudTextField @bind-Value="boundKeyFilter" Immediate="true" Label="Filter by nickname or Account ID" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2" />
-                    }
-                    <div style="max-height: 340px; overflow-y: auto; padding-right: 4px;">
-                        @foreach (var accountGroup in BoundOrgKeyGroups)
-                        {
-                            <MudPaper Class="pa-3 mb-2" Outlined="true" Elevation="0">
-                                <MudText Typo="Typo.subtitle1"><b>Account ID: @accountGroup.Key</b> @CurrentAccountMarker(accountGroup.Key)</MudText>
-                                @foreach (var key in accountGroup)
+                    <MudPaper Class="tracker-drawer" Elevation="0">
+                        <button type="button" class="tracker-drawer-toggle tracker-drawer-toggle--primary" @onclick="ToggleBoundDrawer" aria-expanded="@boundDrawerExpanded.ToString().ToLowerInvariant()">
+                            <MudIcon Icon="@(boundDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
+                            <span class="tracker-drawer-title">Bound keys</span>
+                            <span class="tracker-count-badge">@BoundOrgKeys.Count</span>
+                        </button>
+                        <MudCollapse Expanded="@boundDrawerExpanded">
+                            <div class="tracker-drawer-content">
+                                @if (BoundOrgKeys.Count == 0)
                                 {
-                                    <div class="d-flex align-center justify-space-between mt-2">
-                                        <div>
-                                            <MudText Typo="Typo.body1"><b>@BoundKeyTitle(key)</b> @ActiveKeyMarker(key)</MudText>
-                                            <MudText Typo="Typo.caption">@key.DisplayName • @key.MaskedToken</MudText>
-                                        </div>
-                                        <div>
-                                            @if (!key.IsQuarantined && string.IsNullOrWhiteSpace(key.Nickname))
-                                            {
-                                                <MudButton @onclick="@(async () => await AddOrgKeyNickname(key))" Variant="Variant.Text" Color="Color.Info">Add nickname</MudButton>
-                                            }
-                                            <MudButton @onclick="@(async () => await ShowOrgKeyDetails(key))" Variant="Variant.Text">Details</MudButton>
-                                            <MudButton @onclick="@(async () => await UnbindOrgKey(key))" Variant="Variant.Text">Unbind</MudButton>
-                                            <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Default">Remove</MudButton>
-                                        </div>
-                                    </div>
-                                    @if (key.IsQuarantined)
-                                    {
-                                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">This key is inactive because its saved record is ambiguous or invalid.</MudAlert>
-                                    }
+                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No TarkovTracker.org API keys are bound.</MudText>
                                 }
-                            </MudPaper>
-                        }
-                    </div>
-                }
+                                else
+                                {
+                                    <MudTextField @bind-Value="boundKeyFilter" Immediate="true" Label="Filter by nickname or Account ID" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tracker-filter" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                                    <div class="tracker-account-list">
+                                        @if (BoundOrgKeyGroups.Count == 0)
+                                        {
+                                            <MudText Typo="Typo.body2" Class="tracker-empty-state">No accounts match this filter.</MudText>
+                                        }
+                                        @foreach (var accountGroup in BoundOrgKeyGroups)
+                                        {
+                                            <MudPaper Class="tracker-account-drawer mb-2" Elevation="0">
+                                                <div class="tracker-account-heading">
+                                                    <button type="button" class="tracker-account-toggle" @onclick="@(() => ToggleAccountDrawer(accountGroup.AccountId))" aria-expanded="@IsAccountDrawerExpanded(accountGroup.AccountId).ToString().ToLowerInvariant()">
+                                                        <MudIcon Icon="@(IsAccountDrawerExpanded(accountGroup.AccountId) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
+                                                        <span class="tracker-account-copy">
+                                                            <span class="tracker-account-title">@AccountDrawerTitle(accountGroup)</span>
+                                                            <span class="tracker-account-subtitle">Account ID: @accountGroup.AccountId @CurrentAccountMarker(accountGroup.AccountId)</span>
+                                                        </span>
+                                                        <span class="tracker-mode-summary">
+                                                            @foreach (var key in accountGroup.Keys.OrderBy(key => key.DisplayName, StringComparer.Ordinal))
+                                                            {
+                                                                <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
+                                                            }
+                                                        </span>
+                                                        <span class="tracker-count-badge">@accountGroup.Keys.Count</span>
+                                                    </button>
+                                                    <div class="tracker-account-actions">
+                                                        <MudButton @onclick="@(async () => await ShowOrgAccountDetails(accountGroup))" Variant="Variant.Text">Details</MudButton>
+                                                        @if (CanSetAccountNickname(accountGroup))
+                                                        {
+                                                            <MudButton @onclick="@(async () => await SetOrgAccountNickname(accountGroup))" Variant="Variant.Text" Color="Color.Info">@AccountNicknameAction(accountGroup)</MudButton>
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudTooltip Text="Repair or remove invalid profile bindings before naming this account.">
+                                                                <span><MudButton Disabled="true" Variant="Variant.Text">@AccountNicknameAction(accountGroup)</MudButton></span>
+                                                            </MudTooltip>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <MudCollapse Expanded="@IsAccountDrawerExpanded(accountGroup.AccountId)">
+                                                    <div class="tracker-profile-list">
+                                                        @foreach (var key in accountGroup.Keys.OrderBy(key => key.DisplayName, StringComparer.Ordinal))
+                                                        {
+                                                            <div class="tracker-profile-row">
+                                                                <div class="tracker-key-copy">
+                                                                    <div class="d-flex align-center flex-wrap gap-2">
+                                                                        <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
+                                                                        <MudText Typo="Typo.body2"><b>@ActiveKeyMarker(key)</b></MudText>
+                                                                    </div>
+                                                                    <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
+                                                                </div>
+                                                                <div class="tracker-key-actions">
+                                                                    <MudButton @onclick="@(async () => await ShowOrgKeyDetails(key))" Variant="Variant.Text">Details</MudButton>
+                                                                    <MudButton @onclick="@(async () => await UnbindOrgKey(key))" Variant="Variant.Text">Unbind</MudButton>
+                                                                    <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error">Remove</MudButton>
+                                                                </div>
+                                                                @if (key.IsQuarantined)
+                                                                {
+                                                                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">This key is inactive because its saved record is ambiguous or invalid.</MudAlert>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </MudCollapse>
+                                            </MudPaper>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </MudCollapse>
+                    </MudPaper>
+                </div>
             }
             else
             {
@@ -312,6 +361,14 @@
     private Dictionary<int, string> PlaybackDevices;
     private List<(string Code, string Name)> AvailableLanguages = new();
     private string boundKeyFilter = "";
+    private bool pendingDrawerExpanded;
+    private bool boundDrawerExpanded = true;
+    private readonly HashSet<string> expandedAccountIds = new(StringComparer.Ordinal);
+
+    private sealed record OrgAccountGroup(
+        string AccountId,
+        string Nickname,
+        List<TarkovTracker.OrgKeySummary> Keys);
     private TarkovDev.Trader? TraderFence
     {
         get
@@ -329,6 +386,8 @@
         eft.GameStarted += OnGameClientStateChanged;
         eft.GameStopped += OnGameClientStateChanged;
         eft.ProfileChanged += OnGameClientStateChanged;
+        pendingDrawerExpanded = HasPendingOrgKey;
+        boundDrawerExpanded = !pendingDrawerExpanded;
     }
 
     protected override void OnParametersSet()
@@ -733,13 +792,71 @@
     private List<TarkovTracker.OrgKeySummary> PendingOrgKeys => OrgKeys.Where(key => !key.IsBound).ToList();
     private List<TarkovTracker.OrgKeySummary> BoundOrgKeys => OrgKeys.Where(key => key.IsBound).ToList();
     private bool HasPendingOrgKey => TarkovTracker.HasPendingOrgKey();
-    private IEnumerable<IGrouping<string, TarkovTracker.OrgKeySummary>> BoundOrgKeyGroups => BoundOrgKeys
-        .Where(key => string.IsNullOrWhiteSpace(boundKeyFilter)
-            || key.AccountId.Contains(boundKeyFilter.Trim(), StringComparison.OrdinalIgnoreCase)
-            || key.Nickname.Contains(boundKeyFilter.Trim(), StringComparison.OrdinalIgnoreCase))
-        .GroupBy(key => key.AccountId, StringComparer.Ordinal)
-        .OrderByDescending(group => string.Equals(group.Key, GameWatcher.CurrentProfile.AccountId, StringComparison.Ordinal))
-        .ThenBy(group => group.Key, StringComparer.Ordinal);
+    private List<OrgAccountGroup> BoundOrgKeyGroups
+    {
+        get
+        {
+            var filter = boundKeyFilter.Trim();
+            return BoundOrgKeys
+                .GroupBy(key => key.AccountId, StringComparer.Ordinal)
+                .Select(group => new OrgAccountGroup(
+                    group.Key,
+                    group.Select(key => key.AccountNickname).FirstOrDefault(nickname => !string.IsNullOrWhiteSpace(nickname)) ?? "",
+                    group.ToList()))
+                .Where(group => string.IsNullOrWhiteSpace(filter)
+                    || group.AccountId.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                    || group.Nickname.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(group => string.Equals(group.AccountId, GameWatcher.CurrentProfile.AccountId, StringComparison.Ordinal))
+                .ThenBy(group => group.Nickname, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(group => group.AccountId, StringComparer.Ordinal)
+                .ToList();
+        }
+    }
+
+    private void TogglePendingDrawer() => pendingDrawerExpanded = !pendingDrawerExpanded;
+
+    private void ToggleBoundDrawer() => boundDrawerExpanded = !boundDrawerExpanded;
+
+    private void ToggleAccountDrawer(string accountId)
+    {
+        if (!expandedAccountIds.Add(accountId))
+        {
+            expandedAccountIds.Remove(accountId);
+        }
+    }
+
+    private bool IsAccountDrawerExpanded(string accountId)
+    {
+        return !string.IsNullOrWhiteSpace(boundKeyFilter) || expandedAccountIds.Contains(accountId);
+    }
+
+    private static string AccountDrawerTitle(OrgAccountGroup accountGroup)
+    {
+        return string.IsNullOrWhiteSpace(accountGroup.Nickname)
+            ? $"Account {accountGroup.AccountId}"
+            : accountGroup.Nickname;
+    }
+
+    private static string AccountNicknameAction(OrgAccountGroup accountGroup)
+    {
+        return string.IsNullOrWhiteSpace(accountGroup.Nickname) ? "Set nickname" : "Rename nickname";
+    }
+
+    private static bool CanSetAccountNickname(OrgAccountGroup accountGroup)
+    {
+        return accountGroup.Keys.Any(key => !key.IsQuarantined);
+    }
+
+    private static string ModeBadgeClass(TarkovTracker.OrgKeySummary key)
+    {
+        return key.Prefix.ToUpperInvariant() switch
+        {
+            "PVE" => "tracker-mode-badge--pve",
+            "PVP" => "tracker-mode-badge--pvp",
+            "SN1" => "tracker-mode-badge--seasonal",
+            _ => "tracker-mode-badge--unknown",
+        };
+    }
 
     private async Task OpenImportTrackerKey()
     {
@@ -809,6 +926,9 @@
             messageLog.AddMessage(
                 $"Bound the {boundKey.DisplayName} TarkovTracker.org API key to Account ID {boundKey.AccountId}.",
                 "update");
+            pendingDrawerExpanded = false;
+            boundDrawerExpanded = true;
+            expandedAccountIds.Add(boundKey.AccountId);
             await ReactivateCurrentTrackerProfile();
         }
         catch (Exception ex)
@@ -818,10 +938,17 @@
         StateHasChanged();
     }
 
-    private async Task AddOrgKeyNickname(TarkovTracker.OrgKeySummary key)
+    private async Task SetOrgAccountNickname(OrgAccountGroup accountGroup)
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = DialogService.Show<AddTarkovTrackerKeyNicknameDialog>("Add API key nickname", options);
+        var parameters = new DialogParameters
+        {
+            [nameof(SetTarkovTrackerAccountNicknameDialog.ExistingNickname)] = accountGroup.Nickname,
+        };
+        var title = string.IsNullOrWhiteSpace(accountGroup.Nickname)
+            ? "Set account nickname"
+            : "Rename account nickname";
+        var dialog = DialogService.Show<SetTarkovTrackerAccountNicknameDialog>(title, parameters, options);
         var result = await dialog.Result;
         if (result.Canceled || result.Data is not string nickname)
         {
@@ -830,12 +957,12 @@
 
         try
         {
-            var namedKey = TarkovTracker.AssignOrgKeyNickname(key.Id, nickname);
-            messageLog.AddMessage($"Added nickname “{namedKey.Nickname}” to the bound API key.", "update");
+            var savedNickname = TarkovTracker.SetOrgAccountNickname(accountGroup.AccountId, nickname);
+            messageLog.AddMessage($"Saved nickname “{savedNickname}” for Account ID {accountGroup.AccountId}.", "update");
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Could not add the API key nickname: {ex.Message}", "exception");
+            messageLog.AddMessage($"Could not save the account nickname: {ex.Message}", "exception");
         }
         StateHasChanged();
     }
@@ -856,6 +983,7 @@
         {
             TarkovTracker.UnbindOrgKey(key.Id);
             messageLog.AddMessage($"Unbound the {key.DisplayName} TarkovTracker.org API key.", "update");
+            pendingDrawerExpanded = true;
             await ReactivateCurrentTrackerProfile();
         }
         catch (Exception ex)
@@ -902,9 +1030,22 @@
             yesText: "Close");
     }
 
+    private async Task ShowOrgAccountDetails(OrgAccountGroup accountGroup)
+    {
+        var nickname = string.IsNullOrWhiteSpace(accountGroup.Nickname) ? "Not set" : accountGroup.Nickname;
+        var modes = string.Join(", ", accountGroup.Keys
+            .Select(key => key.DisplayName)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(mode => mode, StringComparer.Ordinal));
+        await DialogService.ShowMessageBox(
+            "EFT account details",
+            $"Nickname: {nickname}{Environment.NewLine}Account ID: {accountGroup.AccountId}{Environment.NewLine}Bound profiles: {accountGroup.Keys.Count}{Environment.NewLine}Modes: {modes}",
+            yesText: "Close");
+    }
+
     private static string BoundKeyTitle(TarkovTracker.OrgKeySummary key)
     {
-        return string.IsNullOrWhiteSpace(key.Nickname) ? key.DisplayName : key.Nickname;
+        return key.DisplayName;
     }
 
     private static string CurrentAccountMarker(string accountId)
