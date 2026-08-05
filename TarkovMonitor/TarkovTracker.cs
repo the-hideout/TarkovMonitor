@@ -117,6 +117,26 @@ namespace TarkovMonitor
                 }
             }
         }
+
+        public sealed class OrgKeyAutoAssignedEventArgs : EventArgs
+        {
+            public string DisplayName { get; }
+            public string AccountId { get; }
+            public string ProfileId { get; }
+            public EftSessionMode SessionMode { get; }
+
+            public OrgKeyAutoAssignedEventArgs(
+                string displayName,
+                string accountId,
+                string profileId,
+                EftSessionMode sessionMode)
+            {
+                DisplayName = displayName;
+                AccountId = accountId;
+                ProfileId = profileId;
+                SessionMode = sessionMode;
+            }
+        }
         public static string CurrentAccountId
         {
             get
@@ -141,6 +161,7 @@ namespace TarkovMonitor
         public static event EventHandler<EventArgs>? TokenValidated;
         public static event EventHandler<EventArgs>? TokenInvalid;
         public static event EventHandler<ProgressRetrievedEventArgs>? ProgressRetrieved;
+        public static event EventHandler<OrgKeyAutoAssignedEventArgs>? OrgKeyAutoAssigned;
         public static Dictionary<string, string> Domains = new() {
             { "tarkovtracker.io", "TarkovTracker.io" },
             { "tarkovtracker.org", "TarkovTracker.org" },
@@ -205,7 +226,7 @@ namespace TarkovMonitor
             catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
             {
                 var blockedAction = settingName == nameof(Properties.Settings.Default.tarkovTrackerTokens)
-                    ? "Legacy TarkovTracker.io key changes are disabled"
+                    ? "Legacy TarkovTracker.io key changes and profile-keyed TarkovTracker.org recovery are disabled"
                     : "Recovery of previously saved TarkovTracker.org keys is unavailable";
                 storageWarnings.Add(
                     $"Tarkov Tracker storage setting {settingName} could not be read. Its original value was preserved and Tarkov Monitor will not overwrite it. {blockedAction} until the setting is repaired.");
@@ -297,7 +318,9 @@ namespace TarkovMonitor
         {
             lock (stateLock)
             {
-                return tokens.TryGetValue(profileId, out var token) ? token : "";
+                return tokens.TryGetValue(profileId, out var token) && !IsImportableToken(token)
+                    ? token
+                    : "";
             }
         }
 
@@ -350,6 +373,22 @@ namespace TarkovMonitor
 
         private const string LegacyOrgKeyIdPrefix = "legacy-org:";
 
+        private enum LegacyOrgSourceKind
+        {
+            Mode,
+            Profile,
+            Singleton,
+        }
+
+        private sealed record LegacyOrgSource(LegacyOrgSourceKind Kind, string Key);
+
+        private sealed record LegacyOrgCandidate(
+            string Id,
+            string Prefix,
+            string Token,
+            bool Verified,
+            IReadOnlyList<LegacyOrgSource> Sources);
+
         public sealed record OrgKeySummary(
             string Id,
             string Prefix,
@@ -360,6 +399,8 @@ namespace TarkovMonitor
             string ProfileId,
             EftSessionMode SessionMode,
             string AccountNickname,
+            bool IsVerified,
+            bool HasPendingConflict,
             bool IsLegacyRecovery,
             bool IsQuarantined);
 
@@ -383,18 +424,33 @@ namespace TarkovMonitor
             lock (stateLock)
             {
                 var storedKeys = orgTokenStore.GetKeys();
+                var legacyCandidates = orgTokenStoreLoaded
+                    ? GetLegacyOrgCandidatesLocked()
+                    : Array.Empty<LegacyOrgCandidate>();
+                var conflictedPendingPrefixes = storedKeys
+                    .Where(key => !key.IsBound)
+                    .Select(key => key.Prefix)
+                    .Concat(legacyCandidates.Select(candidate => candidate.Prefix))
+                    .GroupBy(prefix => prefix, StringComparer.OrdinalIgnoreCase)
+                    .Where(group => group.Count() > 1)
+                    .Select(group => group.Key)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var summaries = storedKeys
-                    .Select(ToSummary)
+                    .Select(key =>
+                    {
+                        var summary = ToSummary(key);
+                        return !key.IsBound && conflictedPendingPrefixes.Contains(key.Prefix)
+                            ? summary with { HasPendingConflict = true }
+                            : summary;
+                    })
                     .ToList();
 
-                if (orgTokenStoreLoaded)
+                foreach (var legacyCandidate in legacyCandidates)
                 {
-                    foreach (var legacyCandidate in GetLegacyOrgCandidatesLocked()
-                        .Where(candidate => !storedKeys.Any(key => !key.IsBound
-                            && string.Equals(key.Prefix, candidate.Prefix, StringComparison.OrdinalIgnoreCase))))
-                    {
-                        summaries.Add(ToLegacySummary(legacyCandidate));
-                    }
+                    var summary = ToLegacySummary(legacyCandidate);
+                    summaries.Add(conflictedPendingPrefixes.Contains(legacyCandidate.Prefix)
+                        ? summary with { HasPendingConflict = true }
+                        : summary);
                 }
                 return summaries;
             }
@@ -574,18 +630,19 @@ namespace TarkovMonitor
 
             if (id.StartsWith(LegacyOrgKeyIdPrefix, StringComparison.Ordinal))
             {
-                var prefix = id[LegacyOrgKeyIdPrefix.Length..].ToUpperInvariant();
+                string prefix;
                 string token;
                 bool alreadyVerified;
                 lock (stateLock)
                 {
-                    var candidate = GetLegacyOrgCandidateLocked(prefix);
-                    if (candidate == null || !string.Equals(candidate.Value.Prefix, prefix, StringComparison.OrdinalIgnoreCase))
+                    var candidate = GetLegacyOrgCandidateByIdLocked(id);
+                    if (candidate == null)
                     {
                         throw new KeyNotFoundException("The pending API key was not found.");
                     }
-                    token = candidate.Value.Token;
-                    alreadyVerified = candidate.Value.Verified;
+                    prefix = candidate.Prefix;
+                    token = candidate.Token;
+                    alreadyVerified = candidate.Verified;
                 }
 
                 if (!alreadyVerified)
@@ -621,15 +678,15 @@ namespace TarkovMonitor
                     var bindingProfile = requireCurrentProfile
                         ? EnsureCurrentBindingProfileLocked(profile)
                         : orgTokenStore.GetKnownProfile(profile.AccountId, profile.Id, profile.SessionMode);
-                    var candidate = GetLegacyOrgCandidateLocked(prefix);
+                    var candidate = GetLegacyOrgCandidateByIdLocked(id);
                     if (candidate == null
-                        || !string.Equals(candidate.Value.Prefix, prefix, StringComparison.OrdinalIgnoreCase)
-                        || !string.Equals(candidate.Value.Token, token, StringComparison.Ordinal))
+                        || !string.Equals(candidate.Prefix, prefix, StringComparison.OrdinalIgnoreCase)
+                        || !string.Equals(candidate.Token, token, StringComparison.Ordinal))
                     {
                         throw new InvalidOperationException("The pending API key changed before binding completed.");
                     }
 
-                    var savedKey = PersistLegacyRecoveryBindingLocked(token, prefix, bindingProfile);
+                    var savedKey = PersistLegacyRecoveryBindingLocked(candidate, bindingProfile);
                     return ToSummary(savedKey);
                 }
             }
@@ -694,8 +751,8 @@ namespace TarkovMonitor
                 EnsureOrgServiceGenerationLocked(expectedServiceGeneration);
                 if (id.StartsWith(LegacyOrgKeyIdPrefix, StringComparison.Ordinal))
                 {
-                    var prefix = id[LegacyOrgKeyIdPrefix.Length..].ToUpperInvariant();
-                    return RemoveLegacyOrgCandidateLocked(prefix);
+                    var candidate = GetLegacyOrgCandidateByIdLocked(id);
+                    return candidate != null && RemoveLegacyOrgCandidateLocked(candidate);
                 }
 
                 return PersistOrgStoreChangeLocked(store => store.Remove(id));
@@ -749,14 +806,16 @@ namespace TarkovMonitor
                 key.ProfileId,
                 sessionMode,
                 key.IsBound ? orgTokenStore.GetAccountNickname(key.AccountId) : "",
+                TarkovTrackerOrgStore.IsVerified(key),
+                false,
                 false,
                 !string.IsNullOrEmpty(orgTokenStore.GetStoreIssue(key)));
         }
 
-        private static OrgKeySummary ToLegacySummary((string Prefix, string Token, bool Verified) candidate)
+        private static OrgKeySummary ToLegacySummary(LegacyOrgCandidate candidate)
         {
             return new OrgKeySummary(
-                $"{LegacyOrgKeyIdPrefix}{candidate.Prefix}",
+                candidate.Id,
                 candidate.Prefix,
                 GetPrefixDisplayName(candidate.Prefix),
                 MaskToken(candidate.Token),
@@ -765,6 +824,8 @@ namespace TarkovMonitor
                 "",
                 EftSessionMode.Unknown,
                 "",
+                candidate.Verified,
+                false,
                 true,
                 false);
         }
@@ -775,45 +836,91 @@ namespace TarkovMonitor
             return token.Length <= 4 ? $"{prefix}_••••" : $"{prefix}_••••{token[^4..]}";
         }
 
-        private static IReadOnlyList<(string Prefix, string Token, bool Verified)> GetLegacyOrgCandidatesLocked()
+        private static IReadOnlyList<LegacyOrgCandidate> GetLegacyOrgCandidatesLocked()
         {
-            if (!modeTokenStoreLoaded)
+            var sources = new List<(string Prefix, string Token, LegacyOrgSource Source)>();
+            if (modeTokenStoreLoaded)
             {
-                return Array.Empty<(string Prefix, string Token, bool Verified)>();
+                foreach (var pair in modeTokens)
+                {
+                    var token = pair.Value?.Trim() ?? "";
+                    if (!IsImportableToken(token))
+                    {
+                        continue;
+                    }
+                    sources.Add((
+                        GetTokenPrefix(token),
+                        token,
+                        new LegacyOrgSource(LegacyOrgSourceKind.Mode, pair.Key)));
+                }
+            }
+            if (legacyTokenStoreLoaded)
+            {
+                foreach (var pair in tokens)
+                {
+                    var token = pair.Value?.Trim() ?? "";
+                    if (!IsImportableToken(token))
+                    {
+                        continue;
+                    }
+                    sources.Add((
+                        GetTokenPrefix(token),
+                        token,
+                        new LegacyOrgSource(LegacyOrgSourceKind.Profile, pair.Key)));
+                }
+            }
+
+            var singletonToken = Properties.Settings.Default.tarkovTrackerToken?.Trim() ?? "";
+            if (IsImportableToken(singletonToken))
+            {
+                sources.Add((
+                    GetTokenPrefix(singletonToken),
+                    singletonToken,
+                    new LegacyOrgSource(LegacyOrgSourceKind.Singleton, "")));
             }
 
             var storedFingerprints = orgTokenStore.GetKeys()
                 .Select(key => TarkovTrackerOrgStore.ComputeTokenFingerprint(key.Token))
                 .ToHashSet(StringComparer.Ordinal);
-            var candidates = new List<(string Prefix, string Token, bool Verified)>();
-            foreach (var prefix in new[] { "PVP", "PVE" })
-            {
-                if (!modeTokens.TryGetValue(prefix, out var token)
-                    || !IsImportableToken(token)
-                    || storedFingerprints.Contains(TarkovTrackerOrgStore.ComputeTokenFingerprint(token)))
+            return sources
+                .GroupBy(
+                    source => TarkovTrackerOrgStore.ComputeTokenFingerprint(source.Token),
+                    StringComparer.Ordinal)
+                .Where(group => !storedFingerprints.Contains(group.Key))
+                .Select(group =>
                 {
-                    continue;
-                }
-                candidates.Add((prefix, token, verificationStoreLoaded && IsTokenVerified(prefix, token)));
-            }
-            return candidates;
+                    var source = group.First();
+                    return new LegacyOrgCandidate(
+                        $"{LegacyOrgKeyIdPrefix}{group.Key}",
+                        source.Prefix,
+                        source.Token,
+                        verificationStoreLoaded && IsTokenVerified(source.Prefix, source.Token),
+                        group.Select(item => item.Source).Distinct().ToList());
+                })
+                .OrderBy(candidate => candidate.Prefix, StringComparer.Ordinal)
+                .ThenBy(candidate => candidate.Id, StringComparer.Ordinal)
+                .ToList();
         }
 
-        private static (string Prefix, string Token, bool Verified)? GetNextLegacyOrgCandidateLocked()
+        private static LegacyOrgCandidate? GetNextLegacyOrgCandidateLocked()
         {
-            return GetLegacyOrgCandidatesLocked().FirstOrDefault() is { Token.Length: > 0 } candidate
-                ? candidate
-                : null;
+            return GetLegacyOrgCandidatesLocked().FirstOrDefault();
         }
 
-        private static (string Prefix, string Token, bool Verified)? GetLegacyOrgCandidateLocked(string prefix)
+        private static LegacyOrgCandidate? GetLegacyOrgCandidateLocked(string prefix)
         {
             return GetLegacyOrgCandidatesLocked().FirstOrDefault(candidate => string.Equals(
-                    candidate.Prefix,
-                    prefix,
-                    StringComparison.OrdinalIgnoreCase)) is { Token.Length: > 0 } candidate
-                ? candidate
-                : null;
+                candidate.Prefix,
+                prefix,
+                StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static LegacyOrgCandidate? GetLegacyOrgCandidateByIdLocked(string id)
+        {
+            return GetLegacyOrgCandidatesLocked().FirstOrDefault(candidate => string.Equals(
+                candidate.Id,
+                id,
+                StringComparison.Ordinal));
         }
 
         private static T PersistOrgStoreChangeLocked<T>(Func<TarkovTrackerOrgStore, T> mutation)
@@ -844,31 +951,25 @@ namespace TarkovMonitor
         }
 
         private static TarkovTrackerOrgKey PersistLegacyRecoveryBindingLocked(
-            string token,
-            string prefix,
+            LegacyOrgCandidate candidate,
             Profile profile)
         {
-            if (!modeTokenStoreLoaded)
-            {
-                throw new InvalidOperationException("Previously saved TarkovTracker.org key storage must be repaired before recovery can continue.");
-            }
-
             var candidateStore = orgTokenStore.Clone();
-            var savedKey = candidateStore.AddVerifiedBoundToken(token, prefix, profile);
+            var savedKey = candidateStore.AddVerifiedBoundToken(candidate.Token, candidate.Prefix, profile);
             var previousOrgSetting = Properties.Settings.Default.tarkovTrackerOrgTokenStore;
             var previousModeSetting = Properties.Settings.Default.tarkovTrackerModeTokens;
+            var previousLegacySetting = Properties.Settings.Default.tarkovTrackerTokens;
+            var previousSingletonSetting = Properties.Settings.Default.tarkovTrackerToken;
             var previousVerificationSetting = Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes;
             var previousModeTokens = new Dictionary<string, string>(modeTokens, StringComparer.OrdinalIgnoreCase);
+            var previousTokens = new Dictionary<string, string>(tokens, StringComparer.Ordinal);
             var previousVerificationHashes = new Dictionary<string, string>(verifiedModeTokenHashes, StringComparer.OrdinalIgnoreCase);
             try
             {
-                modeTokens.Remove(prefix);
-                if (verificationStoreLoaded)
-                {
-                    verifiedModeTokenHashes.Remove(prefix);
-                }
+                RemoveLegacyOrgSourcesInMemoryLocked(candidate);
                 Properties.Settings.Default.tarkovTrackerOrgTokenStore = candidateStore.Serialize();
                 Properties.Settings.Default.tarkovTrackerModeTokens = JsonSerializer.Serialize(modeTokens);
+                Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
                 if (verificationStoreLoaded)
                 {
                     Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = JsonSerializer.Serialize(verifiedModeTokenHashes);
@@ -881,33 +982,31 @@ namespace TarkovMonitor
             catch
             {
                 modeTokens = previousModeTokens;
+                tokens = previousTokens;
                 verifiedModeTokenHashes = previousVerificationHashes;
                 Properties.Settings.Default.tarkovTrackerOrgTokenStore = previousOrgSetting;
                 Properties.Settings.Default.tarkovTrackerModeTokens = previousModeSetting;
+                Properties.Settings.Default.tarkovTrackerTokens = previousLegacySetting;
+                Properties.Settings.Default.tarkovTrackerToken = previousSingletonSetting;
                 Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = previousVerificationSetting;
                 throw;
             }
         }
 
-        private static bool RemoveLegacyOrgCandidateLocked(string prefix)
+        private static bool RemoveLegacyOrgCandidateLocked(LegacyOrgCandidate candidate)
         {
-            if (!modeTokenStoreLoaded || !modeTokens.ContainsKey(prefix))
-            {
-                return false;
-            }
-
             var previousModeSetting = Properties.Settings.Default.tarkovTrackerModeTokens;
+            var previousLegacySetting = Properties.Settings.Default.tarkovTrackerTokens;
+            var previousSingletonSetting = Properties.Settings.Default.tarkovTrackerToken;
             var previousVerificationSetting = Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes;
             var previousModeTokens = new Dictionary<string, string>(modeTokens, StringComparer.OrdinalIgnoreCase);
+            var previousTokens = new Dictionary<string, string>(tokens, StringComparer.Ordinal);
             var previousVerificationHashes = new Dictionary<string, string>(verifiedModeTokenHashes, StringComparer.OrdinalIgnoreCase);
             try
             {
-                modeTokens.Remove(prefix);
-                if (verificationStoreLoaded)
-                {
-                    verifiedModeTokenHashes.Remove(prefix);
-                }
+                RemoveLegacyOrgSourcesInMemoryLocked(candidate);
                 Properties.Settings.Default.tarkovTrackerModeTokens = JsonSerializer.Serialize(modeTokens);
+                Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
                 if (verificationStoreLoaded)
                 {
                     Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = JsonSerializer.Serialize(verifiedModeTokenHashes);
@@ -918,10 +1017,53 @@ namespace TarkovMonitor
             catch
             {
                 modeTokens = previousModeTokens;
+                tokens = previousTokens;
                 verifiedModeTokenHashes = previousVerificationHashes;
                 Properties.Settings.Default.tarkovTrackerModeTokens = previousModeSetting;
+                Properties.Settings.Default.tarkovTrackerTokens = previousLegacySetting;
+                Properties.Settings.Default.tarkovTrackerToken = previousSingletonSetting;
                 Properties.Settings.Default.tarkovTrackerVerifiedModeTokenHashes = previousVerificationSetting;
                 throw;
+            }
+        }
+
+        private static void RemoveLegacyOrgSourcesInMemoryLocked(LegacyOrgCandidate candidate)
+        {
+            foreach (var source in candidate.Sources)
+            {
+                switch (source.Kind)
+                {
+                    case LegacyOrgSourceKind.Mode:
+                        if (!modeTokens.TryGetValue(source.Key, out var modeToken)
+                            || !string.Equals(modeToken?.Trim(), candidate.Token, StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException("The saved API key changed before its recovery source could be updated.");
+                        }
+                        modeTokens.Remove(source.Key);
+                        if (verificationStoreLoaded)
+                        {
+                            verifiedModeTokenHashes.Remove(candidate.Prefix);
+                        }
+                        break;
+                    case LegacyOrgSourceKind.Profile:
+                        if (!tokens.TryGetValue(source.Key, out var profileToken)
+                            || !string.Equals(profileToken?.Trim(), candidate.Token, StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException("The saved API key changed before its recovery source could be updated.");
+                        }
+                        tokens.Remove(source.Key);
+                        break;
+                    case LegacyOrgSourceKind.Singleton:
+                        if (!string.Equals(
+                            Properties.Settings.Default.tarkovTrackerToken?.Trim(),
+                            candidate.Token,
+                            StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException("The saved API key changed before its recovery source could be updated.");
+                        }
+                        Properties.Settings.Default.tarkovTrackerToken = "";
+                        break;
+                }
             }
         }
 
@@ -1126,7 +1268,9 @@ namespace TarkovMonitor
         {
             if (IsLegacyServiceLocked())
             {
-                return tokens.TryGetValue(profile.Id, out var token) ? token : "";
+                return tokens.TryGetValue(profile.Id, out var token) && !IsImportableToken(token)
+                    ? token
+                    : "";
             }
             return orgTokenStore.GetForProfile(profile)?.Token ?? "";
         }
@@ -1151,6 +1295,10 @@ namespace TarkovMonitor
             if (!legacyTokenStoreLoaded)
             {
                 throw new InvalidOperationException("Legacy Tarkov Tracker token storage could not be read, so it was not overwritten.");
+            }
+            if (IsImportableToken(token))
+            {
+                throw new InvalidOperationException("This is a TarkovTracker.org API key. Switch to TarkovTracker.org to recover or manage it.");
             }
 
             lock (stateLock)
@@ -1218,9 +1366,11 @@ namespace TarkovMonitor
 
             var profileSnapshot = profile.Snapshot();
             string newToken;
-            long generation;
-            ITarkovTrackerAPI targetApi;
-            CancellationToken requestCancellation;
+            long generation = 0;
+            ITarkovTrackerAPI targetApi = null!;
+            CancellationToken requestCancellation = default;
+            ProgressResponse? unchangedProgress = null;
+            OrgKeyAutoAssignedEventArgs? autoAssignment = null;
             lock (stateLock)
             {
                 if (!IsLegacyServiceLocked()
@@ -1229,9 +1379,20 @@ namespace TarkovMonitor
                     && !string.IsNullOrWhiteSpace(profileSnapshot.Id)
                     && profileSnapshot.SessionMode is EftSessionMode.PVE or EftSessionMode.Regular or EftSessionMode.Seasonal)
                 {
+                    var existingKey = orgTokenStore.GetForProfile(profileSnapshot);
+                    var prefix = GetPrefixForSessionMode(profileSnapshot.SessionMode);
+                    var allowAutoBind = GetLegacyOrgCandidateLocked(prefix) == null;
                     var selectedKey = PersistOrgStoreChangeLocked(store =>
-                        store.RememberAndAutoBind(profileSnapshot, DateTimeOffset.UtcNow));
+                        store.RememberAndAutoBind(profileSnapshot, DateTimeOffset.UtcNow, allowAutoBind));
                     newToken = selectedKey?.Token ?? "";
+                    if (existingKey == null && selectedKey?.IsBound == true)
+                    {
+                        autoAssignment = new OrgKeyAutoAssignedEventArgs(
+                            GetPrefixDisplayName(selectedKey.Prefix),
+                            selectedKey.AccountId,
+                            selectedKey.ProfileId,
+                            GameWatcher.ResolveSessionMode(selectedKey.SessionMode));
+                    }
                 }
                 else
                 {
@@ -1244,21 +1405,45 @@ namespace TarkovMonitor
                     && !forceRefresh
                     && (ValidToken || string.IsNullOrWhiteSpace(newToken)))
                 {
-                    return Progress;
+                    unchangedProgress = Progress;
                 }
+                else
+                {
+                    currentProfile = profileSnapshot.Id;
+                    currentAccountId = profileSnapshot.AccountId;
+                    currentSessionMode = profileSnapshot.SessionMode;
+                    activeToken = newToken;
+                    generation = BeginNewActivationLocked();
+                    targetApi = api;
+                    requestCancellation = activeRequestCancellation.Token;
 
-                currentProfile = profileSnapshot.Id;
-                currentAccountId = profileSnapshot.AccountId;
-                currentSessionMode = profileSnapshot.SessionMode;
-                activeToken = newToken;
-                generation = BeginNewActivationLocked();
-                targetApi = api;
-                requestCancellation = activeRequestCancellation.Token;
+                    // Clear the previous profile before the first await. Until both token
+                    // inspection and progress retrieval finish, writes must remain disabled.
+                    ValidToken = false;
+                    Progress = new();
+                }
+            }
 
-                // Clear the previous profile before the first await. Until both token
-                // inspection and progress retrieval finish, writes must remain disabled.
-                ValidToken = false;
-                Progress = new();
+            if (autoAssignment != null)
+            {
+                foreach (EventHandler<OrgKeyAutoAssignedEventArgs> handler in
+                    OrgKeyAutoAssigned?.GetInvocationList().Cast<EventHandler<OrgKeyAutoAssignedEventArgs>>()
+                    ?? Array.Empty<EventHandler<OrgKeyAutoAssignedEventArgs>>())
+                {
+                    try
+                    {
+                        handler(null, autoAssignment);
+                    }
+                    catch
+                    {
+                        // Assignment is already persisted. A presentation observer must
+                        // never prevent the matching key from continuing activation.
+                    }
+                }
+            }
+            if (unchangedProgress != null)
+            {
+                return unchangedProgress;
             }
 
             if (string.IsNullOrWhiteSpace(newToken))

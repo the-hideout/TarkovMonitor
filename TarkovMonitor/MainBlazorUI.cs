@@ -70,6 +70,8 @@ namespace TarkovMonitor
         private string trackerProfileId = "";
         private string trackerAccountId = "";
         private EftSessionMode trackerSessionMode = EftSessionMode.Unknown;
+        private string displayedProfileId = "";
+        private string displayedAccountId = "";
         private EftSessionMode displayedSessionMode = EftSessionMode.Unknown;
         private TrackerStatusNotice? displayedTrackerStatusNotice;
         private LocalizationService localizationService;
@@ -107,13 +109,24 @@ namespace TarkovMonitor
             {
                 messageLog.AddMessage(storageWarning, "warning");
             }
-            if (!TarkovTracker.IsLegacyService && TarkovTracker.HasPendingOrgKey())
+            var pendingOrgKeys = TarkovTracker.IsLegacyService
+                ? Array.Empty<TarkovTracker.OrgKeySummary>()
+                : TarkovTracker.GetOrgKeys().Where(key => !key.IsBound).ToArray();
+            if (pendingOrgKeys.Length > 0)
             {
+                var hasInvalidRecord = pendingOrgKeys.Any(key => key.IsQuarantined);
+                var hasPendingConflict = pendingOrgKeys.Any(key => key.HasPendingConflict);
                 messageLog.AddMessage(
-                    "A saved TarkovTracker.org API key must be bound before it can be used.",
+                    hasInvalidRecord
+                        ? "Saved TarkovTracker.org API keys need review before assignment."
+                        : hasPendingConflict
+                            ? "Multiple TarkovTracker.org API keys share a mode. Automatic assignment is paused for that mode."
+                        : "A saved TarkovTracker.org API key must be bound before it can be used.",
                     "warning",
                     "/settings#tarkov-tracker",
-                    "Click here to bind the saved key.");
+                    hasInvalidRecord || hasPendingConflict
+                        ? "Review saved keys."
+                        : "Click here to bind the saved key.");
             }
 
             // Singleton log repository to record, display, and analyze logs for TarkovMonitor
@@ -212,6 +225,7 @@ namespace TarkovMonitor
             };
 
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
+            TarkovTracker.OrgKeyAutoAssigned += TarkovTracker_OrgKeyAutoAssigned;
 
             UpdateCheck.NewVersion += UpdateCheck_NewVersion;
             UpdateCheck.Error += UpdateCheck_Error;
@@ -381,6 +395,7 @@ namespace TarkovMonitor
                     trackerProfileId = "";
                     trackerAccountId = "";
                     trackerSessionMode = EftSessionMode.Unknown;
+                    ResetDisplayedEftSessionIdentity();
                     ResetTrackerStatusNotice();
                     messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
                     AddLastDetectedSessionMessage();
@@ -483,18 +498,27 @@ namespace TarkovMonitor
             // The later identity marker is the deterministic proof that the user made
             // a selection, so do not describe the pending mode as the active profile.
             if (string.IsNullOrWhiteSpace(profile.Id)
+                || !profile.HasIdentity
                 || profile.SessionMode == EftSessionMode.Unknown)
                 return;
 
-            var modeChanged = profile.SessionMode != displayedSessionMode;
-            if (modeChanged)
+            var identityChanged = !string.Equals(profile.Id, displayedProfileId, StringComparison.Ordinal)
+                || !string.Equals(profile.AccountId, displayedAccountId, StringComparison.Ordinal)
+                || profile.SessionMode != displayedSessionMode;
+            if (identityChanged)
             {
                 ResetTrackerStatusNotice();
             }
-            if (!force && profile.SessionMode == displayedSessionMode)
+            if (!force && !identityChanged)
                 return;
 
-            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), profile.DisplayName));
+            AddProtectedEftIdentityMessage(
+                $"EFT session confirmed - Mode: {profile.DisplayName}.",
+                "info",
+                profile.AccountId,
+                profile.Id);
+            displayedProfileId = profile.Id;
+            displayedAccountId = profile.AccountId;
             displayedSessionMode = profile.SessionMode;
         }
 
@@ -521,7 +545,7 @@ namespace TarkovMonitor
                 // A new application log means EFT is presenting a fresh selector.
                 // The user may choose the same mode as last time, so allow the later
                 // identity marker to publish one new confirmed-profile message.
-                displayedSessionMode = EftSessionMode.Unknown;
+                ResetDisplayedEftSessionIdentity();
             }
             var preserveSeasonalNotice = e.Kind == ProfileTransitionKind.Identity
                 && e.PreviousProfile.SessionMode == EftSessionMode.Seasonal
@@ -912,6 +936,15 @@ namespace TarkovMonitor
                 expectedLegacyService);
         }
 
+        private void TarkovTracker_OrgKeyAutoAssigned(object? sender, TarkovTracker.OrgKeyAutoAssignedEventArgs e)
+        {
+            AddProtectedEftIdentityMessage(
+                $"Verified {e.DisplayName} TarkovTracker.org API key assigned automatically.",
+                "update",
+                e.AccountId,
+                e.ProfileId);
+        }
+
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
         {
             return;
@@ -937,7 +970,7 @@ namespace TarkovMonitor
             trackerProfileId = "";
             trackerAccountId = "";
             trackerSessionMode = EftSessionMode.Unknown;
-            displayedSessionMode = EftSessionMode.Unknown;
+            ResetDisplayedEftSessionIdentity();
             ResetTrackerStatusNotice();
             TarkovDev.StopAutoUpdates();
             messageLog.AddMessage("No current EFT session. Please launch Escape from Tarkov.", "info");
@@ -1193,9 +1226,11 @@ namespace TarkovMonitor
                 }
 
                 displayedTrackerStatusNotice = notice;
-                messageLog.AddMessage(
-                    $"TarkovTracker.org active key: {TarkovTracker.GetSessionDisplayName(e.SessionMode)}.",
-                    "update");
+                AddProtectedEftIdentityMessage(
+                    $"TarkovTracker.org active key - Mode: {TarkovTracker.GetSessionDisplayName(e.SessionMode)}.",
+                    "update",
+                    e.AccountId,
+                    e.ProfileId);
             }
         }
 
@@ -1221,11 +1256,13 @@ namespace TarkovMonitor
             var displayName = TarkovTracker.GetSessionDisplayName(profile.SessionMode);
             AddTrackerStatusNotice(
                 new(TrackerStatusKind.MissingKey, profile.Id, profile.AccountId, profile.SessionMode),
-                $"TarkovTracker.org inactive: no verified {displayName} API key is available.",
+                $"TarkovTracker.org inactive - no verified API key for Mode: {displayName}.",
                 "warning",
                 expectedStatusEpoch,
                 "/settings#tarkov-tracker",
-                "Click here to import or validate an API key.");
+                "Click here to import or validate an API key.",
+                profile.AccountId,
+                profile.Id);
         }
 
         private void AnnounceSeasonalTrackerInactive(Profile profile)
@@ -1246,9 +1283,11 @@ namespace TarkovMonitor
             // by mode so repeated identity markers cannot duplicate the same status.
             AddTrackerStatusNotice(
                 new(TrackerStatusKind.SeasonalInactive, "", "", EftSessionMode.Seasonal),
-                "TarkovTracker.org inactive: Seasonal API keys are not supported yet.",
+                "TarkovTracker.org inactive - Mode: Seasonal is not supported yet.",
                 "info",
-                expectedStatusEpoch);
+                expectedStatusEpoch,
+                accountId: profile.AccountId,
+                profileId: profile.Id);
         }
 
         private void AddTrackerStatusNotice(
@@ -1257,7 +1296,9 @@ namespace TarkovMonitor
             string type,
             long expectedStatusEpoch,
             string? url = null,
-            string? linkText = null)
+            string? linkText = null,
+            string? accountId = null,
+            string? profileId = null)
         {
             lock (trackerStatusNoticeLock)
             {
@@ -1274,8 +1315,42 @@ namespace TarkovMonitor
                 // Publication stays inside the same lock as the epoch check. A reset
                 // therefore happens either wholly before this notice or wholly after it,
                 // never between validation and the visible Message entry.
-                messageLog.AddMessage(message, type, url, linkText);
+                if (!string.IsNullOrWhiteSpace(accountId) && !string.IsNullOrWhiteSpace(profileId))
+                {
+                    AddProtectedEftIdentityMessage(message, type, accountId, profileId, url, linkText);
+                }
+                else
+                {
+                    messageLog.AddMessage(message, type, url, linkText);
+                }
             }
+        }
+
+        private void AddProtectedEftIdentityMessage(
+            string message,
+            string type,
+            string accountId,
+            string profileId,
+            string? url = null,
+            string? linkText = null)
+        {
+            messageLog.AddProtectedMessage(
+                message,
+                type,
+                new[]
+                {
+                    new MonitorMessageProtectedValue("Account ID", accountId),
+                    new MonitorMessageProtectedValue("Profile ID", profileId),
+                },
+                url,
+                linkText);
+        }
+
+        private void ResetDisplayedEftSessionIdentity()
+        {
+            displayedProfileId = "";
+            displayedAccountId = "";
+            displayedSessionMode = EftSessionMode.Unknown;
         }
 
         private void ResetTrackerStatusNotice()

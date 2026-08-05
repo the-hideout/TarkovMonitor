@@ -358,7 +358,7 @@ namespace TarkovMonitor
                 throw new TarkovTracker.DuplicateImportedTokenException(
                     $"This {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key is already saved locally.");
             }
-            if (HasPendingKey(normalizedPrefix))
+            if (bindingProfile == null && HasPendingKey(normalizedPrefix))
             {
                 throw new InvalidOperationException(
                     $"Bind or remove the pending {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key before importing another one.");
@@ -426,11 +426,14 @@ namespace TarkovMonitor
             return Bind(id, profile);
         }
 
-        public TarkovTrackerOrgKey? RememberAndAutoBind(Profile profile, DateTimeOffset seenAt)
+        public TarkovTrackerOrgKey? RememberAndAutoBind(
+            Profile profile,
+            DateTimeOffset seenAt,
+            bool allowAutoBind = true)
         {
             RememberProfile(profile, seenAt, seenAt);
             var existing = GetForProfile(profile);
-            if (existing != null || !profile.SupportsTarkovTrackerWrites)
+            if (existing != null || !profile.SupportsTarkovTrackerWrites || !allowAutoBind)
             {
                 return existing;
             }
@@ -842,11 +845,6 @@ namespace TarkovMonitor
             if (!string.IsNullOrEmpty(recordIssue))
             {
                 return recordIssue;
-            }
-            if (!key.IsBound && keys.Count(candidate => !candidate.IsBound
-                && string.Equals(candidate.Prefix, key.Prefix, StringComparison.OrdinalIgnoreCase)) > 1)
-            {
-                return "The store contains more than one pending key for the same mode.";
             }
             if (keys.Any(candidate => !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)
                 && TokenIdentityMatches(candidate.Token, key.Token)))

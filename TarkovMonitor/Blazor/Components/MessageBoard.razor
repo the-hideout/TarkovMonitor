@@ -17,23 +17,42 @@
             <div class="dashboard-message">
                 <div class="d-block dashboard-message__paper">
                     <MudPaper Class="align-center py-2 px-3 mud-theme-secondary dashboard-message__paper" Elevation="3">
-                        <div class="d-flex align-center dashboard-message__row">
+                        <div class="d-flex align-start dashboard-message__row">
                             <MudIcon Icon="@GetTypeIcon(message.Type)" Title="@GetTypeTitle(message.Type)" Class="mr-2"/>
-                            @if (string.IsNullOrWhiteSpace(message.LinkText))
-                            {
-                                <span class="dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.Message</span>
-                            }
-                            else if (message.Message.Contains(message.LinkText, StringComparison.Ordinal))
-                            {
-                                var linkStart = message.Message.IndexOf(message.LinkText, StringComparison.Ordinal);
-                                var linkEnd = linkStart + message.LinkText.Length;
-                                <span class="dashboard-message__text">@(message.Message[..linkStart])<span @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>@(message.Message[linkEnd..])</span>
-                            }
-                            else
-                            {
-                                <span class="dashboard-message__text">@message.Message</span>
-                                <span class="ml-1 dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>
-                            }
+                            <div class="dashboard-message__content">
+                                @if (string.IsNullOrWhiteSpace(message.LinkText))
+                                {
+                                    <span class="dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.Message</span>
+                                }
+                                else if (message.Message.Contains(message.LinkText, StringComparison.Ordinal))
+                                {
+                                    var linkStart = message.Message.IndexOf(message.LinkText, StringComparison.Ordinal);
+                                    var linkEnd = linkStart + message.LinkText.Length;
+                                    <span class="dashboard-message__text">@(message.Message[..linkStart])<span @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>@(message.Message[linkEnd..])</span>
+                                }
+                                else
+                                {
+                                    <span class="dashboard-message__text">@message.Message</span>
+                                    <span class="ml-1 dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>
+                                }
+                                @if (message.ProtectedValues.Count > 0)
+                                {
+                                    <div class="dashboard-message__protected-values">
+                                        @foreach (var protectedValue in message.ProtectedValues)
+                                        {
+                                            <span class="dashboard-message__protected-detail">
+                                                <span class="dashboard-message__protected-label">@protectedValue.Label</span>
+                                                 <span class="dashboard-message__protected-value"
+                                                       tabindex="0"
+                                                       aria-label="@($"{protectedValue.Label}: {protectedValue.Value}. Protected value revealed on focus.")">
+                                                     <span class="dashboard-message__protected-mask" aria-hidden="true">Hidden - hover to reveal</span>
+                                                     <span class="dashboard-message__protected-reveal" aria-hidden="true">@protectedValue.Value</span>
+                                                 </span>
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </div>
                         <div class="d-flex align-center">
                             @foreach (MonitorMessageSelect select in message.Selects.GetSnapshot())

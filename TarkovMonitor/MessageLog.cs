@@ -54,6 +54,23 @@ namespace TarkovMonitor
             AddMessageCore(monMessage);
         }
 
+        public void AddProtectedMessage(
+            string message,
+            string? type,
+            IEnumerable<MonitorMessageProtectedValue> protectedValues,
+            string? url = null,
+            string? linkText = null)
+        {
+            var monMessage = new MonitorMessage(LimitMessageLength(message), type, url, linkText);
+            foreach (var protectedValue in protectedValues
+                .Where(value => !string.IsNullOrWhiteSpace(value.Label)
+                    && !string.IsNullOrWhiteSpace(value.Value)))
+            {
+                monMessage.ProtectedValues.Add(protectedValue);
+            }
+            AddMessageCore(monMessage);
+        }
+
         private void AddMessageCore(MonitorMessage message)
         {
             lock (messagesLock)

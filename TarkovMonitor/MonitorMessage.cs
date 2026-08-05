@@ -89,6 +89,7 @@ namespace TarkovMonitor
         public Action? OnClick { get; set; } = null;
         public MonitorMessageCollection<MonitorMessageButton> Buttons { get; } = new();
         public MonitorMessageCollection<MonitorMessageSelect> Selects { get; } = new();
+        public List<MonitorMessageProtectedValue> ProtectedValues { get; } = new();
         public MonitorMessage(string message)
         {
             Message = message;
@@ -145,6 +146,18 @@ namespace TarkovMonitor
                 return;
             }
             Buttons.Remove((MonitorMessageButton)sender);
+        }
+    }
+
+    public sealed class MonitorMessageProtectedValue
+    {
+        public string Label { get; }
+        public string Value { get; }
+
+        public MonitorMessageProtectedValue(string label, string value)
+        {
+            Label = label;
+            Value = value;
         }
     }
 
