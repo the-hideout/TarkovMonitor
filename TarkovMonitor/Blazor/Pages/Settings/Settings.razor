@@ -148,7 +148,7 @@
                         <div class="tracker-drawer-heading">
                             <button type="button" class="tracker-drawer-toggle" @onclick="TogglePendingDrawer" aria-expanded="@pendingDrawerExpanded.ToString().ToLowerInvariant()">
                                 <MudIcon Icon="@(pendingDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
-                                <span class="tracker-drawer-title">Unbound / Pending</span>
+                                <span class="tracker-drawer-title">Unbound / Unverified</span>
                                 <span class="tracker-count-badge">@PendingOrgKeys.Count</span>
                             </button>
                             <MudTooltip Text="Log in to EFT and select the matching profile to bind a pending key.">
@@ -203,7 +203,7 @@
                     <MudPaper Class="tracker-drawer" Elevation="0">
                         <button type="button" class="tracker-drawer-toggle tracker-drawer-toggle--primary" @onclick="ToggleBoundDrawer" aria-expanded="@boundDrawerExpanded.ToString().ToLowerInvariant()">
                             <MudIcon Icon="@(boundDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
-                            <span class="tracker-drawer-title">Bound keys</span>
+                            <span class="tracker-drawer-title">Bound / Verified</span>
                             <span class="tracker-count-badge">@BoundOrgKeys.Count</span>
                         </button>
                         <MudCollapse Expanded="@boundDrawerExpanded">
@@ -236,7 +236,6 @@
                                                                 <span class="tracker-mode-badge @ModeBadgeClass(key)" title="@key.DisplayName" aria-label="@key.DisplayName">@ModeBadgeShortLabel(key)</span>
                                                             }
                                                         </span>
-                                                        <span class="tracker-count-badge">@accountGroup.Keys.Count</span>
                                                     </button>
                                                     <div class="tracker-account-actions">
                                                         <MudButton @onclick="@(async () => await ShowOrgAccountDetails(accountGroup))" Variant="Variant.Text" Size="Size.Small">Details</MudButton>
@@ -850,7 +849,7 @@
 
     private static string AccountNicknameAction(OrgAccountGroup accountGroup)
     {
-        return string.IsNullOrWhiteSpace(accountGroup.Nickname) ? "Set nickname" : "Rename nickname";
+        return string.IsNullOrWhiteSpace(accountGroup.Nickname) ? "Set name" : "Rename";
     }
 
     private static bool CanSetAccountNickname(OrgAccountGroup accountGroup)
@@ -875,7 +874,7 @@
         {
             "PVE" => "PVE",
             "PVP" => "PVP",
-            "SN1" => "SEA",
+            "SN1" => "Seasonal",
             _ => "?",
         };
     }
