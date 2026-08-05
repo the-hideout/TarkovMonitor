@@ -1,0 +1,154 @@
+@implements IDisposable
+
+@inject IJSRuntime JSRuntime
+@inject LocalizationService LocalizationService
+@inject NavigationManager NavigationManager
+@inject TimersManager TimersManager
+
+@if (ShowPanel)
+{
+    <MudPaper id="floating-timer-panel" Class="@PanelClass" Elevation="8">
+        <div class="floating-timer-panel__handle">
+            <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Size="Size.Small" />
+            @if (collapsed)
+            {
+                <MudText Typo="Typo.subtitle2" Class="floating-timer-panel__compact-value">@CompactTimerValues</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.subtitle2">Raid timers</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Restore" Size="Size.Small" Color="Color.Inherit"
+                    title="Reset position" OnClick="ResetPosition" />
+            }
+            <MudIconButton Icon="@(collapsed ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                Size="Size.Small" Color="Color.Inherit"
+                title="@(collapsed ? "Expand timer panel" : "Collapse timer panel")"
+                OnClick="TogglePanel" />
+        </div>
+        @if (!collapsed)
+        {
+            <div class="floating-timer-panel__timers">
+                @if (TimersManager.FloatingPanelShowTimeInRaid)
+                {
+                    <div class="floating-timer-panel__timer">
+                        <MudText Typo="Typo.caption">Elapsed Raid Time</MudText>
+                        <MudText Typo="Typo.h5" Class="floating-timer-panel__value">@FormatTimer(timeInRaid)</MudText>
+                    </div>
+                }
+                @if (TimersManager.FloatingPanelShowRunThrough)
+                {
+                    <div class="floating-timer-panel__timer">
+                        <MudText Typo="Typo.caption">@LocalizationService.GetString("RunthroughPeriod")</MudText>
+                        <MudText Typo="Typo.h5" Class="floating-timer-panel__value">@FormatTimer(runThroughRemaining)</MudText>
+                    </div>
+                }
+            </div>
+        }
+    </MudPaper>
+}
+
+@code {
+    private TimeSpan timeInRaid;
+    private TimeSpan runThroughRemaining;
+    private bool isTimersPage;
+    private bool collapsed = true;
+    private bool panelInitialized;
+
+    private bool ShowPanel =>
+        TimersManager.FloatingPanelEnabled && TimersManager.IsRaidActive && !isTimersPage;
+
+    private string PanelClass =>
+        $"floating-timer-panel{(collapsed ? " floating-timer-panel--collapsed" : string.Empty)}";
+
+    private string CompactTimerValues => string.Join(" | ", new[]
+    {
+        TimersManager.FloatingPanelShowTimeInRaid ? $"ERT {FormatTimer(timeInRaid)}" : null,
+        TimersManager.FloatingPanelShowRunThrough ? $"RT {FormatTimer(runThroughRemaining)}" : null,
+    }.Where(value => value is not null));
+
+    private static string FormatTimer(TimeSpan value) => value.ToString(@"hh\:mm\:ss");
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+        TimersManager.RaidTimerChanged += OnRaidTimerChanged;
+        TimersManager.RunThroughTimerChanged += OnRunThroughTimerChanged;
+        TimersManager.RaidActiveChanged += OnPanelStateChanged;
+        TimersManager.FloatingPanelSettingChanged += OnPanelStateChanged;
+        timeInRaid = TimersManager.TimeInRaid;
+        runThroughRemaining = TimersManager.RunThroughRemaining;
+        UpdateCurrentPage();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ShowPanel && !panelInitialized)
+        {
+            await JSRuntime.InvokeVoidAsync("floatingTimerPanel.initialize", "floating-timer-panel");
+            panelInitialized = true;
+        }
+        else if (!ShowPanel)
+        {
+            panelInitialized = false;
+        }
+    }
+
+    private void OnLocationChanged(
+        object? sender,
+        Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        UpdateCurrentPage();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRaidTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        timeInRaid = e.TimerValue;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRunThroughTimerChanged(object? sender, TimerChangedEventArgs e)
+    {
+        runThroughRemaining = e.TimerValue;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPanelStateChanged(object? sender, EventArgs e)
+    {
+        if (!TimersManager.IsRaidActive)
+        {
+            collapsed = true;
+        }
+        timeInRaid = TimersManager.TimeInRaid;
+        runThroughRemaining = TimersManager.RunThroughRemaining;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateCurrentPage()
+    {
+        var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        isTimersPage = relativePath
+            .Split('?', '#')[0]
+            .Trim('/')
+            .Equals("timers", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void TogglePanel()
+    {
+        collapsed = !collapsed;
+    }
+
+    private async Task ResetPosition()
+    {
+        await JSRuntime.InvokeVoidAsync("floatingTimerPanel.reset", "floating-timer-panel");
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        TimersManager.RaidTimerChanged -= OnRaidTimerChanged;
+        TimersManager.RunThroughTimerChanged -= OnRunThroughTimerChanged;
+        TimersManager.RaidActiveChanged -= OnPanelStateChanged;
+        TimersManager.FloatingPanelSettingChanged -= OnPanelStateChanged;
+    }
+}
