@@ -392,7 +392,7 @@ namespace TarkovMonitor
 
         private void LogFileCreateWatcher_Created(object sender, FileSystemEventArgs e)
         {
-            if (TryGetLogType(e.FullPath, out var type) && type != GameLogType.Traces)
+            if (WatcherFileUtilities.TryGetLogType(e.FullPath, out var type) && type != GameLogType.Traces)
             {
                 StartNewMonitor(e.FullPath);
             }
@@ -486,30 +486,6 @@ namespace TarkovMonitor
                     new DirectoryNotFoundException(failureReason),
                     context,
                     $"Tarkov Monitor could not use the selected logs folder. {failureReason}"));
-        }
-
-        private static bool TryGetLogType(string path, out GameLogType logType)
-        {
-            logType = default;
-            var filename = Path.GetFileName(path);
-            var match = Regex.Match(
-                filename,
-                @"^(?<type>application|notifications|output|traces)(?:_\d+)?\.log$",
-                RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-            if (!match.Success)
-            {
-                return false;
-            }
-
-            logType = match.Groups["type"].Value.ToLowerInvariant() switch
-            {
-                "application" => GameLogType.Application,
-                "notifications" => GameLogType.Notifications,
-                "output" => GameLogType.Output,
-                "traces" => GameLogType.Traces,
-                _ => default,
-            };
-            return true;
         }
 
         private void CompleteInitialLogsReadIfNeeded()
@@ -1319,7 +1295,7 @@ namespace TarkovMonitor
                 var candidates = new List<(string Path, GameLogType Type, DateTime LastWriteTimeUtc)>();
                 foreach (var file in Directory.EnumerateFiles(folderPath))
                 {
-                    if (!TryGetLogType(file, out var type) || type == GameLogType.Traces)
+                    if (!WatcherFileUtilities.TryGetLogType(file, out var type) || type == GameLogType.Traces)
                     {
                         continue;
                     }
@@ -1400,7 +1376,7 @@ namespace TarkovMonitor
 
         private LogMonitor? StartNewMonitor(string path, EventHandler? initialReadComplete = null)
         {
-            if (!TryGetLogType(path, out var newType))
+            if (!WatcherFileUtilities.TryGetLogType(path, out var newType))
             {
                 return null;
             }

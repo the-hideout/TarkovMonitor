@@ -25,6 +25,11 @@ internal static partial class WatcherFileUtilities
     private static partial Regex LogFolderPattern();
 
     [GeneratedRegex(
+        @"(?:^|\s)(?<type>application|push-notifications|notifications|output|traces)(?:_\d+)?\.log$",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex LogFilePattern();
+
+    [GeneratedRegex(
         @"^\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_?(?<x>" + NumberPattern + @"),\s*(?<y>" + NumberPattern + @"),\s*(?<z>" + NumberPattern + @")_?(?<rx>" + NumberPattern + @"),\s*(?<ry>" + NumberPattern + @"),\s*(?<rz>" + NumberPattern + @"),\s*(?<rw>" + NumberPattern + @")(?:_[^()]*)?\s+\(\d+\)\.png$",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
     private static partial Regex ScreenshotPositionPattern();
@@ -107,6 +112,32 @@ internal static partial class WatcherFileUtilities
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
                 out timestamp);
+    }
+
+    internal static bool TryGetLogType(string? path, out GameLogType logType)
+    {
+        logType = default;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        var filename = Path.GetFileName(path);
+        var match = LogFilePattern().Match(filename);
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        logType = match.Groups["type"].Value.ToLowerInvariant() switch
+        {
+            "application" => GameLogType.Application,
+            "push-notifications" or "notifications" => GameLogType.Notifications,
+            "output" => GameLogType.Output,
+            "traces" => GameLogType.Traces,
+            _ => default,
+        };
+        return true;
     }
 
     internal static bool TryParseScreenshotPosition(
