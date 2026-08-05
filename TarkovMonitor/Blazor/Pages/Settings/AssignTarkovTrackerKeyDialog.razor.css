@@ -8,11 +8,23 @@
 
 .tracker-profile-picker {
     display: flex;
-    max-height: 24rem;
+    max-height: clamp(12rem, 46vh, 21rem);
     flex-direction: column;
     gap: 0.45rem;
     overflow-y: auto;
-    padding-right: 0.2rem;
+    padding: 0.2rem 0.35rem 0.2rem 0.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 11px;
+    background: rgba(0, 0, 0, 0.12);
+    scrollbar-color: rgba(120, 174, 251, 0.72) rgba(255, 255, 255, 0.04);
+    scrollbar-width: thin;
+}
+
+.tracker-profile-guidance {
+    margin-bottom: 0.65rem;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.72rem;
+    line-height: 1.3;
 }
 
 .tracker-profile-confirm {
@@ -75,7 +87,7 @@
 
 .tracker-profile-choice--disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    opacity: 0.64;
 }
 
 .tracker-profile-choice-main {
@@ -136,6 +148,12 @@
     border-color: rgba(212, 148, 255, 0.4);
     color: #deb0ff;
     background: rgba(139, 74, 180, 0.14);
+}
+
+.tracker-profile-state--available {
+    border-color: rgba(111, 166, 255, 0.42);
+    color: #a9cbff;
+    background: rgba(61, 112, 194, 0.13);
 }
 
 @media (max-width: 500px) {

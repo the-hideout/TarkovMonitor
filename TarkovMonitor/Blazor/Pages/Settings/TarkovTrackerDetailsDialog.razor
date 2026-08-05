@@ -1,0 +1,23 @@
+<MudDialog Class="tracker-settings-dialog">
+    <DialogContent>
+        <dl class="tracker-details-grid">
+            @foreach (var detail in Details)
+            {
+                <dt>@detail.Key</dt>
+                <dd>@detail.Value</dd>
+            }
+        </dl>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Info" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public IReadOnlyList<KeyValuePair<string, string>> Details { get; set; }
+        = Array.Empty<KeyValuePair<string, string>>();
+
+    private void Close() => MudDialog.Close();
+}

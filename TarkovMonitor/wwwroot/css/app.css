@@ -24,6 +24,97 @@ body {
     backdrop-filter: blur(2px);
 }
 
+.mud-dialog {
+    overflow: hidden;
+    border: 1px solid rgba(194, 178, 126, 0.72);
+    border-radius: 14px;
+    background: #1b1c1f;
+    box-shadow: 0 20px 56px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(0, 0, 0, 0.42);
+}
+
+.mud-dialog .mud-dialog-title {
+    border-bottom: 1px solid rgba(194, 178, 126, 0.28);
+    background: linear-gradient(180deg, rgba(194, 178, 126, 0.09), rgba(255, 255, 255, 0.015));
+}
+
+.mud-dialog .mud-dialog-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.mud-dialog.tracker-assignment-dialog {
+    max-height: calc(100vh - 72px);
+    overflow: hidden;
+    border: 1px solid rgba(194, 178, 126, 0.72);
+    border-radius: 14px;
+    background: #1b1c1f;
+    box-shadow: 0 20px 56px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(0, 0, 0, 0.42);
+}
+
+.mud-dialog.tracker-settings-dialog {
+    overflow: hidden;
+    border: 1px solid rgba(194, 178, 126, 0.72);
+    border-radius: 14px;
+    background: #1b1c1f;
+    box-shadow: 0 20px 56px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(0, 0, 0, 0.42);
+}
+
+.mud-dialog.tracker-assignment-dialog .mud-dialog-title {
+    padding: 13px 18px 11px;
+    border-bottom: 1px solid rgba(194, 178, 126, 0.28);
+    background: linear-gradient(180deg, rgba(194, 178, 126, 0.09), rgba(255, 255, 255, 0.015));
+}
+
+.mud-dialog.tracker-settings-dialog .mud-dialog-title {
+    padding: 13px 18px 11px;
+    border-bottom: 1px solid rgba(194, 178, 126, 0.28);
+    background: linear-gradient(180deg, rgba(194, 178, 126, 0.09), rgba(255, 255, 255, 0.015));
+}
+
+.mud-dialog.tracker-assignment-dialog .mud-dialog-content {
+    min-height: 0;
+    overflow: hidden;
+    padding: 13px 18px 10px;
+}
+
+.mud-dialog.tracker-settings-dialog .mud-dialog-content {
+    min-height: 0;
+    padding: 16px 18px;
+}
+
+.mud-dialog.tracker-assignment-dialog .mud-dialog-actions {
+    min-height: 52px;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.mud-dialog.tracker-settings-dialog .mud-dialog-actions {
+    min-height: 52px;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(0, 0, 0, 0.16);
+}
+
+body:has(.tracker-assignment-dialog) .app-main-content {
+    overflow-y: hidden;
+}
+
+body:has(.tracker-assignment-dialog) .mud-overlay-dialog .mud-overlay-scrim.mud-overlay-dark {
+    border-color: rgba(0, 0, 0, 0.68);
+    background-color: rgba(0, 0, 0, 0.68);
+}
+
+body:has(.tracker-settings-dialog) .mud-overlay-dialog .mud-overlay-scrim.mud-overlay-dark {
+    border-color: rgba(0, 0, 0, 0.68);
+    background-color: rgba(0, 0, 0, 0.68);
+}
+
+body:has(.mud-dialog) .mud-overlay-dialog .mud-overlay-scrim.mud-overlay-dark {
+    border-color: rgba(0, 0, 0, 0.68);
+    background-color: rgba(0, 0, 0, 0.68);
+}
+
 .dashboard-notification-surface {
     min-height: calc(100% - 16px);
     margin: 8px 16px;
@@ -41,6 +132,70 @@ body {
     overflow-wrap: anywhere;
     white-space: pre-wrap;
     word-break: break-word;
+}
+
+.dashboard-message__content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dashboard-message__protected-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.55rem;
+    margin-top: 0.4rem;
+}
+
+.dashboard-message__protected-detail {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.35rem;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.72rem;
+}
+
+.dashboard-message__protected-label {
+    font-weight: 650;
+}
+
+.dashboard-message__protected-value {
+    display: inline-flex;
+    max-width: 100%;
+    min-height: 1.45rem;
+    align-items: center;
+    padding: 0.08rem 0.42rem;
+    overflow: hidden;
+    border: 1px solid rgba(194, 178, 126, 0.38);
+    border-radius: 999px;
+    color: #d7c996;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: help;
+    outline: none;
+}
+
+.dashboard-message__protected-value:focus-visible {
+    border-color: rgba(194, 178, 126, 0.9);
+    box-shadow: 0 0 0 2px rgba(194, 178, 126, 0.22);
+}
+
+.dashboard-message__protected-reveal {
+    display: none;
+    overflow-wrap: anywhere;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: Consolas, monospace;
+    font-size: 0.7rem;
+    user-select: text;
+}
+
+.dashboard-message__protected-value:hover .dashboard-message__protected-mask,
+.dashboard-message__protected-value:focus .dashboard-message__protected-mask {
+    display: none;
+}
+
+.dashboard-message__protected-value:hover .dashboard-message__protected-reveal,
+.dashboard-message__protected-value:focus .dashboard-message__protected-reveal {
+    display: inline;
 }
 
 .dashboard-page-grid,

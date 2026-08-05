@@ -28,13 +28,6 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
-.tracker-drawer-heading,
-.tracker-account-heading {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-}
-
 .tracker-drawer-toggle,
 .tracker-account-toggle {
     display: flex;
@@ -52,7 +45,7 @@
 
 .tracker-drawer-toggle--primary {
     width: 100%;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent 60%);
+    background: transparent;
 }
 
 .tracker-drawer-toggle:hover,
@@ -82,11 +75,6 @@
     white-space: nowrap;
 }
 
-.tracker-help-icon {
-    margin-right: 1rem;
-    color: rgba(255, 255, 255, 0.62);
-}
-
 .tracker-count-badge {
     display: inline-flex;
     align-items: center;
@@ -104,6 +92,30 @@
 
 .tracker-drawer-content {
     padding: 0 0.65rem 0.65rem;
+}
+
+.tracker-state-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0 0 0.55rem;
+    padding: 0.48rem 0.58rem;
+    border: 1px solid rgba(143, 130, 95, 0.35);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.76);
+    background: rgba(143, 130, 95, 0.08);
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.tracker-state-note-icon {
+    flex: 0 0 auto;
+    margin-top: 0.03rem;
+    color: #c2b27e;
+}
+
+.tracker-state-note-icon--bound {
+    color: #8ce0b8;
 }
 
 .tracker-empty-state {
@@ -164,6 +176,16 @@
     column-gap: 0.35rem;
     min-height: 3.25rem;
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent);
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tracker-account-heading:hover,
+.tracker-account-heading:focus-within {
+    background-color: rgba(94, 151, 235, 0.09);
+}
+
+.tracker-account-heading:focus-within {
+    box-shadow: inset 0 0 0 2px rgba(104, 164, 255, 0.72);
 }
 
 .tracker-account-drawer {
@@ -186,6 +208,12 @@
 .tracker-account-toggle {
     width: 100%;
     padding: 0.48rem 0.62rem;
+}
+
+.tracker-account-toggle:hover,
+.tracker-account-toggle:focus-visible {
+    background-color: transparent;
+    box-shadow: none;
 }
 
 .tracker-account-actions {
@@ -237,6 +265,30 @@
     font-size: 0.64rem;
     font-weight: 700;
     letter-spacing: 0.025em;
+}
+
+.tracker-verification-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.15rem;
+    padding: 0.02rem 0.38rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.tracker-verification-badge--verified {
+    border-color: rgba(108, 203, 154, 0.32);
+    color: rgba(150, 226, 187, 0.92);
+    background: rgba(55, 137, 94, 0.12);
+}
+
+.tracker-verification-badge--pending {
+    border-color: rgba(242, 188, 87, 0.38);
+    color: #f2ca7f;
+    background: rgba(181, 123, 37, 0.14);
 }
 
 .tracker-mode-badge--pve {

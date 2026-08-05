@@ -1,0 +1,53 @@
+<MudDialog Class="tracker-settings-dialog">
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">Manage this exact bound EFT profile and API key.</MudText>
+        <dl class="tracker-key-edit-grid">
+            <dt>Mode</dt>
+            <dd>@Mode</dd>
+            <dt>API key</dt>
+            <dd class="tracker-key-edit-token">@MaskedToken</dd>
+            <dt>Account ID</dt>
+            <dd>@AccountId</dd>
+            <dt>Profile ID</dt>
+            <dd>@ProfileId</dd>
+            <dt>Last played</dt>
+            <dd>@LastPlayed</dd>
+        </dl>
+        @if (IsQuarantined)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                This saved record is ambiguous or invalid. Reassign is unavailable until it is repaired or removed.
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+        <MudSpacer />
+        <MudButton Color="Color.Info" OnClick="Reassign" Disabled="@IsQuarantined">Reassign</MudButton>
+        <MudButton OnClick="Unbind">Unbind</MudButton>
+        <MudButton Color="Color.Error" OnClick="Remove">Remove</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public enum KeyAction
+    {
+        Reassign,
+        Unbind,
+        Remove,
+    }
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string Mode { get; set; } = "";
+    [Parameter] public string MaskedToken { get; set; } = "";
+    [Parameter] public string AccountId { get; set; } = "";
+    [Parameter] public string ProfileId { get; set; } = "";
+    [Parameter] public string LastPlayed { get; set; } = "Unknown";
+    [Parameter] public bool IsQuarantined { get; set; }
+
+    private void Close() => MudDialog.Close();
+    private void Reassign() => MudDialog.Close(DialogResult.Ok(KeyAction.Reassign));
+    private void Unbind() => MudDialog.Close(DialogResult.Ok(KeyAction.Unbind));
+    private void Remove() => MudDialog.Close(DialogResult.Ok(KeyAction.Remove));
+}

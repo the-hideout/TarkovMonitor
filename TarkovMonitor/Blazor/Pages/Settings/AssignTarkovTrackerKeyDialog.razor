@@ -1,10 +1,18 @@
 @inject GameWatcher eft
 
-<MudDialog>
+<MudDialog Class="tracker-assignment-dialog">
     <DialogContent>
-        <MudText Typo="Typo.body2" Class="mb-3">
-            Select the exact EFT profile for this @KeyDisplayName API key.
+        <MudText Typo="Typo.body2" Class="mb-2">
+            @(RequiresVerification
+                ? "Choose the exact saved EFT profile. This recovered key will be verified before binding."
+                : "Choose the exact saved EFT profile for this verified key.")
         </MudText>
+
+        <div class="tracker-profile-guidance" role="note">
+            @(IsReassign
+                ? "Move here = empty profile. Swap keys = occupied profile."
+                : "Select = available. Key assigned = already occupied.")
+        </div>
 
         @if (selectedProfile != null)
         {
@@ -47,7 +55,7 @@
         else if (MatchingProfiles.Count == 0)
         {
             <MudAlert Severity="Severity.Info" Dense="true">
-                No matching profiles found. Scan profiles or launch EFT.
+                No matching @KeyDisplayName profile is saved. Select Scan profiles below, or launch EFT once to save one automatically.
             </MudAlert>
         }
         else
@@ -56,9 +64,17 @@
                 @foreach (var profile in MatchingProfiles)
                 {
                     var disabled = !IsReassign && profile.HasBoundKey;
+                    var stateLabel = disabled
+                        ? "Key assigned"
+                        : profile.HasBoundKey
+                            ? "Swap keys"
+                            : IsReassign
+                                ? "Move here"
+                                : "Select";
                     <button type="button"
                             class="tracker-profile-choice @(disabled ? "tracker-profile-choice--disabled" : "")"
                             disabled="@disabled"
+                            aria-label="@($"{AccountLabel(profile)}, Account ID {profile.AccountId}, {profile.DisplayName}, {stateLabel}")"
                             @onclick="@(() => Select(profile))">
                         <span class="tracker-profile-choice-main">
                             <span class="tracker-profile-choice-title">@AccountLabel(profile)</span>
@@ -74,10 +90,7 @@
                             {
                                 <span class="tracker-profile-state tracker-profile-state--current">Current</span>
                             }
-                            @if (profile.HasBoundKey)
-                            {
-                                <span class="tracker-profile-state tracker-profile-state--bound">@(IsReassign ? "Swap" : "Assigned")</span>
-                            }
+                            <span class="tracker-profile-state @(profile.HasBoundKey ? "tracker-profile-state--bound" : "tracker-profile-state--available")">@stateLabel</span>
                         </span>
                     </button>
                 }
@@ -94,9 +107,9 @@
         {
             <MudButton OnClick="Cancel">Cancel</MudButton>
             <MudTooltip Text="Reads only account, profile, mode, and last-played information. It does not replay tasks.">
-                <MudButton Color="Color.Info" Variant="Variant.Text" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search">
+                <span><MudButton Color="Color.Info" Variant="Variant.Text" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search">
                     Scan profiles
-                </MudButton>
+                </MudButton></span>
             </MudTooltip>
         }
         else
@@ -113,6 +126,7 @@
     [Parameter] public string KeyPrefix { get; set; } = "";
     [Parameter] public string KeyDisplayName { get; set; } = "";
     [Parameter] public bool KeyIsBound { get; set; }
+    [Parameter] public bool RequiresVerification { get; set; }
     [Parameter] public string BoundAccountId { get; set; } = "";
     [Parameter] public string BoundProfileId { get; set; } = "";
     [Parameter] public EftSessionMode BoundSessionMode { get; set; }
