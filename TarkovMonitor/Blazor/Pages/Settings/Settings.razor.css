@@ -3,7 +3,17 @@
     --tracker-border-hover: rgba(104, 164, 255, 0.42);
     --tracker-surface: rgba(255, 255, 255, 0.025);
     --tracker-surface-raised: rgba(255, 255, 255, 0.045);
-    margin-top: 0.75rem;
+    margin-top: 0.42rem;
+}
+
+.tracker-key-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0 0 0.45rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.085);
 }
 
 .tracker-drawer,
@@ -45,6 +55,7 @@
 
 .tracker-drawer-toggle--primary {
     width: 100%;
+    padding: 0.5rem 0.72rem;
     background: transparent;
 }
 
@@ -118,6 +129,13 @@
     color: #8ce0b8;
 }
 
+.tracker-manager-warning {
+    margin-bottom: 0.45rem;
+    padding: 0.36rem 0.55rem;
+    border-color: rgba(229, 176, 70, 0.42);
+    background: rgba(159, 112, 28, 0.1);
+}
+
 .tracker-empty-state {
     padding: 0.7rem 0.25rem;
     color: rgba(255, 255, 255, 0.6);
@@ -131,9 +149,17 @@
     background: var(--tracker-surface);
 }
 
+.tracker-profile-row {
+    padding: 0.34rem 0.55rem;
+}
+
 .tracker-pending-card + .tracker-pending-card,
 .tracker-profile-row + .tracker-profile-row {
     margin-top: 0.35rem;
+}
+
+.tracker-profile-row + .tracker-profile-row {
+    margin-top: 0.26rem;
 }
 
 .tracker-key-main {
@@ -174,7 +200,7 @@
     grid-template-columns: minmax(11rem, 1fr) 10rem 10.4rem;
     align-items: center;
     column-gap: 0.35rem;
-    min-height: 3.25rem;
+    min-height: 2.65rem;
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent);
     transition: background-color 160ms ease, box-shadow 160ms ease;
 }
@@ -207,7 +233,7 @@
 
 .tracker-account-toggle {
     width: 100%;
-    padding: 0.48rem 0.62rem;
+    padding: 0.34rem 0.62rem;
 }
 
 .tracker-account-toggle:hover,
@@ -235,7 +261,8 @@
     display: flex;
     min-width: 0;
     flex: 1 1 auto;
-    flex-direction: column;
+    align-items: baseline;
+    gap: 0.48rem;
 }
 
 .tracker-account-subtitle,
@@ -245,6 +272,32 @@
     font-size: 0.7rem;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.tracker-account-title {
+    flex: 0 1 auto;
+}
+
+.tracker-account-subtitle {
+    flex: 1 1 auto;
+}
+
+.tracker-profile-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.tracker-profile-identity .mud-typography {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker-profile-identity .tracker-token {
+    flex: 0 1 auto;
 }
 
 .tracker-mode-summary {
@@ -316,7 +369,7 @@
 }
 
 .tracker-profile-list {
-    padding: 0.35rem 0.5rem 0.5rem;
+    padding: 0.28rem 0.5rem 0.42rem;
     border-top: 1px solid rgba(255, 255, 255, 0.055);
 }
 
@@ -349,5 +402,11 @@
 
     .tracker-account-heading {
         min-height: auto;
+    }
+
+    .tracker-account-copy,
+    .tracker-profile-identity {
+        flex-wrap: wrap;
+        row-gap: 0.12rem;
     }
 }

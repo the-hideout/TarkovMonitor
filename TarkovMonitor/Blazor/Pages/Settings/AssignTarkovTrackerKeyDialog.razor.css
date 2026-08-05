@@ -21,10 +21,29 @@
 }
 
 .tracker-profile-guidance {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.42rem;
     margin-bottom: 0.65rem;
-    color: rgba(255, 255, 255, 0.58);
-    font-size: 0.72rem;
-    line-height: 1.3;
+}
+
+.tracker-profile-guidance-item {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.02rem;
+    padding: 0.38rem 0.52rem;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.67rem;
+    line-height: 1.25;
+}
+
+.tracker-profile-guidance-item b {
+    color: rgba(255, 255, 255, 0.83);
+    font-size: 0.7rem;
 }
 
 .tracker-profile-confirm {
@@ -157,6 +176,10 @@
 }
 
 @media (max-width: 500px) {
+    .tracker-profile-guidance {
+        grid-template-columns: 1fr;
+    }
+
     .tracker-profile-choice {
         align-items: flex-start;
         flex-direction: column;

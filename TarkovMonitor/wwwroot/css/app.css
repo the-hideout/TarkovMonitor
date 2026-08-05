@@ -43,6 +43,7 @@ body {
 }
 
 .mud-dialog.tracker-assignment-dialog {
+    position: relative;
     max-height: calc(100vh - 72px);
     overflow: hidden;
     border: 1px solid rgba(194, 178, 126, 0.72);
@@ -52,6 +53,7 @@ body {
 }
 
 .mud-dialog.tracker-settings-dialog {
+    position: relative;
     overflow: hidden;
     border: 1px solid rgba(194, 178, 126, 0.72);
     border-radius: 14px;
@@ -82,6 +84,10 @@ body {
     padding: 16px 18px;
 }
 
+.mud-dialog.tracker-edit-key-dialog .mud-dialog-content {
+    padding: 8px 18px 7px;
+}
+
 .mud-dialog.tracker-assignment-dialog .mud-dialog-actions {
     min-height: 52px;
     padding: 8px 12px;
@@ -94,6 +100,330 @@ body {
     padding: 8px 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.09);
     background: rgba(0, 0, 0, 0.16);
+}
+
+.mud-dialog.tracker-edit-key-dialog .mud-dialog-actions {
+    min-height: 46px;
+    padding: 4px 10px;
+}
+
+.mud-dialog.tracker-edit-key-dialog .tracker-dialog-note {
+    margin-bottom: 0.32rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.72rem;
+    line-height: 1.26;
+}
+
+.mud-dialog.tracker-edit-key-dialog .tracker-dialog-section-heading {
+    margin: 0.18rem 0 0.18rem;
+}
+
+.mud-dialog.tracker-edit-key-dialog .tracker-key-action-grid {
+    gap: 0.3rem;
+}
+
+.mud-dialog.tracker-edit-key-dialog .tracker-key-action {
+    min-height: 3.2rem;
+    gap: 0.34rem;
+    padding: 0.32rem 0.36rem;
+}
+
+.mud-dialog.tracker-edit-key-dialog .tracker-key-action__copy {
+    gap: 0.08rem;
+}
+
+.mud-dialog.tracker-edit-key-dialog .tracker-key-action__description {
+    font-size: 0.64rem;
+    line-height: 1.18;
+}
+
+.mud-button-root.tracker-profile-nickname-button {
+    min-height: 1.55rem;
+    padding: 0 0.3rem;
+}
+
+.mud-button-root.tracker-token-link {
+    min-height: 2.05rem;
+    margin: 0.12rem 0 0.08rem;
+    padding: 0 0.45rem;
+}
+
+.tracker-key-intro {
+    margin: 0 0 0.42rem;
+    line-height: 1.35;
+}
+
+.mud-button-root.tracker-toolbar-button {
+    min-height: 2.2rem;
+    margin: 0;
+}
+
+.mud-dialog.tracker-assignment-dialog::before,
+.mud-dialog.tracker-settings-dialog::before {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #68a4ff, #7ed7ad 58%, #c2b27e);
+    content: "";
+    pointer-events: none;
+}
+
+.tracker-dialog-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.62rem;
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+    padding: 0.66rem 0.72rem;
+    border: 1px solid rgba(111, 166, 255, 0.3);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.76);
+    background: linear-gradient(135deg, rgba(61, 112, 194, 0.12), rgba(255, 255, 255, 0.018));
+    font-size: 0.76rem;
+    line-height: 1.38;
+}
+
+.tracker-dialog-note--assigned {
+    border-color: rgba(87, 194, 142, 0.32);
+    background: linear-gradient(135deg, rgba(48, 146, 99, 0.12), rgba(255, 255, 255, 0.018));
+}
+
+.tracker-dialog-note--warning {
+    border-color: rgba(242, 188, 87, 0.36);
+    background: linear-gradient(135deg, rgba(181, 123, 37, 0.14), rgba(255, 255, 255, 0.018));
+}
+
+.tracker-dialog-note--danger {
+    border-color: rgba(242, 105, 105, 0.38);
+    background: linear-gradient(135deg, rgba(181, 57, 57, 0.15), rgba(255, 255, 255, 0.018));
+}
+
+.tracker-dialog-note__icon {
+    margin-top: 0.04rem;
+    color: #9fc5ff;
+}
+
+.tracker-dialog-note--assigned .tracker-dialog-note__icon {
+    color: #8ce0b8;
+}
+
+.tracker-dialog-note--warning .tracker-dialog-note__icon {
+    color: #f2ca7f;
+}
+
+.tracker-dialog-note--danger .tracker-dialog-note__icon {
+    color: #ff9b9b;
+}
+
+.tracker-dialog-note__copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.tracker-dialog-note__copy strong {
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 0.79rem;
+}
+
+.tracker-dialog-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    margin: 0 0 0.42rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.73rem;
+    font-weight: 750;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.tracker-dialog-section-heading .mud-icon-root {
+    color: rgba(159, 197, 255, 0.86);
+}
+
+.tracker-dialog-detail-card {
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 11px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.038), rgba(0, 0, 0, 0.11));
+}
+
+.tracker-dialog-detail-row {
+    display: grid;
+    grid-template-columns: 7.25rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+    min-height: 1.95rem;
+    padding: 0.26rem 0.62rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.tracker-dialog-detail-row:last-child {
+    border-bottom: 0;
+}
+
+.tracker-dialog-detail-row dt {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.72rem;
+    font-weight: 650;
+}
+
+.tracker-dialog-detail-row dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.tracker-dialog-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.2rem;
+    padding: 0.02rem 0.4rem;
+    border: 1px solid rgba(111, 166, 255, 0.42);
+    border-radius: 999px;
+    color: #a9cbff;
+    background: rgba(61, 112, 194, 0.14);
+    font-size: 0.67rem;
+    font-weight: 750;
+}
+
+.tracker-dialog-mode-badge--pve {
+    border-color: rgba(87, 194, 142, 0.42);
+    color: #8ce0b8;
+    background: rgba(48, 146, 99, 0.14);
+}
+
+.tracker-dialog-mode-badge--seasonal {
+    border-color: rgba(212, 148, 255, 0.42);
+    color: #deb0ff;
+    background: rgba(139, 74, 180, 0.14);
+}
+
+.tracker-dialog-form-card {
+    padding: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.022);
+}
+
+.tracker-dialog-field-help {
+    display: block;
+    margin-top: 0.42rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.7rem;
+    line-height: 1.35;
+}
+
+.tracker-key-action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.tracker-key-action {
+    display: flex;
+    min-width: 0;
+    min-height: 4.45rem;
+    align-items: flex-start;
+    gap: 0.52rem;
+    padding: 0.54rem;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.88);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.038), rgba(0, 0, 0, 0.1));
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+.tracker-key-action:hover,
+.tracker-key-action:focus-visible {
+    border-color: rgba(111, 166, 255, 0.55);
+    background-color: rgba(61, 112, 194, 0.12);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.tracker-key-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+    transform: none;
+}
+
+.tracker-key-action--warning:hover,
+.tracker-key-action--warning:focus-visible {
+    border-color: rgba(242, 188, 87, 0.5);
+    background-color: rgba(181, 123, 37, 0.11);
+}
+
+.tracker-key-action--danger:hover,
+.tracker-key-action--danger:focus-visible {
+    border-color: rgba(242, 105, 105, 0.52);
+    background-color: rgba(181, 57, 57, 0.12);
+}
+
+.tracker-key-action__icon {
+    flex: 0 0 auto;
+    color: #9fc5ff;
+}
+
+.tracker-key-action--warning .tracker-key-action__icon {
+    color: #f2ca7f;
+}
+
+.tracker-key-action--danger .tracker-key-action__icon {
+    color: #ff9b9b;
+}
+
+.tracker-key-action__copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.16rem;
+}
+
+.tracker-key-action__title {
+    font-size: 0.76rem;
+    font-weight: 750;
+}
+
+.tracker-key-action__description {
+    color: rgba(255, 255, 255, 0.56);
+    font-size: 0.67rem;
+    line-height: 1.28;
+}
+
+.mud-dialog .tracker-dialog-footer-button {
+    min-width: 5.6rem;
+    border-radius: 8px;
+}
+
+@media (max-width: 520px) {
+    .tracker-dialog-detail-row {
+        grid-template-columns: 1fr;
+        gap: 0.08rem;
+        align-items: flex-start;
+    }
+
+    .tracker-key-action-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .tracker-key-action {
+        min-height: auto;
+    }
 }
 
 body:has(.tracker-assignment-dialog) .app-main-content {

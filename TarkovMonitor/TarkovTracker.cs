@@ -399,6 +399,7 @@ namespace TarkovMonitor
             string ProfileId,
             EftSessionMode SessionMode,
             string AccountNickname,
+            string ProfileNickname,
             bool IsVerified,
             bool HasPendingConflict,
             bool IsLegacyRecovery,
@@ -550,7 +551,7 @@ namespace TarkovMonitor
                     || GetLegacyOrgCandidateLocked(suppliedPrefix) != null)
                 {
                     throw new InvalidOperationException(
-                        $"Bind or remove the pending {GetPrefixDisplayName(suppliedPrefix)} API key before importing another one.");
+                        $"Assign or remove the unassigned {GetPrefixDisplayName(suppliedPrefix)} API key before importing another one.");
                 }
             }
 
@@ -582,7 +583,7 @@ namespace TarkovMonitor
                         || GetLegacyOrgCandidateLocked(prefix) != null)
                     {
                         throw new InvalidOperationException(
-                            $"Another pending {GetPrefixDisplayName(prefix)} API key was added before this import finished.");
+                            $"Another unassigned {GetPrefixDisplayName(prefix)} API key was added before this import finished.");
                     }
                     savedKey = PersistOrgStoreChangeLocked(store =>
                         store.AddVerifiedToken(trimmedToken, prefix, null));
@@ -683,7 +684,7 @@ namespace TarkovMonitor
                         || !string.Equals(candidate.Prefix, prefix, StringComparison.OrdinalIgnoreCase)
                         || !string.Equals(candidate.Token, token, StringComparison.Ordinal))
                     {
-                        throw new InvalidOperationException("The pending API key changed before binding completed.");
+                        throw new InvalidOperationException("The unassigned API key changed before assignment finished.");
                     }
 
                     var savedKey = PersistLegacyRecoveryBindingLocked(candidate, bindingProfile);
@@ -772,7 +773,7 @@ namespace TarkovMonitor
                 if (GetLegacyOrgCandidateLocked(key.Prefix) != null)
                 {
                     throw new InvalidOperationException(
-                        $"Bind or remove the pending {GetPrefixDisplayName(key.Prefix)} API key before unbinding another one.");
+                        $"Assign or remove the unassigned {GetPrefixDisplayName(key.Prefix)} API key before unbinding another one.");
                 }
                 var unboundKey = PersistOrgStoreChangeLocked(store => store.Unbind(id));
                 return ToSummary(unboundKey);
@@ -791,6 +792,18 @@ namespace TarkovMonitor
             }
         }
 
+        public static string SetOrgProfileNickname(string id, string nickname)
+        {
+            var expectedServiceGeneration = CaptureOrgServiceGeneration();
+            EnsureOrgProfileStoreWritable();
+
+            lock (stateLock)
+            {
+                EnsureOrgServiceGenerationLocked(expectedServiceGeneration);
+                return PersistOrgStoreChangeLocked(store => store.SetProfileNickname(id, nickname));
+            }
+        }
+
         private static OrgKeySummary ToSummary(TarkovTrackerOrgKey key)
         {
             var sessionMode = key.IsBound
@@ -806,6 +819,7 @@ namespace TarkovMonitor
                 key.ProfileId,
                 sessionMode,
                 key.IsBound ? orgTokenStore.GetAccountNickname(key.AccountId) : "",
+                key.IsBound ? key.ProfileNickname : "",
                 TarkovTrackerOrgStore.IsVerified(key),
                 false,
                 false,
@@ -823,6 +837,7 @@ namespace TarkovMonitor
                 "",
                 "",
                 EftSessionMode.Unknown,
+                "",
                 "",
                 candidate.Verified,
                 false,

@@ -127,41 +127,48 @@
                     <MudSelectItem T="string" Value="@pair.Key">@pair.Value</MudSelectItem>
                 }
             </MudSelect>
-            <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
+            <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info" Class="tracker-token-link">@LocalizationService.GetString("GetAToken")</MudButton>
 
             @if (!TarkovTracker.IsLegacyService)
             {
-                <MudText Typo="Typo.body2">Import verified TarkovTracker.org keys and bind each one to an exact EFT account, profile, and mode.</MudText>
-                @if (CanImportOrgKey)
-                {
-                    <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3 mr-1">Import API Key</MudButton>
-                }
-                else
-                {
-                    <MudTooltip Text="@OrgImportBlockedReason">
-                        <span><MudButton Disabled="true" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3 mr-1">Import API Key</MudButton></span>
+                <MudText Typo="Typo.body2" Class="tracker-key-intro">Add a TarkovTracker.org API key. Tarkov Monitor verifies the key and its game mode before it can be assigned to an EFT profile.</MudText>
+                <div class="tracker-key-toolbar">
+                    @if (CanImportOrgKey)
+                    {
+                        <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="tracker-toolbar-button">Import API Key</MudButton>
+                    }
+                    else
+                    {
+                        <MudTooltip Text="@OrgImportBlockedReason">
+                            <span><MudButton Disabled="true" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="tracker-toolbar-button">Import API Key</MudButton></span>
+                        </MudTooltip>
+                    }
+                    <MudTooltip Text="Reads account, profile, mode, and last-played information from past EFT logs. It does not replay tasks.">
+                        <span><MudButton @onclick="ScanOrgProfiles" Variant="Variant.Text" Color="Color.Info" StartIcon="@Icons.Material.Filled.Search" Disabled="@scanningOrgProfiles" Class="tracker-toolbar-button">Scan profiles</MudButton></span>
                     </MudTooltip>
-                }
-                <MudTooltip Text="Reads account, profile, mode, and last-played information from past EFT logs. It does not replay tasks.">
-                    <span><MudButton @onclick="ScanOrgProfiles" Variant="Variant.Text" Color="Color.Info" StartIcon="@Icons.Material.Filled.Search" Disabled="@scanningOrgProfiles">Scan profiles</MudButton></span>
-                </MudTooltip>
+                </div>
 
                 <div class="tracker-key-manager">
-                    <div class="tracker-drawer mb-2">
+                    <div class="tracker-state-note tracker-manager-warning" role="note">
+                        <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Class="tracker-state-note-icon" />
+                        <span><b>Tarkov Monitor manages API keys automatically.</b> Only change an assignment if you understand how EFT profiles and game modes are linked.</span>
+                    </div>
+
+                    <div class="tracker-drawer mb-1">
                         <button type="button" class="tracker-drawer-toggle tracker-drawer-toggle--primary" @onclick="TogglePendingDrawer" aria-expanded="@pendingDrawerExpanded.ToString().ToLowerInvariant()">
                             <MudIcon Icon="@(pendingDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
-                            <span class="tracker-drawer-title">Unbound / Unverified</span>
+                            <span class="tracker-drawer-title">Unassigned</span>
                             <span class="tracker-count-badge">@PendingOrgKeys.Count</span>
                         </button>
                         <MudCollapse Expanded="@pendingDrawerExpanded">
                             <div class="tracker-drawer-content">
                                 <div class="tracker-state-note" role="note">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="tracker-state-note-icon" />
-                                    <span><b>Waiting for assignment.</b> Imported keys are verified when saved; recovered keys are verified before binding. With one key waiting for a mode, its matching live profile can bind it automatically.</span>
+                                    <span><b>Saved, but not in use.</b> A verified key can be assigned automatically when it is the only unassigned key for the active game mode. If several keys match, choose Assign. Keys marked Verify on assign are checked before they are linked.</span>
                                 </div>
                                 @if (PendingOrgKeys.Count == 0)
                                 {
-                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No unbound API key is stored.</MudText>
+                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No unassigned API key is stored.</MudText>
                                 }
                                 @foreach (var key in PendingOrgKeys)
                                 {
@@ -208,18 +215,18 @@
                     <div class="tracker-drawer">
                         <button type="button" class="tracker-drawer-toggle tracker-drawer-toggle--primary" @onclick="ToggleBoundDrawer" aria-expanded="@boundDrawerExpanded.ToString().ToLowerInvariant()">
                             <MudIcon Icon="@(boundDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
-                            <span class="tracker-drawer-title">Bound / Verified</span>
+                            <span class="tracker-drawer-title">Assigned</span>
                             <span class="tracker-count-badge">@BoundOrgKeys.Count</span>
                         </button>
                         <MudCollapse Expanded="@boundDrawerExpanded">
                             <div class="tracker-drawer-content">
                                 <div class="tracker-state-note" role="note">
                                     <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" Class="tracker-state-note-icon tracker-state-note-icon--bound" />
-                                    <span><b>Verified and assigned.</b> Each key is tied to one exact EFT account, profile, and mode. Reassign moves it; selecting an occupied profile swaps the keys.</span>
+                                    <span><b>Ready to use.</b> Tarkov Monitor automatically selects the key linked to your active EFT account, profile, and game mode. Use Details or Set name/Rename for an account. Use Edit to manage a profile key or its nickname.</span>
                                 </div>
                                 @if (BoundOrgKeys.Count == 0)
                                 {
-                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No TarkovTracker.org API keys are bound.</MudText>
+                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No TarkovTracker.org API keys are assigned.</MudText>
                                 }
                                 else
                                 {
@@ -240,7 +247,7 @@
                                                         <MudIcon Icon="@(IsAccountDrawerExpanded(accountGroup.AccountId) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
                                                         <span class="tracker-account-copy">
                                                             <span class="tracker-account-title">@AccountDrawerTitle(accountGroup)</span>
-                                                            <span class="tracker-account-subtitle">@AccountDrawerSubtitle(accountGroup)</span>
+                                                            <span class="tracker-account-subtitle">Account ID: @accountGroup.AccountId @CurrentAccountMarker(accountGroup.AccountId)</span>
                                                         </span>
                                                     </button>
                                                     <span class="tracker-mode-summary">
@@ -272,13 +279,13 @@
                                                         @foreach (var key in accountGroup.Keys.OrderBy(key => key.DisplayName, StringComparer.Ordinal))
                                                         {
                                                             <div class="tracker-profile-row">
-                                                                <div class="tracker-key-main">
-                                                                    <div class="tracker-key-copy">
-                                                                        <div class="d-flex align-center flex-wrap gap-2">
+                                                                    <div class="tracker-key-main">
+                                                                        <div class="tracker-key-copy">
+                                                                        <div class="tracker-profile-identity">
                                                                             <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
-                                                                            <MudText Typo="Typo.body2"><b>@ActiveKeyMarker(key)</b></MudText>
+                                                                            <MudText Typo="Typo.body2"><b>@ProfileRowLabel(key)</b></MudText>
+                                                                            <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
                                                                         </div>
-                                                                        <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
                                                                     </div>
                                                                     <div class="tracker-key-actions">
                                                                         <MudButton @onclick="@(async () => await EditOrgKey(key))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">Edit</MudButton>
@@ -305,21 +312,21 @@
             {
                 <MudAlert Severity="Severity.Warning" Class="mb-3">Support for TarkovTracker.io in Tarkov Monitor has been retired. Existing profile-keyed keys remain available for compatibility. TarkovTracker.org is recommended for current key management and session-based switching.</MudAlert>
                 <MudText Typo="Typo.body2" Class="mb-2">Legacy TarkovTracker.io compatibility uses the original profile-based key format and remains isolated from TarkovTracker.org keys.</MudText>
-                <MudText>@LocalizationService.GetString("CurrentProfile"):</MudText>
-                @if (GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute)
+                <MudText>Active TarkovTracker.io profile:</MudText>
+                @if (HasActiveLegacyProfile && GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute)
                 {
                     <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.DisplayName)</MudLink>
                 }
-                else if (GameWatcher.CurrentProfile.HasIdentity)
+                else if (HasActiveLegacyProfile)
                 {
                     <MudText>@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.DisplayName)</MudText>
                 }
                 else
                 {
-                    <MudText>@GameWatcher.CurrentProfile.DisplayName</MudText>
+                    <MudText>None</MudText>
                 }
                 <MudText Typo="Typo.caption" Class="d-block mb-1">@LegacyTokenStatus</MudText>
-                <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Disabled="@(!HasCurrentLegacyProfile)" MaxLength="22" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick" />
+                <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Disabled="@(!HasLegacyProfileCandidate)" MaxLength="22" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick" />
                 <MudButton @onclick="TestToken" Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@(testingLegacyToken ? "Testing" : LocalizationService.GetString("TestToken"))</MudButton>
             }
         </MudPaper>
@@ -380,10 +387,12 @@
     private List<(string Code, string Name)> AvailableLanguages = new();
     private bool BoundKeyFilterEnabled => false;
     private string boundKeyFilter = "";
-    private bool pendingDrawerExpanded;
-    private bool boundDrawerExpanded = true;
+    // UI-only session state. Static fields survive page navigation, but reset
+    // naturally when Tarkov Monitor exits; no drawer layout reaches user data.
+    private static bool pendingDrawerExpanded;
+    private static bool boundDrawerExpanded;
     private bool scanningOrgProfiles;
-    private readonly HashSet<string> expandedAccountIds = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> expandedAccountIds = new(StringComparer.Ordinal);
 
     private sealed record OrgAccountGroup(
         string AccountId,
@@ -406,8 +415,6 @@
         eft.GameStarted += OnGameClientStateChanged;
         eft.GameStopped += OnGameClientStateChanged;
         eft.ProfileChanged += OnGameClientStateChanged;
-        pendingDrawerExpanded = HasPendingOrgKey;
-        boundDrawerExpanded = !pendingDrawerExpanded;
     }
 
     protected override void OnParametersSet()
@@ -693,18 +700,25 @@
     }
 
     private bool testingLegacyToken;
-    private bool HasCurrentLegacyProfile => GameWatcher.CurrentProfile.HasIdentity
+    private bool HasLegacyProfileCandidate => eft.IsGameRunning
+        && GameWatcher.CurrentProfile.HasIdentity
         && !string.IsNullOrWhiteSpace(GameWatcher.CurrentProfile.Id);
-    private bool HasCurrentLegacyToken => HasCurrentLegacyProfile
+    private bool HasCurrentLegacyToken => HasLegacyProfileCandidate
         && !string.IsNullOrWhiteSpace(TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id));
-    private string LegacyTokenStatus => !HasCurrentLegacyProfile
-        ? "No exact EFT profile is selected. Launch EFT or read past logs before editing a legacy key."
+    private bool HasActiveLegacyProfile => HasCurrentLegacyToken
+        && TarkovTracker.IsLegacyService
+        && TarkovTracker.ValidToken
+        && string.Equals(GameWatcher.CurrentProfile.Id, TarkovTracker.CurrentProfileId, StringComparison.Ordinal)
+        && string.Equals(GameWatcher.CurrentProfile.AccountId, TarkovTracker.CurrentAccountId, StringComparison.Ordinal)
+        && GameWatcher.CurrentProfile.SessionMode == TarkovTracker.CurrentSessionMode;
+    private string LegacyTokenStatus => !HasLegacyProfileCandidate
+        ? "No active TarkovTracker.io profile."
         : HasCurrentLegacyToken
-            ? "A legacy key is saved locally for this exact EFT profile."
-            : "No legacy key is saved for this exact EFT profile.";
+            ? "A legacy .io key is saved for the detected EFT profile."
+            : "No legacy .io key is saved for the detected EFT profile.";
     public bool TestTokenButtonDisabled => testingLegacyToken
         || !TarkovTracker.IsLegacyService
-        || !HasCurrentLegacyProfile
+        || !HasLegacyProfileCandidate
         || TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id).Length != 22;
 
     public TimeSpan RunthroughTime
@@ -873,7 +887,8 @@
                     group.ToList()))
                 .Where(group => string.IsNullOrWhiteSpace(filter)
                     || group.AccountId.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                    || group.Nickname.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    || group.Nickname.Contains(filter, StringComparison.OrdinalIgnoreCase)
+                    || group.Keys.Any(key => key.ProfileNickname.Contains(filter, StringComparison.OrdinalIgnoreCase)))
                 .OrderByDescending(group => string.Equals(group.AccountId, GameWatcher.CurrentProfile.AccountId, StringComparison.Ordinal))
                 .ThenBy(group => group.AccountId, StringComparer.Ordinal)
                 .ToList();
@@ -917,16 +932,8 @@
     private static string AccountDrawerTitle(OrgAccountGroup accountGroup)
     {
         return string.IsNullOrWhiteSpace(accountGroup.Nickname)
-            ? $"Account {accountGroup.AccountId}"
-            : accountGroup.Nickname;
-    }
-
-    private static string AccountDrawerSubtitle(OrgAccountGroup accountGroup)
-    {
-        var subtitle = string.IsNullOrWhiteSpace(accountGroup.Nickname)
             ? "No nickname"
-            : $"Account ID: {accountGroup.AccountId}";
-        return $"{subtitle} {CurrentAccountMarker(accountGroup.AccountId)}".TrimEnd();
+            : accountGroup.Nickname;
     }
 
     private static string AccountNicknameAction(OrgAccountGroup accountGroup)
@@ -964,12 +971,12 @@
     private async Task OpenImportTrackerKey()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<ImportTarkovTrackerKeyDialog>("Import TarkovTracker.org API Key", options);
+        var dialog = await DialogService.ShowAsync<ImportTarkovTrackerKeyDialog>("Import TarkovTracker.org API key", options);
         var result = await dialog.Result;
         if (result is { Canceled: false, Data: TarkovTracker.ImportedToken importedToken })
         {
             messageLog.AddMessage(
-                $"Verified and saved the {importedToken.DisplayName} TarkovTracker.org API key as pending.",
+                $"Imported and verified the {importedToken.DisplayName} TarkovTracker.org API key. It is ready to assign.",
                 "update");
             await ReactivateCurrentTrackerProfile();
             StateHasChanged();
@@ -985,7 +992,7 @@
             var updated = TarkovTracker.SaveDiscoveredOrgProfiles(discovered);
             messageLog.AddMessage(discovered.Count == 0
                 ? "No EFT profiles were found in past logs. Launch EFT once, then scan again."
-                : $"Found {discovered.Count} EFT profile{(discovered.Count == 1 ? "" : "s")} in past logs; updated {updated} saved profile record{(updated == 1 ? "" : "s")}.",
+                : $"Found {discovered.Count} EFT profile{(discovered.Count == 1 ? "" : "s")} in past logs and updated {updated} saved profile record{(updated == 1 ? "" : "s")}.",
                 discovered.Count == 0 ? "warning" : "update");
         }
         catch (Exception ex)
@@ -1011,10 +1018,11 @@
             [nameof(AssignTarkovTrackerKeyDialog.BoundAccountId)] = key.AccountId,
             [nameof(AssignTarkovTrackerKeyDialog.BoundProfileId)] = key.ProfileId,
             [nameof(AssignTarkovTrackerKeyDialog.BoundSessionMode)] = key.SessionMode,
+            [nameof(AssignTarkovTrackerKeyDialog.ProfileNickname)] = key.ProfileNickname,
             [nameof(AssignTarkovTrackerKeyDialog.IsReassign)] = reassign,
         };
         var dialog = await DialogService.ShowAsync<AssignTarkovTrackerKeyDialog>(
-            $"{(reassign ? "Reassign" : "Assign")} {key.DisplayName} key",
+            $"{(reassign ? "Reassign" : "Assign")} {key.DisplayName} API key",
             parameters,
             options);
         var result = await dialog.Result;
@@ -1039,8 +1047,11 @@
                 assignedKey = reassignment.Key;
                 if (reassignment.SwappedKey == null)
                 {
+                    var nicknameNotice = string.IsNullOrWhiteSpace(assignedKey.ProfileNickname)
+                        ? ""
+                        : " Its profile nickname moved with the key.";
                     AddProtectedKeyMessage(
-                        $"Verified {assignedKey.DisplayName} TarkovTracker.org API key reassigned.",
+                        $"Reassigned the verified {assignedKey.DisplayName} TarkovTracker.org API key.{nicknameNotice}",
                         ("Previous Account ID", key.AccountId),
                         ("Previous Profile ID", key.ProfileId),
                         ("New Account ID", assignedKey.AccountId),
@@ -1048,8 +1059,12 @@
                 }
                 else
                 {
+                    var nicknameNotice = string.IsNullOrWhiteSpace(assignedKey.ProfileNickname)
+                        && string.IsNullOrWhiteSpace(reassignment.SwappedKey.ProfileNickname)
+                            ? ""
+                            : " Profile nicknames moved with their keys.";
                     AddProtectedKeyMessage(
-                        $"Verified {assignedKey.DisplayName} TarkovTracker.org API keys swapped between saved profiles.",
+                        $"Swapped the verified {assignedKey.DisplayName} TarkovTracker.org API keys between the two saved profiles.{nicknameNotice}",
                         ("First Account ID", key.AccountId),
                         ("First Profile ID", key.ProfileId),
                         ("Second Account ID", assignedKey.AccountId),
@@ -1064,7 +1079,7 @@
                     profile.ProfileId,
                     profile.SessionMode);
                 AddProtectedKeyMessage(
-                    $"Verified {assignedKey.DisplayName} TarkovTracker.org API key assigned manually.",
+                    $"Assigned the verified {assignedKey.DisplayName} TarkovTracker.org API key manually.",
                     ("Account ID", assignedKey.AccountId),
                     ("Profile ID", assignedKey.ProfileId));
             }
@@ -1087,10 +1102,11 @@
         var parameters = new DialogParameters
         {
             [nameof(SetTarkovTrackerAccountNicknameDialog.ExistingNickname)] = accountGroup.Nickname,
+            [nameof(SetTarkovTrackerAccountNicknameDialog.AccountId)] = accountGroup.AccountId,
         };
         var title = string.IsNullOrWhiteSpace(accountGroup.Nickname)
             ? "Set account nickname"
-            : "Rename account nickname";
+            : "Change account nickname";
         var dialog = await DialogService.ShowAsync<SetTarkovTrackerAccountNicknameDialog>(title, parameters, options);
         var result = await dialog.Result;
         if (result is not { Canceled: false, Data: string nickname })
@@ -1102,7 +1118,7 @@
         {
             var savedNickname = TarkovTracker.SetOrgAccountNickname(accountGroup.AccountId, nickname);
             AddProtectedKeyMessage(
-                $"Saved TarkovTracker.org account nickname “{savedNickname}”.",
+                $"Saved the TarkovTracker.org account nickname “{savedNickname}”.",
                 ("Account ID", accountGroup.AccountId));
         }
         catch (Exception ex)
@@ -1112,14 +1128,51 @@
         StateHasChanged();
     }
 
+    private async Task SetOrgProfileNickname(TarkovTracker.OrgKeySummary key)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            [nameof(SetTarkovTrackerProfileNicknameDialog.ExistingNickname)] = key.ProfileNickname,
+            [nameof(SetTarkovTrackerProfileNicknameDialog.Mode)] = key.DisplayName,
+        };
+        var title = string.IsNullOrWhiteSpace(key.ProfileNickname)
+            ? $"Set {key.DisplayName} profile nickname"
+            : $"Change {key.DisplayName} profile nickname";
+        var dialog = await DialogService.ShowAsync<SetTarkovTrackerProfileNicknameDialog>(title, parameters, options);
+        var result = await dialog.Result;
+        if (result is not { Canceled: false, Data: string nickname })
+        {
+            return;
+        }
+
+        try
+        {
+            var savedNickname = TarkovTracker.SetOrgProfileNickname(key.Id, nickname);
+            AddProtectedKeyMessage(
+                $"Saved the {key.DisplayName} profile nickname \u201c{savedNickname}\u201d.",
+                ("Account ID", key.AccountId),
+                ("Profile ID", key.ProfileId));
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Could not save the profile nickname: {ex.Message}", "exception");
+        }
+        StateHasChanged();
+    }
+
     private async Task UnbindOrgKey(TarkovTracker.OrgKeySummary key)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Unbind API key",
-            $"Unbind {BoundKeyTitle(key)} from Account ID {key.AccountId}? The key will become pending and inactive.",
-            yesText: "Unbind",
-            cancelText: "Cancel");
-        if (confirmed != true)
+        if (!await ConfirmOrgKeyAction(
+            key,
+            $"Unbind {key.DisplayName} API key",
+            "Keep the key, but stop using it.",
+            string.IsNullOrWhiteSpace(key.ProfileNickname)
+                ? "The key will remain saved and move to Unassigned. You can assign it again later."
+                : "The key will remain saved and move to Unassigned. Its profile nickname will be cleared.",
+            "Unbind",
+            Icons.Material.Filled.LinkOff,
+            false))
         {
             return;
         }
@@ -1127,8 +1180,11 @@
         try
         {
             TarkovTracker.UnbindOrgKey(key.Id);
+            var nicknameNotice = string.IsNullOrWhiteSpace(key.ProfileNickname)
+                ? ""
+                : " Its profile nickname was cleared.";
             AddProtectedKeyMessage(
-                $"Verified {key.DisplayName} TarkovTracker.org API key unbound.",
+                $"Moved the verified {key.DisplayName} TarkovTracker.org API key to Unassigned.{nicknameNotice}",
                 ("Previous Account ID", key.AccountId),
                 ("Previous Profile ID", key.ProfileId));
             pendingDrawerExpanded = true;
@@ -1143,12 +1199,14 @@
 
     private async Task RemoveOrgKey(TarkovTracker.OrgKeySummary key)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Remove API key",
-            $"Remove {BoundKeyTitle(key)} from Tarkov Monitor?",
-            yesText: "Remove",
-            cancelText: "Cancel");
-        if (confirmed != true)
+        if (!await ConfirmOrgKeyAction(
+            key,
+            $"Remove {key.DisplayName} API key",
+            "Delete this API key?",
+            "This removes the key from Tarkov Monitor on this PC. To restore it, you will need to import it again.",
+            "Remove",
+            Icons.Material.Filled.DeleteOutline,
+            true))
         {
             return;
         }
@@ -1157,13 +1215,13 @@
         {
             if (!TarkovTracker.RemoveOrgKey(key.Id))
             {
-                messageLog.AddMessage("The saved TarkovTracker.org API key was already absent.", "warning");
+                messageLog.AddMessage("This TarkovTracker.org API key has already been removed.", "warning");
                 return;
             }
             if (key.IsBound)
             {
                 AddProtectedKeyMessage(
-                    $"Verified {key.DisplayName} TarkovTracker.org API key removed.",
+                    $"Removed the verified {key.DisplayName} TarkovTracker.org API key from Tarkov Monitor.",
                     ("Previous Account ID", key.AccountId),
                     ("Previous Profile ID", key.ProfileId));
             }
@@ -1171,7 +1229,7 @@
             {
                 var verificationState = key.IsVerified ? "verified" : "unverified recovered";
                 messageLog.AddMessage(
-                    $"Removed the unbound {verificationState} {key.DisplayName} TarkovTracker.org API key.",
+                    $"Removed the {verificationState} unassigned {key.DisplayName} TarkovTracker.org API key.",
                     "update");
             }
             await ReactivateCurrentTrackerProfile();
@@ -1181,6 +1239,32 @@
             messageLog.AddMessage($"Could not remove the TarkovTracker.org API key: {ex.Message}", "exception");
         }
         StateHasChanged();
+    }
+
+    private async Task<bool> ConfirmOrgKeyAction(
+        TarkovTracker.OrgKeySummary key,
+        string title,
+        string heading,
+        string message,
+        string confirmLabel,
+        string icon,
+        bool isDestructive)
+    {
+        var parameters = new DialogParameters
+        {
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.Heading)] = heading,
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.Message)] = message,
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.Mode)] = key.DisplayName,
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.MaskedToken)] = key.MaskedToken,
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.AccountId)] = key.AccountId,
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.ConfirmLabel)] = confirmLabel,
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.Icon)] = icon,
+            [nameof(ConfirmTarkovTrackerKeyActionDialog.IsDestructive)] = isDestructive,
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmTarkovTrackerKeyActionDialog>(title, parameters, options);
+        var result = await dialog.Result;
+        return result is { Canceled: false, Data: true };
     }
 
     private async Task EditOrgKey(TarkovTracker.OrgKeySummary key)
@@ -1198,6 +1282,7 @@
             [nameof(EditTarkovTrackerKeyDialog.MaskedToken)] = key.MaskedToken,
             [nameof(EditTarkovTrackerKeyDialog.AccountId)] = key.AccountId,
             [nameof(EditTarkovTrackerKeyDialog.ProfileId)] = key.ProfileId,
+            [nameof(EditTarkovTrackerKeyDialog.ProfileNickname)] = key.ProfileNickname,
             [nameof(EditTarkovTrackerKeyDialog.LastPlayed)] = lastPlayed,
             [nameof(EditTarkovTrackerKeyDialog.IsQuarantined)] = key.IsQuarantined,
         };
@@ -1213,6 +1298,9 @@
         {
             case EditTarkovTrackerKeyDialog.KeyAction.Reassign:
                 await OpenAssignOrgKey(key, true);
+                break;
+            case EditTarkovTrackerKeyDialog.KeyAction.SetProfileNickname:
+                await SetOrgProfileNickname(key);
                 break;
             case EditTarkovTrackerKeyDialog.KeyAction.Unbind:
                 await UnbindOrgKey(key);
@@ -1234,20 +1322,15 @@
         {
             [nameof(TarkovTrackerDetailsDialog.Details)] = new List<KeyValuePair<string, string>>
             {
-                new("Nickname", nickname),
+                new("Account nickname", nickname),
                 new("Account ID", accountGroup.AccountId),
-                new("Bound profiles", accountGroup.Keys.Count.ToString()),
+                new("Assigned profiles", accountGroup.Keys.Count.ToString()),
                 new("Modes", modes),
             },
         };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<TarkovTrackerDetailsDialog>("EFT account details", parameters, options);
         await dialog.Result;
-    }
-
-    private static string BoundKeyTitle(TarkovTracker.OrgKeySummary key)
-    {
-        return key.DisplayName;
     }
 
     private void AddProtectedKeyMessage(string message, params (string Label, string Value)[] protectedValues)
@@ -1267,12 +1350,33 @@
 
     private static string ActiveKeyMarker(TarkovTracker.OrgKeySummary key)
     {
-        return TarkovTracker.ValidToken
+        if (!TarkovTracker.IsLegacyService
+            && TarkovTracker.ValidToken
             && string.Equals(key.AccountId, TarkovTracker.CurrentAccountId, StringComparison.Ordinal)
             && string.Equals(key.ProfileId, TarkovTracker.CurrentProfileId, StringComparison.Ordinal)
-            && key.SessionMode == TarkovTracker.CurrentSessionMode
-            ? "• Active profile"
+            && key.SessionMode == TarkovTracker.CurrentSessionMode)
+        {
+            return "• Active profile";
+        }
+
+        return string.Equals(key.AccountId, GameWatcher.CurrentProfile.AccountId, StringComparison.Ordinal)
+            && string.Equals(key.ProfileId, GameWatcher.CurrentProfile.Id, StringComparison.Ordinal)
+            && key.SessionMode == GameWatcher.CurrentProfile.SessionMode
+            && string.IsNullOrWhiteSpace(TarkovTracker.GetToken(key.ProfileId))
+            ? "• Last active profile"
             : "";
+    }
+
+    private static string ProfileRowLabel(TarkovTracker.OrgKeySummary key)
+    {
+        var marker = ActiveKeyMarker(key);
+        if (string.IsNullOrWhiteSpace(key.ProfileNickname))
+        {
+            return marker;
+        }
+        return string.IsNullOrWhiteSpace(marker)
+            ? key.ProfileNickname
+            : $"{key.ProfileNickname} {marker}";
     }
 
     void TokenShowClick()
@@ -1298,9 +1402,9 @@
             messageLog.AddMessage("Legacy key testing was canceled because the selected TarkovTracker service changed.", "warning");
             return;
         }
-        if (!HasCurrentLegacyProfile)
+        if (!HasLegacyProfileCandidate)
         {
-            messageLog.AddMessage("Select an exact EFT profile before testing a legacy TarkovTracker.io key.", "warning");
+            messageLog.AddMessage("Launch EFT before testing a legacy TarkovTracker.io key.", "warning");
             return;
         }
 

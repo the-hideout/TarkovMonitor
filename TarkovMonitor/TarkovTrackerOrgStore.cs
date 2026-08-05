@@ -7,7 +7,7 @@ namespace TarkovMonitor
 {
     internal sealed class TarkovTrackerOrgStoreDocument
     {
-        public const int CurrentVersion = 3;
+        public const int CurrentVersion = 4;
 
         [JsonPropertyName("version")]
         [JsonRequired]
@@ -107,6 +107,9 @@ namespace TarkovMonitor
         [JsonPropertyName("verifiedTokenHash")]
         public string VerifiedTokenHash { get; set; } = "";
 
+        [JsonPropertyName("profileNickname")]
+        public string ProfileNickname { get; set; } = "";
+
         // Version 1 stored nicknames on individual keys. This read-only
         // compatibility property is consumed during the version 2 migration.
         [JsonPropertyName("nickname")]
@@ -129,6 +132,7 @@ namespace TarkovMonitor
                 ProfileId = ProfileId,
                 SessionMode = SessionMode,
                 VerifiedTokenHash = VerifiedTokenHash,
+                ProfileNickname = ProfileNickname,
                 LegacyNickname = LegacyNickname,
             };
         }
@@ -165,7 +169,7 @@ namespace TarkovMonitor
 
                 var document = JsonSerializer.Deserialize<TarkovTrackerOrgStoreDocument>(rawValue)
                     ?? throw new JsonException("The stored value is null.");
-                if (document.Version is not (1 or 2 or TarkovTrackerOrgStoreDocument.CurrentVersion))
+                if (document.Version is not (1 or 2 or 3 or TarkovTrackerOrgStoreDocument.CurrentVersion))
                 {
                     throw new JsonException($"Unsupported store version {document.Version}.");
                 }
@@ -180,6 +184,10 @@ namespace TarkovMonitor
                 }
 
                 var normalizedKeys = document.Keys.Select(Normalize).ToList();
+                if (document.Version < 4)
+                {
+                    normalizedKeys.ForEach(key => key.ProfileNickname = "");
+                }
                 if (normalizedKeys.Any(key => string.IsNullOrWhiteSpace(key.Id)))
                 {
                     throw new JsonException("A stored key record has no identifier.");
@@ -187,6 +195,10 @@ namespace TarkovMonitor
                 if (normalizedKeys.GroupBy(key => key.Id, StringComparer.Ordinal).Any(group => group.Count() > 1))
                 {
                     throw new JsonException("The stored key list contains duplicate identifiers.");
+                }
+                if (normalizedKeys.Any(key => !IsValidProfileNickname(key)))
+                {
+                    throw new JsonException("A stored profile nickname record is invalid.");
                 }
 
                 List<TarkovTrackerOrgAccount> normalizedAccounts;
@@ -236,7 +248,7 @@ namespace TarkovMonitor
                 }
 
                 List<TarkovTrackerOrgProfile> normalizedProfiles;
-                if (document.Version < TarkovTrackerOrgStoreDocument.CurrentVersion)
+                if (document.Version < 3)
                 {
                     normalizedProfiles = normalizedKeys
                         .Where(key => key.IsBound)
@@ -361,7 +373,7 @@ namespace TarkovMonitor
             if (bindingProfile == null && HasPendingKey(normalizedPrefix))
             {
                 throw new InvalidOperationException(
-                    $"Bind or remove the pending {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key before importing another one.");
+                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key before importing another one.");
             }
 
             var key = new TarkovTrackerOrgKey
@@ -399,20 +411,20 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (key.IsBound)
             {
-                throw new InvalidOperationException("This API key is already bound.");
+                throw new InvalidOperationException("This API key is already assigned.");
             }
             if (!IsVerified(key))
             {
-                throw new InvalidOperationException("This API key must be verified before it can be bound.");
+                throw new InvalidOperationException("This API key must be verified before it can be assigned.");
             }
             if (!string.IsNullOrEmpty(GetStoreIssue(key)))
             {
-                throw new InvalidOperationException("This API key record must be repaired before it can be bound.");
+                throw new InvalidOperationException("This API key record must be repaired before it can be assigned.");
             }
             if (!CanBindToProfile(key, profile))
             {
                 throw new InvalidOperationException(
-                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key cannot be bound to the selected {profile.DisplayName} profile.");
+                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key cannot be assigned to the selected {profile.DisplayName} profile.");
             }
 
             ApplyBinding(key, profile);
@@ -477,7 +489,7 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound)
             {
-                throw new InvalidOperationException("This API key is not bound.");
+                throw new InvalidOperationException("This API key is not assigned.");
             }
 
             var target = GetKnownProfile(accountId, profileId, sessionMode);
@@ -507,7 +519,7 @@ namespace TarkovMonitor
             {
                 if (!CanBindToProfile(occupant, previous))
                 {
-                    throw new InvalidOperationException("The target profile is occupied by an incompatible API key.");
+                    throw new InvalidOperationException("The selected profile already has an incompatible API key.");
                 }
                 ApplyBinding(occupant, previous);
             }
@@ -525,20 +537,39 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound)
             {
-                throw new InvalidOperationException("This API key is already unbound.");
+                throw new InvalidOperationException("This API key is already unassigned.");
             }
             if (keys.Any(candidate => !candidate.IsBound
                 && !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)
                 && string.Equals(candidate.Prefix, key.Prefix, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
-                    $"Bind or remove the pending {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key before unbinding another one.");
+                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key before unbinding another one.");
             }
 
             key.AccountId = "";
             key.ProfileId = "";
             key.SessionMode = "";
+            key.ProfileNickname = "";
             return key.Clone();
+        }
+
+        public string SetProfileNickname(string id, string nickname)
+        {
+            var key = GetMutableKey(id);
+            if (!key.IsBound || !string.IsNullOrEmpty(GetStoreIssue(key)))
+            {
+                throw new InvalidOperationException("Assign this API key before setting its profile nickname.");
+            }
+
+            var normalizedNickname = NormalizeNickname(nickname);
+            if (!IsValidNickname(normalizedNickname))
+            {
+                throw new ArgumentException("Enter a nickname between 1 and 32 characters.", nameof(nickname));
+            }
+
+            key.ProfileNickname = normalizedNickname;
+            return normalizedNickname;
         }
 
         public string SetAccountNickname(string accountId, string nickname)
@@ -547,7 +578,7 @@ namespace TarkovMonitor
                 && string.IsNullOrEmpty(GetStoreIssue(key))
                 && string.Equals(key.AccountId, accountId, StringComparison.Ordinal)))
             {
-                throw new InvalidOperationException("Bind an API key to this account before setting its nickname.");
+                throw new InvalidOperationException("Assign an API key to this account before setting its nickname.");
             }
 
             var normalizedAccountId = accountId.Trim();
@@ -622,6 +653,7 @@ namespace TarkovMonitor
             key.ProfileId = key.ProfileId?.Trim() ?? "";
             key.SessionMode = key.SessionMode?.Trim() ?? "";
             key.VerifiedTokenHash = key.VerifiedTokenHash?.Trim().ToUpperInvariant() ?? "";
+            key.ProfileNickname = NormalizeNickname(key.ProfileNickname);
             key.LegacyNickname = key.LegacyNickname?.Trim();
             return key;
         }
@@ -648,7 +680,18 @@ namespace TarkovMonitor
         {
             return !string.IsNullOrWhiteSpace(accountId)
                 && accountId.All(char.IsDigit)
-                && nickname.Length is >= 1 and <= 32
+                && IsValidNickname(nickname);
+        }
+
+        private static bool IsValidProfileNickname(TarkovTrackerOrgKey key)
+        {
+            return string.IsNullOrEmpty(key.ProfileNickname)
+                || (key.IsBound && IsValidNickname(key.ProfileNickname));
+        }
+
+        private static bool IsValidNickname(string nickname)
+        {
+            return nickname.Length is >= 1 and <= 32
                 && !nickname.Any(char.IsControl);
         }
 
@@ -788,7 +831,7 @@ namespace TarkovMonitor
                 && string.Equals(key.SessionMode, proposedKey.SessionMode, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
-                    "The selected EFT account, profile, and mode already have a bound API key. Unbind or remove it before binding another key.");
+                    "The selected EFT account, profile, and mode already have an assigned API key. Reassign, unbind, or remove it before assigning another key.");
             }
         }
 

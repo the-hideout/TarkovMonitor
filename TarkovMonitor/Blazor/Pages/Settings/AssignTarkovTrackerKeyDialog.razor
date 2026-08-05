@@ -2,22 +2,33 @@
 
 <MudDialog Class="tracker-assignment-dialog">
     <DialogContent>
-        <MudText Typo="Typo.body2" Class="mb-2">
-            @(RequiresVerification
-                ? "Choose the exact saved EFT profile. This recovered key will be verified before binding."
-                : "Choose the exact saved EFT profile for this verified key.")
-        </MudText>
+        <div class="tracker-dialog-note @(RequiresVerification ? "tracker-dialog-note--warning" : "")" role="note">
+            <MudIcon Icon="@(RequiresVerification ? Icons.Material.Filled.GppMaybe : Icons.Material.Filled.AccountTree)" Size="Size.Small" Class="tracker-dialog-note__icon" />
+            <span class="tracker-dialog-note__copy">
+                <strong>@(IsReassign ? "Choose another EFT profile." : "Choose an EFT profile.")</strong>
+                <span>@(RequiresVerification
+                    ? "This recovered key must be verified before you can assign it."
+                    : "Only saved profiles for this key's game mode are shown.")</span>
+            </span>
+        </div>
 
         <div class="tracker-profile-guidance" role="note">
-            @(IsReassign
-                ? "Move here = empty profile. Swap keys = occupied profile."
-                : "Select = available. Key assigned = already occupied.")
+            @if (IsReassign)
+            {
+                <span class="tracker-profile-guidance-item"><b>Move key</b><span>No key assigned</span></span>
+                <span class="tracker-profile-guidance-item"><b>Swap keys</b><span>Key already assigned</span></span>
+            }
+            else
+            {
+                <span class="tracker-profile-guidance-item"><b>Available</b><span>No key assigned</span></span>
+                <span class="tracker-profile-guidance-item"><b>Unavailable</b><span>Key already assigned</span></span>
+            }
         </div>
 
         @if (selectedProfile != null)
         {
             <div class="tracker-profile-confirm">
-                <MudText Typo="Typo.subtitle2" Class="tracker-profile-confirm-title">Confirm destination</MudText>
+                <MudText Typo="Typo.subtitle2" Class="tracker-profile-confirm-title">Review assignment</MudText>
                 <dl class="tracker-profile-confirm-grid">
                     <dt>Account</dt>
                     <dd>@AccountLabel(selectedProfile)</dd>
@@ -32,10 +43,10 @@
                 </dl>
                 <MudAlert Severity="@(WillSwap ? Severity.Warning : Severity.Info)" Dense="true" Class="mt-3">
                     @(WillSwap
-                        ? "The destination already has a key. Both keys will swap profiles; neither key will become unbound."
+                        ? "This profile already has a key. Confirming will swap the two keys; neither key will become unassigned. Profile nicknames move with their keys."
                         : IsReassign
-                            ? "The key will move to this saved profile and remain bound."
-                            : "The key will be bound to this saved profile.")
+                            ? $"This key will move to the selected profile.{(string.IsNullOrWhiteSpace(ProfileNickname) ? "" : " Its profile nickname will move with it.")}"
+                            : "This key will be assigned to the selected profile.")
                 </MudAlert>
             </div>
         }
@@ -43,19 +54,19 @@
         {
             <div class="tracker-profile-scan-state">
                 <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                <MudText Typo="Typo.body2">Scanning past logs</MudText>
+                <MudText Typo="Typo.body2">Scanning past EFT logs...</MudText>
             </div>
         }
         else if (string.Equals(KeyPrefix, "SN1", StringComparison.OrdinalIgnoreCase))
         {
             <MudAlert Severity="Severity.Warning" Dense="true">
-                Seasonal assignment is not available yet.
+                Seasonal API keys cannot be assigned yet.
             </MudAlert>
         }
         else if (MatchingProfiles.Count == 0)
         {
             <MudAlert Severity="Severity.Info" Dense="true">
-                No matching @KeyDisplayName profile is saved. Select Scan profiles below, or launch EFT once to save one automatically.
+                @NoMatchingProfilesMessage
             </MudAlert>
         }
         else
@@ -65,11 +76,11 @@
                 {
                     var disabled = !IsReassign && profile.HasBoundKey;
                     var stateLabel = disabled
-                        ? "Key assigned"
+                        ? "Already assigned"
                         : profile.HasBoundKey
-                            ? "Swap keys"
+                            ? "Swap"
                             : IsReassign
-                                ? "Move here"
+                                ? "Move"
                                 : "Select";
                     <button type="button"
                             class="tracker-profile-choice @(disabled ? "tracker-profile-choice--disabled" : "")"
@@ -105,17 +116,17 @@
     <DialogActions>
         @if (selectedProfile == null)
         {
-            <MudButton OnClick="Cancel">Cancel</MudButton>
-            <MudTooltip Text="Reads only account, profile, mode, and last-played information. It does not replay tasks.">
-                <span><MudButton Color="Color.Info" Variant="Variant.Text" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search">
+            <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
+            <MudTooltip Text="Reads account, profile, mode, and last-played details from past EFT logs. It does not replay tasks.">
+                <span><MudButton Color="Color.Info" Variant="Variant.Outlined" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search" Class="tracker-dialog-footer-button">
                     Scan profiles
                 </MudButton></span>
             </MudTooltip>
         }
         else
         {
-            <MudButton OnClick="Back">Back</MudButton>
-            <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Confirm">@ActionLabel</MudButton>
+            <MudButton OnClick="Back" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="tracker-dialog-footer-button">Back</MudButton>
+            <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Confirm" StartIcon="@Icons.Material.Filled.CheckCircle" Class="tracker-dialog-footer-button">@ActionLabel</MudButton>
         }
     </DialogActions>
 </MudDialog>
@@ -130,6 +141,7 @@
     [Parameter] public string BoundAccountId { get; set; } = "";
     [Parameter] public string BoundProfileId { get; set; } = "";
     [Parameter] public EftSessionMode BoundSessionMode { get; set; }
+    [Parameter] public string ProfileNickname { get; set; } = "";
     [Parameter] public bool IsReassign { get; set; }
 
     private bool scanning;
@@ -180,6 +192,10 @@
 
     private bool WillSwap => IsReassign && selectedProfile?.HasBoundKey == true;
 
+    private string NoMatchingProfilesMessage =>
+        $"{(IsReassign ? "No other" : "No")} saved {KeyDisplayName} profiles are available. "
+        + "Select Scan profiles to check past EFT logs, or launch EFT with the profile you want to use.";
+
     private string ActionLabel => WillSwap ? "Swap" : IsReassign ? "Reassign" : "Assign";
 
     private async Task ScanProfiles()
@@ -193,7 +209,7 @@
             ReloadProfiles();
             scanMessage = discovered.Count == 0
                 ? "No EFT profiles were found in past logs."
-                : $"Found {discovered.Count} profile{(discovered.Count == 1 ? "" : "s")}; updated {changed}.";
+                : $"Found {discovered.Count} profile{(discovered.Count == 1 ? "" : "s")} and updated {changed} saved entr{(changed == 1 ? "y" : "ies")}.";
         }
         catch (Exception ex)
         {
