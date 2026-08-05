@@ -6,7 +6,32 @@
             Select the exact EFT profile for this @KeyDisplayName API key.
         </MudText>
 
-        @if (scanning)
+        @if (selectedProfile != null)
+        {
+            <div class="tracker-profile-confirm">
+                <MudText Typo="Typo.subtitle2" Class="tracker-profile-confirm-title">Confirm destination</MudText>
+                <dl class="tracker-profile-confirm-grid">
+                    <dt>Account</dt>
+                    <dd>@AccountLabel(selectedProfile)</dd>
+                    <dt>Account ID</dt>
+                    <dd>@selectedProfile.AccountId</dd>
+                    <dt>Mode</dt>
+                    <dd>@selectedProfile.DisplayName</dd>
+                    <dt>Last played</dt>
+                    <dd>@LastPlayedValue(selectedProfile)</dd>
+                    <dt>Profile</dt>
+                    <dd>@ShortProfileId(selectedProfile.ProfileId)</dd>
+                </dl>
+                <MudAlert Severity="@(WillSwap ? Severity.Warning : Severity.Info)" Dense="true" Class="mt-3">
+                    @(WillSwap
+                        ? "The destination already has a key. Both keys will swap profiles; neither key will become unbound."
+                        : IsReassign
+                            ? "The key will move to this saved profile and remain bound."
+                            : "The key will be bound to this saved profile.")
+                </MudAlert>
+            </div>
+        }
+        else if (scanning)
         {
             <div class="tracker-profile-scan-state">
                 <MudProgressCircular Indeterminate="true" Size="Size.Small" />
@@ -59,18 +84,26 @@
             </div>
         }
 
-        @if (!string.IsNullOrWhiteSpace(scanMessage))
+        @if (selectedProfile == null && !string.IsNullOrWhiteSpace(scanMessage))
         {
             <MudText Typo="Typo.caption" Class="mt-2">@scanMessage</MudText>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudTooltip Text="Reads only account, profile, mode, and last-played information. It does not replay tasks.">
-            <MudButton Color="Color.Info" Variant="Variant.Text" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search">
-                Scan profiles
-            </MudButton>
-        </MudTooltip>
+        @if (selectedProfile == null)
+        {
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudTooltip Text="Reads only account, profile, mode, and last-played information. It does not replay tasks.">
+                <MudButton Color="Color.Info" Variant="Variant.Text" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search">
+                    Scan profiles
+                </MudButton>
+            </MudTooltip>
+        }
+        else
+        {
+            <MudButton OnClick="Back">Back</MudButton>
+            <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Confirm">@ActionLabel</MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
@@ -87,6 +120,7 @@
 
     private bool scanning;
     private string scanMessage = "";
+    private TarkovTracker.OrgProfileSummary? selectedProfile;
     private IReadOnlyList<TarkovTracker.OrgProfileSummary> profiles = Array.Empty<TarkovTracker.OrgProfileSummary>();
 
     private List<TarkovTracker.OrgProfileSummary> MatchingProfiles => profiles
@@ -117,8 +151,22 @@
 
     private void Select(TarkovTracker.OrgProfileSummary profile)
     {
-        MudDialog.Close(DialogResult.Ok(profile));
+        selectedProfile = profile;
     }
+
+    private void Back() => selectedProfile = null;
+
+    private void Confirm()
+    {
+        if (selectedProfile != null)
+        {
+            MudDialog.Close(DialogResult.Ok(selectedProfile));
+        }
+    }
+
+    private bool WillSwap => IsReassign && selectedProfile?.HasBoundKey == true;
+
+    private string ActionLabel => WillSwap ? "Swap" : IsReassign ? "Reassign" : "Assign";
 
     private async Task ScanProfiles()
     {
@@ -152,9 +200,14 @@
 
     private static string LastPlayed(TarkovTracker.OrgProfileSummary profile)
     {
+        return $"Last played: {LastPlayedValue(profile)}";
+    }
+
+    private static string LastPlayedValue(TarkovTracker.OrgProfileSummary profile)
+    {
         return profile.LastSeenUtc is { } lastSeen
-            ? $"Last played: {lastSeen.ToLocalTime():MMM d, yyyy h:mm tt}"
-            : "Last played: Unknown";
+            ? lastSeen.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+            : "Unknown";
     }
 
     private static string ShortProfileId(string profileId)

@@ -15,6 +15,41 @@
     padding-right: 0.2rem;
 }
 
+.tracker-profile-confirm {
+    padding: 0.25rem 0;
+}
+
+.tracker-profile-confirm-title {
+    margin-bottom: 0.65rem;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.tracker-profile-confirm-grid {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.34rem 0.75rem;
+    margin: 0;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.tracker-profile-confirm-grid dt {
+    color: rgba(255, 255, 255, 0.57);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tracker-profile-confirm-grid dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
 .tracker-profile-choice {
     display: flex;
     width: 100%;
@@ -111,5 +146,9 @@
 
     .tracker-profile-choice-state {
         flex-direction: row;
+    }
+
+    .tracker-profile-confirm-grid {
+        grid-template-columns: 5.5rem minmax(0, 1fr);
     }
 }

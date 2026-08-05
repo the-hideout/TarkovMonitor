@@ -955,20 +955,6 @@
 
         var willSwap = reassign && profile.HasBoundKey;
         var action = willSwap ? "Swap" : reassign ? "Reassign" : "Assign";
-        var explanation = willSwap
-            ? "The destination already has a key. Both keys will swap profiles; neither key will become unbound."
-            : reassign
-                ? "The key will move to this saved profile and remain bound."
-                : "The key will be bound to this saved profile.";
-        var confirmed = await DialogService.ShowMessageBox(
-            $"{action} API key",
-            $"{ProfileDestination(profile)}{Environment.NewLine}{Environment.NewLine}{explanation}",
-            yesText: action,
-            cancelText: "Cancel");
-        if (confirmed != true)
-        {
-            return;
-        }
 
         try
         {
@@ -1008,25 +994,6 @@
             messageLog.AddMessage($"Could not {action.ToLowerInvariant()} the TarkovTracker.org API key: {ex.Message}", "exception");
         }
         StateHasChanged();
-    }
-
-    private static string ProfileDestination(TarkovTracker.OrgProfileSummary profile)
-    {
-        var accountName = string.IsNullOrWhiteSpace(profile.AccountNickname)
-            ? "Not set"
-            : profile.AccountNickname;
-        var lastPlayed = profile.LastSeenUtc is { } lastSeen
-            ? lastSeen.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
-            : "Unknown";
-        var profileSuffix = profile.ProfileId.Length <= 6
-            ? profile.ProfileId
-            : profile.ProfileId[^6..];
-        return string.Join(Environment.NewLine,
-            $"Account: {accountName}",
-            $"Account ID: {profile.AccountId}",
-            $"Mode: {profile.DisplayName}",
-            $"Last played: {lastPlayed}",
-            $"Profile: …{profileSuffix}");
     }
 
     private async Task SetOrgAccountNickname(OrgAccountGroup accountGroup)
