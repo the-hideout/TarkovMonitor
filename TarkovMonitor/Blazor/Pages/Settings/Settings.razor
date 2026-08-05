@@ -144,7 +144,7 @@
                 }
 
                 <div class="tracker-key-manager">
-                    <MudPaper Class="tracker-drawer mb-3" Elevation="0">
+                    <MudPaper Class="tracker-drawer mb-2" Elevation="0">
                         <div class="tracker-drawer-heading">
                             <button type="button" class="tracker-drawer-toggle" @onclick="TogglePendingDrawer" aria-expanded="@pendingDrawerExpanded.ToString().ToLowerInvariant()">
                                 <MudIcon Icon="@(pendingDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
@@ -164,29 +164,31 @@
                                 @foreach (var key in PendingOrgKeys)
                                 {
                                     <div class="tracker-pending-card">
-                                        <div class="tracker-key-copy">
-                                            <div class="d-flex align-center flex-wrap gap-2">
-                                                <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
-                                                <MudText Typo="Typo.body2"><b>Not active</b></MudText>
+                                        <div class="tracker-key-main">
+                                            <div class="tracker-key-copy">
+                                                <div class="d-flex align-center flex-wrap gap-2">
+                                                    <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
+                                                    <MudText Typo="Typo.body2"><b>Not active</b></MudText>
+                                                </div>
+                                                <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
+                                                @if (key.IsLegacyRecovery)
+                                                {
+                                                    <MudText Typo="Typo.caption">Previously saved TarkovTracker.org key</MudText>
+                                                }
                                             </div>
-                                            <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
-                                            @if (key.IsLegacyRecovery)
-                                            {
-                                                <MudText Typo="Typo.caption">Previously saved TarkovTracker.org key</MudText>
-                                            }
-                                        </div>
-                                        <div class="tracker-key-actions">
-                                            @if (CanBindPendingKey(key))
-                                            {
-                                                <MudButton @onclick="@(async () => await BindOrgKey(key))" Variant="Variant.Text" Color="Color.Info">Bind to current profile</MudButton>
-                                            }
-                                            else
-                                            {
-                                                <MudTooltip Text="@PendingBindTooltip(key)">
-                                                    <span><MudButton Disabled="true" Variant="Variant.Text">Bind to current profile</MudButton></span>
-                                                </MudTooltip>
-                                            }
-                                            <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error">Remove</MudButton>
+                                            <div class="tracker-key-actions">
+                                                @if (CanBindPendingKey(key))
+                                                {
+                                                    <MudButton @onclick="@(async () => await BindOrgKey(key))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">Bind to current profile</MudButton>
+                                                }
+                                                else
+                                                {
+                                                    <MudTooltip Text="@PendingBindTooltip(key)">
+                                                        <span><MudButton Disabled="true" Variant="Variant.Text" Size="Size.Small">Bind to current profile</MudButton></span>
+                                                    </MudTooltip>
+                                                }
+                                                <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error" Size="Size.Small">Remove</MudButton>
+                                            </div>
                                         </div>
                                         @if (key.IsQuarantined)
                                         {
@@ -220,32 +222,32 @@
                                         }
                                         @foreach (var accountGroup in BoundOrgKeyGroups)
                                         {
-                                            <MudPaper Class="tracker-account-drawer mb-2" Elevation="0">
+                                            <MudPaper Class="tracker-account-drawer mb-1" Elevation="0">
                                                 <div class="tracker-account-heading">
                                                     <button type="button" class="tracker-account-toggle" @onclick="@(() => ToggleAccountDrawer(accountGroup.AccountId))" aria-expanded="@IsAccountDrawerExpanded(accountGroup.AccountId).ToString().ToLowerInvariant()">
                                                         <MudIcon Icon="@(IsAccountDrawerExpanded(accountGroup.AccountId) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
                                                         <span class="tracker-account-copy">
                                                             <span class="tracker-account-title">@AccountDrawerTitle(accountGroup)</span>
-                                                            <span class="tracker-account-subtitle">Account ID: @accountGroup.AccountId @CurrentAccountMarker(accountGroup.AccountId)</span>
+                                                            <span class="tracker-account-subtitle">@AccountDrawerSubtitle(accountGroup)</span>
                                                         </span>
                                                         <span class="tracker-mode-summary">
                                                             @foreach (var key in accountGroup.Keys.OrderBy(key => key.DisplayName, StringComparer.Ordinal))
                                                             {
-                                                                <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
+                                                                <span class="tracker-mode-badge @ModeBadgeClass(key)" title="@key.DisplayName" aria-label="@key.DisplayName">@ModeBadgeShortLabel(key)</span>
                                                             }
                                                         </span>
                                                         <span class="tracker-count-badge">@accountGroup.Keys.Count</span>
                                                     </button>
                                                     <div class="tracker-account-actions">
-                                                        <MudButton @onclick="@(async () => await ShowOrgAccountDetails(accountGroup))" Variant="Variant.Text">Details</MudButton>
+                                                        <MudButton @onclick="@(async () => await ShowOrgAccountDetails(accountGroup))" Variant="Variant.Text" Size="Size.Small">Details</MudButton>
                                                         @if (CanSetAccountNickname(accountGroup))
                                                         {
-                                                            <MudButton @onclick="@(async () => await SetOrgAccountNickname(accountGroup))" Variant="Variant.Text" Color="Color.Info">@AccountNicknameAction(accountGroup)</MudButton>
+                                                            <MudButton @onclick="@(async () => await SetOrgAccountNickname(accountGroup))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">@AccountNicknameAction(accountGroup)</MudButton>
                                                         }
                                                         else
                                                         {
                                                             <MudTooltip Text="Repair or remove invalid profile bindings before naming this account.">
-                                                                <span><MudButton Disabled="true" Variant="Variant.Text">@AccountNicknameAction(accountGroup)</MudButton></span>
+                                                                <span><MudButton Disabled="true" Variant="Variant.Text" Size="Size.Small">@AccountNicknameAction(accountGroup)</MudButton></span>
                                                             </MudTooltip>
                                                         }
                                                     </div>
@@ -255,17 +257,19 @@
                                                         @foreach (var key in accountGroup.Keys.OrderBy(key => key.DisplayName, StringComparer.Ordinal))
                                                         {
                                                             <div class="tracker-profile-row">
-                                                                <div class="tracker-key-copy">
-                                                                    <div class="d-flex align-center flex-wrap gap-2">
-                                                                        <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
-                                                                        <MudText Typo="Typo.body2"><b>@ActiveKeyMarker(key)</b></MudText>
+                                                                <div class="tracker-key-main">
+                                                                    <div class="tracker-key-copy">
+                                                                        <div class="d-flex align-center flex-wrap gap-2">
+                                                                            <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
+                                                                            <MudText Typo="Typo.body2"><b>@ActiveKeyMarker(key)</b></MudText>
+                                                                        </div>
+                                                                        <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
                                                                     </div>
-                                                                    <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
-                                                                </div>
-                                                                <div class="tracker-key-actions">
-                                                                    <MudButton @onclick="@(async () => await ShowOrgKeyDetails(key))" Variant="Variant.Text">Details</MudButton>
-                                                                    <MudButton @onclick="@(async () => await UnbindOrgKey(key))" Variant="Variant.Text">Unbind</MudButton>
-                                                                    <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error">Remove</MudButton>
+                                                                    <div class="tracker-key-actions">
+                                                                        <MudButton @onclick="@(async () => await ShowOrgKeyDetails(key))" Variant="Variant.Text" Size="Size.Small">Details</MudButton>
+                                                                        <MudButton @onclick="@(async () => await UnbindOrgKey(key))" Variant="Variant.Text" Size="Size.Small">Unbind</MudButton>
+                                                                        <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error" Size="Size.Small">Remove</MudButton>
+                                                                    </div>
                                                                 </div>
                                                                 @if (key.IsQuarantined)
                                                                 {
@@ -807,7 +811,6 @@
                     || group.AccountId.Contains(filter, StringComparison.OrdinalIgnoreCase)
                     || group.Nickname.Contains(filter, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(group => string.Equals(group.AccountId, GameWatcher.CurrentProfile.AccountId, StringComparison.Ordinal))
-                .ThenBy(group => group.Nickname, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(group => group.AccountId, StringComparer.Ordinal)
                 .ToList();
         }
@@ -837,6 +840,14 @@
             : accountGroup.Nickname;
     }
 
+    private static string AccountDrawerSubtitle(OrgAccountGroup accountGroup)
+    {
+        var subtitle = string.IsNullOrWhiteSpace(accountGroup.Nickname)
+            ? "No nickname"
+            : $"Account ID: {accountGroup.AccountId}";
+        return $"{subtitle} {CurrentAccountMarker(accountGroup.AccountId)}".TrimEnd();
+    }
+
     private static string AccountNicknameAction(OrgAccountGroup accountGroup)
     {
         return string.IsNullOrWhiteSpace(accountGroup.Nickname) ? "Set nickname" : "Rename nickname";
@@ -855,6 +866,17 @@
             "PVP" => "tracker-mode-badge--pvp",
             "SN1" => "tracker-mode-badge--seasonal",
             _ => "tracker-mode-badge--unknown",
+        };
+    }
+
+    private static string ModeBadgeShortLabel(TarkovTracker.OrgKeySummary key)
+    {
+        return key.Prefix.ToUpperInvariant() switch
+        {
+            "PVE" => "PVE",
+            "PVP" => "PVP",
+            "SN1" => "SEA",
+            _ => "?",
         };
     }
 
