@@ -10,9 +10,16 @@
 .tracker-account-drawer {
     overflow: hidden;
     border: 1px solid var(--tracker-border);
-    border-radius: 10px;
     background: linear-gradient(135deg, rgba(31, 39, 52, 0.9), rgba(20, 24, 32, 0.92));
     transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tracker-drawer {
+    border-radius: 13px;
+}
+
+.tracker-account-drawer {
+    border-radius: 9px;
 }
 
 .tracker-drawer:hover,
@@ -152,7 +159,9 @@
 
 .tracker-account-heading {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(11rem, 1fr) 10rem 10.4rem;
+    align-items: center;
+    column-gap: 0.35rem;
     min-height: 3.25rem;
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent);
 }
@@ -175,11 +184,23 @@
 }
 
 .tracker-account-toggle {
+    width: 100%;
     padding: 0.48rem 0.62rem;
 }
 
 .tracker-account-actions {
+    display: grid;
+    width: 10.4rem;
+    grid-template-columns: 4.35rem 5.8rem;
+    gap: 0.25rem;
     padding-right: 0.35rem;
+}
+
+.tracker-account-action-slot {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
 }
 
 .tracker-account-copy {
@@ -201,8 +222,8 @@
 .tracker-mode-summary {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
     gap: 0.2rem;
 }
 
@@ -248,6 +269,10 @@
 }
 
 @media (max-width: 640px) {
+    .tracker-account-heading {
+        grid-template-columns: minmax(0, 1fr) 10.4rem;
+    }
+
     .tracker-mode-summary {
         display: none;
     }
@@ -263,6 +288,11 @@
     .tracker-key-actions {
         justify-content: flex-start;
         padding: 0 0.45rem 0.35rem;
+    }
+
+    .tracker-account-actions {
+        width: auto;
+        grid-column: 1;
     }
 
     .tracker-account-heading {

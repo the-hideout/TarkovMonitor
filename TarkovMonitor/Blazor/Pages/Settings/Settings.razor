@@ -144,7 +144,7 @@
                 }
 
                 <div class="tracker-key-manager">
-                    <MudPaper Class="tracker-drawer mb-2" Elevation="0">
+                    <div class="tracker-drawer mb-2">
                         <div class="tracker-drawer-heading">
                             <button type="button" class="tracker-drawer-toggle" @onclick="TogglePendingDrawer" aria-expanded="@pendingDrawerExpanded.ToString().ToLowerInvariant()">
                                 <MudIcon Icon="@(pendingDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
@@ -198,9 +198,9 @@
                                 }
                             </div>
                         </MudCollapse>
-                    </MudPaper>
+                    </div>
 
-                    <MudPaper Class="tracker-drawer" Elevation="0">
+                    <div class="tracker-drawer">
                         <button type="button" class="tracker-drawer-toggle tracker-drawer-toggle--primary" @onclick="ToggleBoundDrawer" aria-expanded="@boundDrawerExpanded.ToString().ToLowerInvariant()">
                             <MudIcon Icon="@(boundDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
                             <span class="tracker-drawer-title">Bound / Verified</span>
@@ -222,7 +222,7 @@
                                         }
                                         @foreach (var accountGroup in BoundOrgKeyGroups)
                                         {
-                                            <MudPaper Class="tracker-account-drawer mb-1" Elevation="0">
+                                            <div class="tracker-account-drawer mb-1">
                                                 <div class="tracker-account-heading">
                                                     <button type="button" class="tracker-account-toggle" @onclick="@(() => ToggleAccountDrawer(accountGroup.AccountId))" aria-expanded="@IsAccountDrawerExpanded(accountGroup.AccountId).ToString().ToLowerInvariant()">
                                                         <MudIcon Icon="@(IsAccountDrawerExpanded(accountGroup.AccountId) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
@@ -230,25 +230,29 @@
                                                             <span class="tracker-account-title">@AccountDrawerTitle(accountGroup)</span>
                                                             <span class="tracker-account-subtitle">@AccountDrawerSubtitle(accountGroup)</span>
                                                         </span>
-                                                        <span class="tracker-mode-summary">
-                                                            @foreach (var key in accountGroup.Keys.OrderBy(key => key.DisplayName, StringComparer.Ordinal))
+                                                    </button>
+                                                    <span class="tracker-mode-summary">
+                                                        @foreach (var key in accountGroup.Keys.OrderBy(key => key.DisplayName, StringComparer.Ordinal))
+                                                        {
+                                                            <span class="tracker-mode-badge @ModeBadgeClass(key)" title="@key.DisplayName" aria-label="@key.DisplayName">@ModeBadgeShortLabel(key)</span>
+                                                        }
+                                                    </span>
+                                                    <div class="tracker-account-actions">
+                                                        <span class="tracker-account-action-slot">
+                                                            <MudButton @onclick="@(async () => await ShowOrgAccountDetails(accountGroup))" Variant="Variant.Text" Size="Size.Small">Details</MudButton>
+                                                        </span>
+                                                        <span class="tracker-account-action-slot">
+                                                            @if (CanSetAccountNickname(accountGroup))
                                                             {
-                                                                <span class="tracker-mode-badge @ModeBadgeClass(key)" title="@key.DisplayName" aria-label="@key.DisplayName">@ModeBadgeShortLabel(key)</span>
+                                                                <MudButton @onclick="@(async () => await SetOrgAccountNickname(accountGroup))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">@AccountNicknameAction(accountGroup)</MudButton>
+                                                            }
+                                                            else
+                                                            {
+                                                                <MudTooltip Text="Repair or remove invalid profile bindings before naming this account.">
+                                                                    <span><MudButton Disabled="true" Variant="Variant.Text" Size="Size.Small">@AccountNicknameAction(accountGroup)</MudButton></span>
+                                                                </MudTooltip>
                                                             }
                                                         </span>
-                                                    </button>
-                                                    <div class="tracker-account-actions">
-                                                        <MudButton @onclick="@(async () => await ShowOrgAccountDetails(accountGroup))" Variant="Variant.Text" Size="Size.Small">Details</MudButton>
-                                                        @if (CanSetAccountNickname(accountGroup))
-                                                        {
-                                                            <MudButton @onclick="@(async () => await SetOrgAccountNickname(accountGroup))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">@AccountNicknameAction(accountGroup)</MudButton>
-                                                        }
-                                                        else
-                                                        {
-                                                            <MudTooltip Text="Repair or remove invalid profile bindings before naming this account.">
-                                                                <span><MudButton Disabled="true" Variant="Variant.Text" Size="Size.Small">@AccountNicknameAction(accountGroup)</MudButton></span>
-                                                            </MudTooltip>
-                                                        }
                                                     </div>
                                                 </div>
                                                 <MudCollapse Expanded="@IsAccountDrawerExpanded(accountGroup.AccountId)">
@@ -278,13 +282,13 @@
                                                         }
                                                     </div>
                                                 </MudCollapse>
-                                            </MudPaper>
+                                            </div>
                                         }
                                     </div>
                                 }
                             </div>
                         </MudCollapse>
-                    </MudPaper>
+                    </div>
                 </div>
             }
             else
