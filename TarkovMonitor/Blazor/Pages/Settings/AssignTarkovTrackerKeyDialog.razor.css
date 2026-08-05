@@ -1,0 +1,115 @@
+.tracker-profile-scan-state {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 5rem;
+    justify-content: center;
+}
+
+.tracker-profile-picker {
+    display: flex;
+    max-height: 24rem;
+    flex-direction: column;
+    gap: 0.45rem;
+    overflow-y: auto;
+    padding-right: 0.2rem;
+}
+
+.tracker-profile-choice {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 10px;
+    color: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.tracker-profile-choice:not(:disabled):hover,
+.tracker-profile-choice:not(:disabled):focus-visible {
+    border-color: rgba(104, 164, 255, 0.6);
+    background-color: rgba(104, 164, 255, 0.08);
+    outline: none;
+}
+
+.tracker-profile-choice--disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.tracker-profile-choice-main {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.tracker-profile-choice-title {
+    overflow: hidden;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker-profile-choice-id,
+.tracker-profile-choice-meta {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.72rem;
+}
+
+.tracker-profile-choice-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.65rem;
+    margin-top: 0.16rem;
+}
+
+.tracker-profile-mode {
+    color: #acd0ff;
+    font-weight: 700;
+}
+
+.tracker-profile-choice-state {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.tracker-profile-state {
+    padding: 0.08rem 0.38rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.tracker-profile-state--current {
+    border-color: rgba(87, 194, 142, 0.46);
+    color: #8ce0b8;
+    background: rgba(48, 146, 99, 0.14);
+}
+
+.tracker-profile-state--bound {
+    border-color: rgba(212, 148, 255, 0.4);
+    color: #deb0ff;
+    background: rgba(139, 74, 180, 0.14);
+}
+
+@media (max-width: 500px) {
+    .tracker-profile-choice {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .tracker-profile-choice-state {
+        flex-direction: row;
+    }
+}

@@ -132,26 +132,29 @@
             @if (!TarkovTracker.IsLegacyService)
             {
                 <MudText Typo="Typo.body2">Import verified TarkovTracker.org keys and bind each one to an exact EFT account, profile, and mode.</MudText>
-                @if (HasPendingOrgKey)
+                @if (CanImportOrgKey)
                 {
-                    <MudTooltip Text="Bind or remove the pending key before importing another.">
-                        <span><MudButton Disabled="true" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3">Import API Key</MudButton></span>
-                    </MudTooltip>
+                    <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3 mr-1">Import API Key</MudButton>
                 }
                 else
                 {
-                    <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3">Import API Key</MudButton>
+                    <MudTooltip Text="PVE and PVP already have unbound keys.">
+                        <span><MudButton Disabled="true" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="my-3 mr-1">Import API Key</MudButton></span>
+                    </MudTooltip>
                 }
+                <MudTooltip Text="Reads account, profile, mode, and last-played information from past EFT logs. It does not replay tasks.">
+                    <MudButton @onclick="ScanOrgProfiles" Variant="Variant.Text" Color="Color.Info" StartIcon="@Icons.Material.Filled.Search" Disabled="@scanningOrgProfiles">Scan profiles</MudButton>
+                </MudTooltip>
 
                 <div class="tracker-key-manager">
                     <div class="tracker-drawer mb-2">
                         <div class="tracker-drawer-heading">
                             <button type="button" class="tracker-drawer-toggle" @onclick="TogglePendingDrawer" aria-expanded="@pendingDrawerExpanded.ToString().ToLowerInvariant()">
                                 <MudIcon Icon="@(pendingDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
-                                <span class="tracker-drawer-title">Unbound / Unverified</span>
+                                <span class="tracker-drawer-title">Unbound</span>
                                 <span class="tracker-count-badge">@PendingOrgKeys.Count</span>
                             </button>
-                            <MudTooltip Text="Log in to EFT and select the matching profile to bind a pending key.">
+                            <MudTooltip Text="Scan past logs, then assign each key to its matching EFT account and profile. A matching live profile can also bind automatically.">
                                 <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="tracker-help-icon" />
                             </MudTooltip>
                         </div>
@@ -168,7 +171,7 @@
                                             <div class="tracker-key-copy">
                                                 <div class="d-flex align-center flex-wrap gap-2">
                                                     <span class="tracker-mode-badge @ModeBadgeClass(key)">@key.DisplayName</span>
-                                                    <MudText Typo="Typo.body2"><b>Not active</b></MudText>
+                                                    <MudText Typo="Typo.body2"><b>Not assigned</b></MudText>
                                                 </div>
                                                 <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
                                                 @if (key.IsLegacyRecovery)
@@ -177,14 +180,16 @@
                                                 }
                                             </div>
                                             <div class="tracker-key-actions">
-                                                @if (CanBindPendingKey(key))
+                                                @if (key.IsQuarantined)
                                                 {
-                                                    <MudButton @onclick="@(async () => await BindOrgKey(key))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">Bind to current profile</MudButton>
+                                                    <MudTooltip Text="This saved record must be removed or repaired before assignment.">
+                                                        <span><MudButton Disabled="true" Variant="Variant.Text" Size="Size.Small">Assign</MudButton></span>
+                                                    </MudTooltip>
                                                 }
                                                 else
                                                 {
-                                                    <MudTooltip Text="@PendingBindTooltip(key)">
-                                                        <span><MudButton Disabled="true" Variant="Variant.Text" Size="Size.Small">Bind to current profile</MudButton></span>
+                                                    <MudTooltip Text="Choose a saved EFT profile. Scan profiles first if the list is empty.">
+                                                        <MudButton @onclick="@(async () => await OpenAssignOrgKey(key, false))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">Assign</MudButton>
                                                     </MudTooltip>
                                                 }
                                                 <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error" Size="Size.Small">Remove</MudButton>
@@ -203,7 +208,7 @@
                     <div class="tracker-drawer">
                         <button type="button" class="tracker-drawer-toggle tracker-drawer-toggle--primary" @onclick="ToggleBoundDrawer" aria-expanded="@boundDrawerExpanded.ToString().ToLowerInvariant()">
                             <MudIcon Icon="@(boundDrawerExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Class="tracker-chevron" />
-                            <span class="tracker-drawer-title">Bound / Verified</span>
+                            <span class="tracker-drawer-title">Bound</span>
                             <span class="tracker-count-badge">@BoundOrgKeys.Count</span>
                         </button>
                         <MudCollapse Expanded="@boundDrawerExpanded">
@@ -270,6 +275,7 @@
                                                                     </div>
                                                                     <div class="tracker-key-actions">
                                                                         <MudButton @onclick="@(async () => await ShowOrgKeyDetails(key))" Variant="Variant.Text" Size="Size.Small">Details</MudButton>
+                                                                        <MudButton @onclick="@(async () => await OpenAssignOrgKey(key, true))" Variant="Variant.Text" Color="Color.Info" Size="Size.Small" Disabled="@key.IsQuarantined">Reassign</MudButton>
                                                                         <MudButton @onclick="@(async () => await UnbindOrgKey(key))" Variant="Variant.Text" Size="Size.Small">Unbind</MudButton>
                                                                         <MudButton @onclick="@(async () => await RemoveOrgKey(key))" Variant="Variant.Text" Color="Color.Error" Size="Size.Small">Remove</MudButton>
                                                                     </div>
@@ -370,6 +376,7 @@
     private string boundKeyFilter = "";
     private bool pendingDrawerExpanded;
     private bool boundDrawerExpanded = true;
+    private bool scanningOrgProfiles;
     private readonly HashSet<string> expandedAccountIds = new(StringComparer.Ordinal);
 
     private sealed record OrgAccountGroup(
@@ -799,6 +806,8 @@
     private List<TarkovTracker.OrgKeySummary> PendingOrgKeys => OrgKeys.Where(key => !key.IsBound).ToList();
     private List<TarkovTracker.OrgKeySummary> BoundOrgKeys => OrgKeys.Where(key => key.IsBound).ToList();
     private bool HasPendingOrgKey => TarkovTracker.HasPendingOrgKey();
+    private bool CanImportOrgKey => !PendingOrgKeys.Any(key => string.Equals(key.Prefix, "PVE", StringComparison.OrdinalIgnoreCase))
+        || !PendingOrgKeys.Any(key => string.Equals(key.Prefix, "PVP", StringComparison.OrdinalIgnoreCase));
     private List<OrgAccountGroup> BoundOrgKeyGroups
     {
         get
@@ -898,69 +907,126 @@
         }
     }
 
-    private bool CanBindPendingKey(TarkovTracker.OrgKeySummary key)
+    private async Task ScanOrgProfiles()
     {
-        var profile = GameWatcher.CurrentProfile;
-        return !key.IsQuarantined
-            && eft.IsGameRunning
-            && profile.HasIdentity
-            && !string.IsNullOrWhiteSpace(profile.Id)
-            && profile.SupportsTarkovTrackerWrites
-            && !HasBoundKeyForProfile(profile)
-            && string.Equals(
-                key.Prefix,
-                TarkovTracker.GetPrefixForSessionMode(profile.SessionMode),
-                StringComparison.OrdinalIgnoreCase);
-    }
-
-    private string PendingBindTooltip(TarkovTracker.OrgKeySummary key)
-    {
-        if (key.IsQuarantined)
-        {
-            return "Remove invalid or extra pending keys first.";
-        }
-        if (!eft.IsGameRunning
-            || !GameWatcher.CurrentProfile.HasIdentity
-            || string.IsNullOrWhiteSpace(GameWatcher.CurrentProfile.Id))
-        {
-            return "Select an EFT profile first.";
-        }
-        if (!GameWatcher.CurrentProfile.SupportsTarkovTrackerWrites)
-        {
-            return "This EFT profile mode cannot use TarkovTracker.org keys.";
-        }
-        if (HasBoundKeyForProfile(GameWatcher.CurrentProfile))
-        {
-            return "The current EFT profile already has a bound key.";
-        }
-        return $"Select the matching {key.DisplayName} EFT profile first.";
-    }
-
-    private bool HasBoundKeyForProfile(Profile profile)
-    {
-        return BoundOrgKeys.Any(key => string.Equals(key.AccountId, profile.AccountId, StringComparison.Ordinal)
-            && string.Equals(key.ProfileId, profile.Id, StringComparison.Ordinal)
-            && key.SessionMode == profile.SessionMode);
-    }
-
-    private async Task BindOrgKey(TarkovTracker.OrgKeySummary key)
-    {
+        scanningOrgProfiles = true;
         try
         {
-            var boundKey = await TarkovTracker.BindOrgKey(key.Id, GameWatcher.CurrentProfile.Snapshot());
-            messageLog.AddMessage(
-                $"Bound the {boundKey.DisplayName} TarkovTracker.org API key to Account ID {boundKey.AccountId}.",
-                "update");
-            pendingDrawerExpanded = false;
+            var discovered = await Task.Run(eft.DiscoverProfiles);
+            var updated = TarkovTracker.SaveDiscoveredOrgProfiles(discovered);
+            messageLog.AddMessage(discovered.Count == 0
+                ? "No EFT profiles were found in past logs. Launch EFT once, then scan again."
+                : $"Found {discovered.Count} EFT profile{(discovered.Count == 1 ? "" : "s")} in past logs; updated {updated} saved profile record{(updated == 1 ? "" : "s")}.",
+                discovered.Count == 0 ? "warning" : "update");
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Could not scan EFT profiles: {ex.Message}", "exception");
+        }
+        finally
+        {
+            scanningOrgProfiles = false;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OpenAssignOrgKey(TarkovTracker.OrgKeySummary key, bool reassign)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters
+        {
+            [nameof(AssignTarkovTrackerKeyDialog.KeyPrefix)] = key.Prefix,
+            [nameof(AssignTarkovTrackerKeyDialog.KeyDisplayName)] = key.DisplayName,
+            [nameof(AssignTarkovTrackerKeyDialog.KeyIsBound)] = key.IsBound,
+            [nameof(AssignTarkovTrackerKeyDialog.BoundAccountId)] = key.AccountId,
+            [nameof(AssignTarkovTrackerKeyDialog.BoundProfileId)] = key.ProfileId,
+            [nameof(AssignTarkovTrackerKeyDialog.BoundSessionMode)] = key.SessionMode,
+            [nameof(AssignTarkovTrackerKeyDialog.IsReassign)] = reassign,
+        };
+        var dialog = DialogService.Show<AssignTarkovTrackerKeyDialog>(
+            reassign ? "Reassign API key" : "Assign API key",
+            parameters,
+            options);
+        var result = await dialog.Result;
+        if (result.Canceled || result.Data is not TarkovTracker.OrgProfileSummary profile)
+        {
+            return;
+        }
+
+        var willSwap = reassign && profile.HasBoundKey;
+        var action = willSwap ? "Swap" : reassign ? "Reassign" : "Assign";
+        var explanation = willSwap
+            ? "The destination already has a key. Both keys will swap profiles; neither key will become unbound."
+            : reassign
+                ? "The key will move to this saved profile and remain bound."
+                : "The key will be bound to this saved profile.";
+        var confirmed = await DialogService.ShowMessageBox(
+            $"{action} API key",
+            $"{ProfileDestination(profile)}{Environment.NewLine}{Environment.NewLine}{explanation}",
+            yesText: action,
+            cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            TarkovTracker.OrgKeySummary assignedKey;
+            if (reassign)
+            {
+                var reassignment = TarkovTracker.ReassignOrgKey(
+                    key.Id,
+                    profile.AccountId,
+                    profile.ProfileId,
+                    profile.SessionMode);
+                assignedKey = reassignment.Key;
+                messageLog.AddMessage(reassignment.SwappedKey == null
+                    ? $"Reassigned the {assignedKey.DisplayName} API key to Account ID {assignedKey.AccountId}."
+                    : $"Swapped the {assignedKey.DisplayName} API keys between the selected saved profiles.",
+                    "update");
+            }
+            else
+            {
+                assignedKey = await TarkovTracker.AssignOrgKey(
+                    key.Id,
+                    profile.AccountId,
+                    profile.ProfileId,
+                    profile.SessionMode);
+                messageLog.AddMessage(
+                    $"Assigned the {assignedKey.DisplayName} API key to Account ID {assignedKey.AccountId}.",
+                    "update");
+            }
+
+            pendingDrawerExpanded = PendingOrgKeys.Count > 0;
             boundDrawerExpanded = true;
-            expandedAccountIds.Add(boundKey.AccountId);
+            expandedAccountIds.Add(assignedKey.AccountId);
             await ReactivateCurrentTrackerProfile();
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Could not bind the TarkovTracker.org API key: {ex.Message}", "exception");
+            messageLog.AddMessage($"Could not {action.ToLowerInvariant()} the TarkovTracker.org API key: {ex.Message}", "exception");
         }
         StateHasChanged();
+    }
+
+    private static string ProfileDestination(TarkovTracker.OrgProfileSummary profile)
+    {
+        var accountName = string.IsNullOrWhiteSpace(profile.AccountNickname)
+            ? "Not set"
+            : profile.AccountNickname;
+        var lastPlayed = profile.LastSeenUtc is { } lastSeen
+            ? lastSeen.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+            : "Unknown";
+        var profileSuffix = profile.ProfileId.Length <= 6
+            ? profile.ProfileId
+            : profile.ProfileId[^6..];
+        return string.Join(Environment.NewLine,
+            $"Account: {accountName}",
+            $"Account ID: {profile.AccountId}",
+            $"Mode: {profile.DisplayName}",
+            $"Last played: {lastPlayed}",
+            $"Profile: …{profileSuffix}");
     }
 
     private async Task SetOrgAccountNickname(OrgAccountGroup accountGroup)
@@ -1049,9 +1115,16 @@
 
     private async Task ShowOrgKeyDetails(TarkovTracker.OrgKeySummary key)
     {
+        var savedProfile = TarkovTracker.GetKnownOrgProfiles().FirstOrDefault(profile =>
+            string.Equals(profile.AccountId, key.AccountId, StringComparison.Ordinal)
+            && string.Equals(profile.ProfileId, key.ProfileId, StringComparison.Ordinal)
+            && profile.SessionMode == key.SessionMode);
+        var lastPlayed = savedProfile?.LastSeenUtc is { } lastSeen
+            ? lastSeen.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+            : "Unknown";
         await DialogService.ShowMessageBox(
             "API key binding details",
-            $"Account ID: {key.AccountId}{Environment.NewLine}Profile ID: {key.ProfileId}{Environment.NewLine}Mode: {key.DisplayName}",
+            $"Account ID: {key.AccountId}{Environment.NewLine}Profile ID: {key.ProfileId}{Environment.NewLine}Mode: {key.DisplayName}{Environment.NewLine}Last played: {lastPlayed}",
             yesText: "Close");
     }
 

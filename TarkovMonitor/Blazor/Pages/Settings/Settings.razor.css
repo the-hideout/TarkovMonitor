@@ -10,7 +10,7 @@
 .tracker-account-drawer {
     overflow: hidden;
     border: 1px solid var(--tracker-border);
-    background: linear-gradient(135deg, rgba(31, 39, 52, 0.9), rgba(20, 24, 32, 0.92));
+    background: linear-gradient(135deg, rgba(32, 33, 37, 0.96), rgba(21, 22, 25, 0.96));
     transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -52,7 +52,7 @@
 
 .tracker-drawer-toggle--primary {
     width: 100%;
-    background: linear-gradient(90deg, rgba(42, 103, 190, 0.13), transparent 60%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent 60%);
 }
 
 .tracker-drawer-toggle:hover,

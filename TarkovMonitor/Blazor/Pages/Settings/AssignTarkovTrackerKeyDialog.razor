@@ -1,0 +1,165 @@
+@inject GameWatcher eft
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Select the exact EFT profile for this @KeyDisplayName API key.
+        </MudText>
+
+        @if (scanning)
+        {
+            <div class="tracker-profile-scan-state">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                <MudText Typo="Typo.body2">Scanning past logs</MudText>
+            </div>
+        }
+        else if (string.Equals(KeyPrefix, "SN1", StringComparison.OrdinalIgnoreCase))
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                Seasonal assignment is not available yet.
+            </MudAlert>
+        }
+        else if (MatchingProfiles.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                No matching profiles found. Scan profiles or launch EFT.
+            </MudAlert>
+        }
+        else
+        {
+            <div class="tracker-profile-picker">
+                @foreach (var profile in MatchingProfiles)
+                {
+                    var disabled = !IsReassign && profile.HasBoundKey;
+                    <button type="button"
+                            class="tracker-profile-choice @(disabled ? "tracker-profile-choice--disabled" : "")"
+                            disabled="@disabled"
+                            @onclick="@(() => Select(profile))">
+                        <span class="tracker-profile-choice-main">
+                            <span class="tracker-profile-choice-title">@AccountLabel(profile)</span>
+                            <span class="tracker-profile-choice-id">Account ID: @profile.AccountId</span>
+                            <span class="tracker-profile-choice-meta">
+                                <span class="tracker-profile-mode">@profile.DisplayName</span>
+                                <span>@LastPlayed(profile)</span>
+                                <span>@ShortProfileId(profile.ProfileId)</span>
+                            </span>
+                        </span>
+                        <span class="tracker-profile-choice-state">
+                            @if (profile.IsCurrent)
+                            {
+                                <span class="tracker-profile-state tracker-profile-state--current">Current</span>
+                            }
+                            @if (profile.HasBoundKey)
+                            {
+                                <span class="tracker-profile-state tracker-profile-state--bound">@(IsReassign ? "Swap" : "Assigned")</span>
+                            }
+                        </span>
+                    </button>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(scanMessage))
+        {
+            <MudText Typo="Typo.caption" Class="mt-2">@scanMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudTooltip Text="Reads only account, profile, mode, and last-played information. It does not replay tasks.">
+            <MudButton Color="Color.Info" Variant="Variant.Text" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search">
+                Scan profiles
+            </MudButton>
+        </MudTooltip>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public string KeyPrefix { get; set; } = "";
+    [Parameter] public string KeyDisplayName { get; set; } = "";
+    [Parameter] public bool KeyIsBound { get; set; }
+    [Parameter] public string BoundAccountId { get; set; } = "";
+    [Parameter] public string BoundProfileId { get; set; } = "";
+    [Parameter] public EftSessionMode BoundSessionMode { get; set; }
+    [Parameter] public bool IsReassign { get; set; }
+
+    private bool scanning;
+    private string scanMessage = "";
+    private IReadOnlyList<TarkovTracker.OrgProfileSummary> profiles = Array.Empty<TarkovTracker.OrgProfileSummary>();
+
+    private List<TarkovTracker.OrgProfileSummary> MatchingProfiles => profiles
+        .Where(profile => string.Equals(
+            KeyPrefix,
+            TarkovTracker.GetPrefixForSessionMode(profile.SessionMode),
+            StringComparison.OrdinalIgnoreCase))
+        .Where(profile => !IsReassign
+            || !KeyIsBound
+            || !string.Equals(profile.AccountId, BoundAccountId, StringComparison.Ordinal)
+            || !string.Equals(profile.ProfileId, BoundProfileId, StringComparison.Ordinal)
+            || profile.SessionMode != BoundSessionMode)
+        .OrderByDescending(profile => profile.IsCurrent)
+        .ThenByDescending(profile => profile.LastSeenUtc)
+        .ToList();
+
+    protected override void OnInitialized()
+    {
+        ReloadProfiles();
+    }
+
+    private void ReloadProfiles()
+    {
+        profiles = TarkovTracker.GetKnownOrgProfiles();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Select(TarkovTracker.OrgProfileSummary profile)
+    {
+        MudDialog.Close(DialogResult.Ok(profile));
+    }
+
+    private async Task ScanProfiles()
+    {
+        scanning = true;
+        scanMessage = "";
+        try
+        {
+            var discovered = await Task.Run(eft.DiscoverProfiles);
+            var changed = TarkovTracker.SaveDiscoveredOrgProfiles(discovered);
+            ReloadProfiles();
+            scanMessage = discovered.Count == 0
+                ? "No EFT profiles were found in past logs."
+                : $"Found {discovered.Count} profile{(discovered.Count == 1 ? "" : "s")}; updated {changed}.";
+        }
+        catch (Exception ex)
+        {
+            scanMessage = $"Could not scan profiles: {ex.Message}";
+        }
+        finally
+        {
+            scanning = false;
+        }
+    }
+
+    private static string AccountLabel(TarkovTracker.OrgProfileSummary profile)
+    {
+        return string.IsNullOrWhiteSpace(profile.AccountNickname)
+            ? $"Account {profile.AccountId}"
+            : profile.AccountNickname;
+    }
+
+    private static string LastPlayed(TarkovTracker.OrgProfileSummary profile)
+    {
+        return profile.LastSeenUtc is { } lastSeen
+            ? $"Last played: {lastSeen.ToLocalTime():MMM d, yyyy h:mm tt}"
+            : "Last played: Unknown";
+    }
+
+    private static string ShortProfileId(string profileId)
+    {
+        var suffix = profileId.Length <= 6 ? profileId : profileId[^6..];
+        return $"Profile …{suffix}";
+    }
+}
