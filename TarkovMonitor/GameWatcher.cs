@@ -856,7 +856,7 @@ namespace TarkovMonitor
         public Dictionary<DateTime, string> GetLogFolders()
         {
 			Dictionary<DateTime, string> folderDictionary = new();
-            if (LogsPath == "")
+            if (LogsPath == "" || !Directory.Exists(LogsPath))
             {
                 return folderDictionary;
 			}
@@ -866,9 +866,18 @@ namespace TarkovMonitor
             // For each log folder, get the timestamp from the folder name
             foreach (string folderName in logFolders)
             {
-                var dateTimeString = new Regex(@"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Match(folderName).Groups["timestamp"].Value;
-                DateTime folderDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
-                folderDictionary.Add(folderDate, folderName);
+                var match = Regex.Match(folderName, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)");
+                if (!match.Success
+                    || !DateTime.TryParseExact(
+                        match.Groups["timestamp"].Value,
+                        "yyyy.MM.dd_H-mm-ss",
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.None,
+                        out var folderDate))
+                {
+                    continue;
+                }
+                folderDictionary.TryAdd(folderDate, folderName);
             }
             // Return the dictionary sorted by the timestamp
             return folderDictionary.OrderByDescending(key => key.Key).ToDictionary(x => x.Key, x => x.Value);
@@ -1011,6 +1020,39 @@ namespace TarkovMonitor
                 });
             }
             return logDetails;
+        }
+
+        public List<DiscoveredEftProfile> DiscoverProfiles()
+        {
+            var observations = GetLogFolders()
+                .Values
+                .SelectMany(GetLogDetails)
+                .Where(details => details.Profile.HasIdentity
+                    && !string.IsNullOrWhiteSpace(details.Profile.Id)
+                    && details.Profile.SessionMode is EftSessionMode.PVE or EftSessionMode.Regular or EftSessionMode.Seasonal)
+                .ToList();
+
+            return observations
+                .GroupBy(details => new
+                {
+                    details.Profile.AccountId,
+                    details.Profile.Id,
+                    details.Profile.SessionMode,
+                })
+                .Select(group => new DiscoveredEftProfile
+                {
+                    Profile = group.First().Profile.Snapshot(),
+                    FirstSeenUtc = ToUtc(group.Min(details => details.Date)),
+                    LastSeenUtc = ToUtc(group.Max(details => details.Date)),
+                })
+                .OrderByDescending(profile => profile.LastSeenUtc)
+                .ToList();
+        }
+
+        private static DateTimeOffset ToUtc(DateTime localTime)
+        {
+            var unspecified = DateTime.SpecifyKind(localTime, DateTimeKind.Unspecified);
+            return new DateTimeOffset(unspecified, TimeZoneInfo.Local.GetUtcOffset(unspecified)).ToUniversalTime();
         }
 
         public List<LogDetails> GetLogBreakpoints(string profileId)
@@ -1403,6 +1445,13 @@ namespace TarkovMonitor
         public DateTime Date { get; set; }
         public Version Version { get; set; }
         public string Folder { get; set; }
+    }
+
+    public sealed class DiscoveredEftProfile
+    {
+        public Profile Profile { get; set; } = new();
+        public DateTimeOffset FirstSeenUtc { get; set; }
+        public DateTimeOffset LastSeenUtc { get; set; }
     }
 
     public enum ProfileType

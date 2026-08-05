@@ -7,7 +7,7 @@ namespace TarkovMonitor
 {
     internal sealed class TarkovTrackerOrgStoreDocument
     {
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         [JsonPropertyName("version")]
         [JsonRequired]
@@ -19,6 +19,51 @@ namespace TarkovMonitor
 
         [JsonPropertyName("accounts")]
         public List<TarkovTrackerOrgAccount>? Accounts { get; set; } = new();
+
+        [JsonPropertyName("profiles")]
+        public List<TarkovTrackerOrgProfile>? Profiles { get; set; } = new();
+    }
+
+    internal sealed class TarkovTrackerOrgProfile
+    {
+        [JsonPropertyName("accountId")]
+        public string AccountId { get; set; } = "";
+
+        [JsonPropertyName("profileId")]
+        public string ProfileId { get; set; } = "";
+
+        [JsonPropertyName("sessionMode")]
+        public string SessionMode { get; set; } = "";
+
+        [JsonPropertyName("firstSeenUtc")]
+        public DateTimeOffset? FirstSeenUtc { get; set; }
+
+        [JsonPropertyName("lastSeenUtc")]
+        public DateTimeOffset? LastSeenUtc { get; set; }
+
+        internal TarkovTrackerOrgProfile Clone()
+        {
+            return new TarkovTrackerOrgProfile
+            {
+                AccountId = AccountId,
+                ProfileId = ProfileId,
+                SessionMode = SessionMode,
+                FirstSeenUtc = FirstSeenUtc,
+                LastSeenUtc = LastSeenUtc,
+            };
+        }
+
+        internal Profile ToProfile()
+        {
+            var resolvedMode = GameWatcher.ResolveSessionMode(SessionMode);
+            return new Profile
+            {
+                AccountId = AccountId,
+                Id = ProfileId,
+                SessionMode = resolvedMode,
+                Type = GameWatcher.ResolveProfileType(resolvedMode),
+            };
+        }
     }
 
     internal sealed class TarkovTrackerOrgAccount
@@ -93,13 +138,16 @@ namespace TarkovMonitor
     {
         private readonly List<TarkovTrackerOrgKey> keys;
         private readonly List<TarkovTrackerOrgAccount> accounts;
+        private readonly List<TarkovTrackerOrgProfile> profiles;
 
         private TarkovTrackerOrgStore(
             IEnumerable<TarkovTrackerOrgKey>? keys = null,
-            IEnumerable<TarkovTrackerOrgAccount>? accounts = null)
+            IEnumerable<TarkovTrackerOrgAccount>? accounts = null,
+            IEnumerable<TarkovTrackerOrgProfile>? profiles = null)
         {
             this.keys = keys?.Select(key => key.Clone()).ToList() ?? new();
             this.accounts = accounts?.Select(account => account.Clone()).ToList() ?? new();
+            this.profiles = profiles?.Select(profile => profile.Clone()).ToList() ?? new();
         }
 
         public static TarkovTrackerOrgStore Empty() => new();
@@ -117,7 +165,7 @@ namespace TarkovMonitor
 
                 var document = JsonSerializer.Deserialize<TarkovTrackerOrgStoreDocument>(rawValue)
                     ?? throw new JsonException("The stored value is null.");
-                if (document.Version is not (1 or TarkovTrackerOrgStoreDocument.CurrentVersion))
+                if (document.Version is not (1 or 2 or TarkovTrackerOrgStoreDocument.CurrentVersion))
                 {
                     throw new JsonException($"Unsupported store version {document.Version}.");
                 }
@@ -187,11 +235,40 @@ namespace TarkovMonitor
                     throw new JsonException("A stored account nickname record is invalid.");
                 }
 
+                List<TarkovTrackerOrgProfile> normalizedProfiles;
+                if (document.Version < TarkovTrackerOrgStoreDocument.CurrentVersion)
+                {
+                    normalizedProfiles = normalizedKeys
+                        .Where(key => key.IsBound)
+                        .Select(key => new TarkovTrackerOrgProfile
+                        {
+                            AccountId = key.AccountId,
+                            ProfileId = key.ProfileId,
+                            SessionMode = key.SessionMode,
+                        })
+                        .GroupBy(ProfileIdentity, StringComparer.Ordinal)
+                        .Select(group => group.First())
+                        .ToList();
+                }
+                else
+                {
+                    normalizedProfiles = document.Profiles?
+                        .Where(profile => profile != null)
+                        .Select(Normalize)
+                        .ToList() ?? new();
+                }
+
+                normalizedProfiles = normalizedProfiles
+                    .Where(IsValidProfile)
+                    .GroupBy(ProfileIdentity, StringComparer.Ordinal)
+                    .Select(MergeProfileObservations)
+                    .ToList();
+
                 foreach (var key in normalizedKeys)
                 {
                     key.LegacyNickname = null;
                 }
-                store = new TarkovTrackerOrgStore(normalizedKeys, normalizedAccounts);
+                store = new TarkovTrackerOrgStore(normalizedKeys, normalizedAccounts, normalizedProfiles);
                 return true;
             }
             catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException)
@@ -201,7 +278,7 @@ namespace TarkovMonitor
             }
         }
 
-        public TarkovTrackerOrgStore Clone() => new(keys, accounts);
+        public TarkovTrackerOrgStore Clone() => new(keys, accounts, profiles);
 
         public string Serialize()
         {
@@ -209,6 +286,7 @@ namespace TarkovMonitor
             {
                 Keys = keys.Select(key => key.Clone()).ToList(),
                 Accounts = accounts.Select(account => account.Clone()).ToList(),
+                Profiles = profiles.Select(profile => profile.Clone()).ToList(),
             });
         }
 
@@ -220,6 +298,11 @@ namespace TarkovMonitor
         public TarkovTrackerOrgKey? GetKey(string id)
         {
             return keys.FirstOrDefault(key => string.Equals(key.Id, id, StringComparison.Ordinal))?.Clone();
+        }
+
+        public IReadOnlyList<TarkovTrackerOrgProfile> GetProfiles()
+        {
+            return profiles.Select(profile => profile.Clone()).ToList();
         }
 
         public string GetAccountNickname(string accountId)
@@ -247,6 +330,12 @@ namespace TarkovMonitor
             return keys.Any(key => !key.IsBound);
         }
 
+        public bool HasPendingKey(string prefix)
+        {
+            return keys.Any(key => !key.IsBound
+                && string.Equals(key.Prefix, prefix, StringComparison.OrdinalIgnoreCase));
+        }
+
         public bool ContainsToken(string token)
         {
             return keys.Any(key => TokenIdentityMatches(key.Token, token));
@@ -269,9 +358,10 @@ namespace TarkovMonitor
                 throw new TarkovTracker.DuplicateImportedTokenException(
                     $"This {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key is already saved locally.");
             }
-            if (HasPendingKey())
+            if (HasPendingKey(normalizedPrefix))
             {
-                throw new InvalidOperationException("Bind or remove the pending API key before importing another key.");
+                throw new InvalidOperationException(
+                    $"Bind or remove the pending {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key before importing another one.");
             }
 
             var key = new TarkovTrackerOrgKey
@@ -330,6 +420,103 @@ namespace TarkovMonitor
             return key.Clone();
         }
 
+        public TarkovTrackerOrgKey BindKnownProfile(string id, string accountId, string profileId, EftSessionMode sessionMode)
+        {
+            var profile = GetKnownProfile(accountId, profileId, sessionMode);
+            return Bind(id, profile);
+        }
+
+        public TarkovTrackerOrgKey? RememberAndAutoBind(Profile profile, DateTimeOffset seenAt)
+        {
+            RememberProfile(profile, seenAt, seenAt);
+            var existing = GetForProfile(profile);
+            if (existing != null || !profile.SupportsTarkovTrackerWrites)
+            {
+                return existing;
+            }
+
+            var prefix = TarkovTracker.GetPrefixForSessionMode(profile.SessionMode);
+            var pending = keys
+                .Where(key => !key.IsBound
+                    && string.IsNullOrEmpty(GetStoreIssue(key))
+                    && string.Equals(key.Prefix, prefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            return pending.Count == 1 ? Bind(pending[0].Id, profile) : null;
+        }
+
+        public int RememberProfiles(IEnumerable<TarkovTrackerOrgProfile> discoveredProfiles)
+        {
+            var changed = 0;
+            foreach (var discoveredProfile in discoveredProfiles)
+            {
+                var normalized = Normalize(discoveredProfile.Clone());
+                if (!IsValidProfile(normalized))
+                {
+                    continue;
+                }
+                if (RememberProfile(
+                    normalized.ToProfile(),
+                    normalized.FirstSeenUtc,
+                    normalized.LastSeenUtc))
+                {
+                    changed++;
+                }
+            }
+            return changed;
+        }
+
+        public (TarkovTrackerOrgKey Key, TarkovTrackerOrgKey? SwappedKey) ReassignKnownProfile(
+            string id,
+            string accountId,
+            string profileId,
+            EftSessionMode sessionMode)
+        {
+            var key = GetMutableKey(id);
+            if (!key.IsBound)
+            {
+                throw new InvalidOperationException("This API key is not bound.");
+            }
+
+            var target = GetKnownProfile(accountId, profileId, sessionMode);
+            if (!CanBindToProfile(key, target))
+            {
+                throw new InvalidOperationException(
+                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key cannot be assigned to the selected {target.DisplayName} profile.");
+            }
+            if (BindingMatches(key, target))
+            {
+                throw new InvalidOperationException("This API key is already assigned to that profile.");
+            }
+
+            var previous = new Profile
+            {
+                AccountId = key.AccountId,
+                Id = key.ProfileId,
+                SessionMode = GameWatcher.ResolveSessionMode(key.SessionMode),
+                Type = GameWatcher.ResolveProfileType(GameWatcher.ResolveSessionMode(key.SessionMode)),
+            };
+            var occupant = keys.FirstOrDefault(candidate => candidate.IsBound
+                && !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)
+                && BindingMatches(candidate, target));
+
+            ApplyBinding(key, target);
+            if (occupant != null)
+            {
+                if (!CanBindToProfile(occupant, previous))
+                {
+                    throw new InvalidOperationException("The target profile is occupied by an incompatible API key.");
+                }
+                ApplyBinding(occupant, previous);
+            }
+
+            EnsureBindingAvailable(key);
+            if (occupant != null)
+            {
+                EnsureBindingAvailable(occupant);
+            }
+            return (key.Clone(), occupant?.Clone());
+        }
+
         public TarkovTrackerOrgKey Unbind(string id)
         {
             var key = GetMutableKey(id);
@@ -338,9 +525,11 @@ namespace TarkovMonitor
                 throw new InvalidOperationException("This API key is already unbound.");
             }
             if (keys.Any(candidate => !candidate.IsBound
-                && !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)))
+                && !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)
+                && string.Equals(candidate.Prefix, key.Prefix, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new InvalidOperationException("Bind or remove the pending API key before unbinding another key.");
+                throw new InvalidOperationException(
+                    $"Bind or remove the pending {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key before unbinding another one.");
             }
 
             key.AccountId = "";
@@ -392,6 +581,7 @@ namespace TarkovMonitor
         public static bool IsVerified(TarkovTrackerOrgKey key)
         {
             return !string.IsNullOrWhiteSpace(key.Token)
+                && IsRecognizedStoredToken(key.Token)
                 && string.Equals(key.Prefix, TarkovTracker.GetTokenPrefix(key.Token), StringComparison.OrdinalIgnoreCase)
                 && string.Equals(
                     key.VerifiedTokenHash,
@@ -402,6 +592,19 @@ namespace TarkovMonitor
         public static string ComputeTokenFingerprint(string token)
         {
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim())));
+        }
+
+        private static bool IsRecognizedStoredToken(string token)
+        {
+            if (string.IsNullOrEmpty(token) || token != token.Trim())
+            {
+                return false;
+            }
+            var pieces = token.Split('_');
+            return pieces.Length == 2
+                && pieces[0] is "PVE" or "PVP" or "SN1"
+                && pieces[1].Length == 18
+                && pieces[1].All(Uri.IsHexDigit);
         }
 
         private static TarkovTrackerOrgKey Normalize(TarkovTrackerOrgKey key)
@@ -427,6 +630,15 @@ namespace TarkovMonitor
             return account;
         }
 
+        private static TarkovTrackerOrgProfile Normalize(TarkovTrackerOrgProfile profile)
+        {
+            profile.AccountId = profile.AccountId?.Trim() ?? "";
+            profile.ProfileId = profile.ProfileId?.Trim() ?? "";
+            profile.SessionMode = TarkovTracker.NormalizeSessionMode(
+                GameWatcher.ResolveSessionMode(profile.SessionMode));
+            return profile;
+        }
+
         private static string NormalizeNickname(string? nickname) => nickname?.Trim() ?? "";
 
         private static bool IsValidAccountNickname(string accountId, string nickname)
@@ -435,6 +647,114 @@ namespace TarkovMonitor
                 && accountId.All(char.IsDigit)
                 && nickname.Length is >= 1 and <= 32
                 && !nickname.Any(char.IsControl);
+        }
+
+        private static bool IsValidProfile(TarkovTrackerOrgProfile profile)
+        {
+            var resolvedMode = GameWatcher.ResolveSessionMode(profile.SessionMode);
+            return !string.IsNullOrWhiteSpace(profile.AccountId)
+                && profile.AccountId.All(char.IsDigit)
+                && !string.IsNullOrWhiteSpace(profile.ProfileId)
+                && resolvedMode is EftSessionMode.PVE or EftSessionMode.Regular or EftSessionMode.Seasonal
+                && string.Equals(
+                    profile.SessionMode,
+                    TarkovTracker.NormalizeSessionMode(resolvedMode),
+                    StringComparison.OrdinalIgnoreCase)
+                && (profile.FirstSeenUtc == null
+                    || profile.LastSeenUtc == null
+                    || profile.FirstSeenUtc <= profile.LastSeenUtc);
+        }
+
+        private static TarkovTrackerOrgProfile MergeProfileObservations(
+            IEnumerable<TarkovTrackerOrgProfile> observations)
+        {
+            var records = observations.ToList();
+            var merged = records[0].Clone();
+            merged.FirstSeenUtc = records
+                .Where(record => record.FirstSeenUtc != null)
+                .Select(record => record.FirstSeenUtc)
+                .Min();
+            merged.LastSeenUtc = records
+                .Where(record => record.LastSeenUtc != null)
+                .Select(record => record.LastSeenUtc)
+                .Max();
+            return merged;
+        }
+
+        private bool RememberProfile(
+            Profile profile,
+            DateTimeOffset? firstSeenUtc,
+            DateTimeOffset? lastSeenUtc)
+        {
+            var candidate = Normalize(new TarkovTrackerOrgProfile
+            {
+                AccountId = profile.AccountId,
+                ProfileId = profile.Id,
+                SessionMode = TarkovTracker.NormalizeSessionMode(profile.SessionMode),
+                FirstSeenUtc = firstSeenUtc,
+                LastSeenUtc = lastSeenUtc,
+            });
+            if (!IsValidProfile(candidate))
+            {
+                return false;
+            }
+
+            var existing = profiles.FirstOrDefault(saved => string.Equals(
+                ProfileIdentity(saved),
+                ProfileIdentity(candidate),
+                StringComparison.Ordinal));
+            if (existing == null)
+            {
+                profiles.Add(candidate);
+                return true;
+            }
+
+            var previousFirstSeen = existing.FirstSeenUtc;
+            var previousLastSeen = existing.LastSeenUtc;
+            if (candidate.FirstSeenUtc != null
+                && (existing.FirstSeenUtc == null || candidate.FirstSeenUtc < existing.FirstSeenUtc))
+            {
+                existing.FirstSeenUtc = candidate.FirstSeenUtc;
+            }
+            if (candidate.LastSeenUtc != null
+                && (existing.LastSeenUtc == null || candidate.LastSeenUtc > existing.LastSeenUtc))
+            {
+                existing.LastSeenUtc = candidate.LastSeenUtc;
+            }
+            return previousFirstSeen != existing.FirstSeenUtc || previousLastSeen != existing.LastSeenUtc;
+        }
+
+        public Profile GetKnownProfile(string accountId, string profileId, EftSessionMode sessionMode)
+        {
+            var identity = ProfileIdentity(accountId, profileId, sessionMode);
+            return profiles.FirstOrDefault(profile => string.Equals(
+                    ProfileIdentity(profile),
+                    identity,
+                    StringComparison.Ordinal))?.ToProfile()
+                ?? throw new InvalidOperationException("The selected EFT profile is not in the saved profile list. Scan profiles and try again.");
+        }
+
+        private static string ProfileIdentity(TarkovTrackerOrgProfile profile)
+        {
+            return ProfileIdentity(
+                profile.AccountId,
+                profile.ProfileId,
+                GameWatcher.ResolveSessionMode(profile.SessionMode));
+        }
+
+        private static string ProfileIdentity(string accountId, string profileId, EftSessionMode sessionMode)
+        {
+            return $"{accountId.Trim()}\u001f{profileId.Trim()}\u001f{TarkovTracker.NormalizeSessionMode(sessionMode).ToUpperInvariant()}";
+        }
+
+        private static bool BindingMatches(TarkovTrackerOrgKey key, Profile profile)
+        {
+            return string.Equals(key.AccountId, profile.AccountId, StringComparison.Ordinal)
+                && string.Equals(key.ProfileId, profile.Id, StringComparison.Ordinal)
+                && string.Equals(
+                    key.SessionMode,
+                    TarkovTracker.NormalizeSessionMode(profile.SessionMode),
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool CanBindToProfile(TarkovTrackerOrgKey key, Profile profile)
@@ -485,7 +805,7 @@ namespace TarkovMonitor
 
         public static string GetRecordIssue(TarkovTrackerOrgKey key)
         {
-            if (!IsVerified(key) || !TarkovTracker.IsImportableToken(key.Token))
+            if (!IsVerified(key))
             {
                 return "The token verification record is invalid.";
             }
@@ -500,11 +820,14 @@ namespace TarkovMonitor
             if (key.IsBound)
             {
                 var resolvedMode = GameWatcher.ResolveSessionMode(key.SessionMode);
+                var expectedPrefix = resolvedMode == EftSessionMode.Seasonal
+                    ? "SN1"
+                    : TarkovTracker.GetPrefixForSessionMode(resolvedMode);
                 if (!key.AccountId.All(char.IsDigit)
-                    || resolvedMode is not (EftSessionMode.Regular or EftSessionMode.PVE)
+                    || resolvedMode is not (EftSessionMode.Regular or EftSessionMode.PVE or EftSessionMode.Seasonal)
                     || !string.Equals(
                         key.Prefix,
-                        TarkovTracker.GetPrefixForSessionMode(resolvedMode),
+                        expectedPrefix,
                         StringComparison.OrdinalIgnoreCase))
                 {
                     return "The account, profile, or mode binding is invalid.";
@@ -520,9 +843,10 @@ namespace TarkovMonitor
             {
                 return recordIssue;
             }
-            if (keys.Count(candidate => !candidate.IsBound) > 1 && !key.IsBound)
+            if (!key.IsBound && keys.Count(candidate => !candidate.IsBound
+                && string.Equals(candidate.Prefix, key.Prefix, StringComparison.OrdinalIgnoreCase)) > 1)
             {
-                return "The store contains more than one pending key.";
+                return "The store contains more than one pending key for the same mode.";
             }
             if (keys.Any(candidate => !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)
                 && TokenIdentityMatches(candidate.Token, key.Token)))
