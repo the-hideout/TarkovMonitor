@@ -703,17 +703,66 @@ namespace TarkovMonitor
 
         private void Delete_Screenshots(RaidInfoEventArgs e, MonitorMessage? monMessage = null, MonitorMessageButton? screenshotButton = null)
         {
-            try
+            var deleted = 0;
+            var alreadyMissing = 0;
+            var failed = 0;
+            foreach (var filename in e.RaidInfo.Screenshots
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList())
             {
-                foreach (var filename in e.RaidInfo.Screenshots)
+                if (!WatcherFileUtilities.TryGetContainedScreenshotPath(
+                    eft.ScreenshotsPath,
+                    filename,
+                    out var screenshotPath))
                 {
-                    File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
+                    failed++;
+                    messageLog.AddMessage(
+                        $"Refused to delete an invalid screenshot path: {filename}",
+                        "exception");
+                    continue;
                 }
-                messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
+
+                try
+                {
+                    if (File.Exists(screenshotPath))
+                    {
+                        File.Delete(screenshotPath);
+                        deleted++;
+                    }
+                    else
+                    {
+                        alreadyMissing++;
+                    }
+                    e.RaidInfo.Screenshots.RemoveAll(
+                        savedFilename => string.Equals(
+                            savedFilename,
+                            filename,
+                            StringComparison.OrdinalIgnoreCase));
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    messageLog.AddMessage(
+                        $"Error deleting screenshot {filename}: {ex.Message}",
+                        "exception");
+                }
             }
-            catch (Exception ex)
+
+            if (deleted > 0)
             {
-                messageLog.AddMessage($"Error deleting screenshot: {ex.Message} {ex.StackTrace}", "exception");
+                messageLog.AddMessage($"Deleted {deleted} screenshot{(deleted == 1 ? "" : "s")}.");
+            }
+            if (alreadyMissing > 0)
+            {
+                messageLog.AddMessage(
+                    $"{alreadyMissing} screenshot{(alreadyMissing == 1 ? " was" : "s were")} already missing.",
+                    "info");
+            }
+            if (failed > 0)
+            {
+                messageLog.AddMessage(
+                    $"Could not delete {failed} screenshot{(failed == 1 ? "" : "s")}. The remaining file{(failed == 1 ? " is" : "s are")} still available for review.",
+                    "warning");
             }
 
             if (monMessage is null || screenshotButton is null)
@@ -721,7 +770,14 @@ namespace TarkovMonitor
                 return;
             }
 
-            monMessage.Buttons.Remove(screenshotButton);
+            if (e.RaidInfo.Screenshots.Count == 0)
+            {
+                monMessage.Buttons.Remove(screenshotButton);
+            }
+            else
+            {
+                screenshotButton.Text = $"Delete {e.RaidInfo.Screenshots.Count} Screenshot{(e.RaidInfo.Screenshots.Count == 1 ? "" : "s")}";
+            }
         }
 
         private void Handle_Screenshots(RaidInfoEventArgs e, MonitorMessage monMessage)
@@ -817,7 +873,16 @@ namespace TarkovMonitor
                 //SocketClient.NavigateToMap(map);
                 socketMessages.Add(SocketClient.GetNavigateToMapMessage(e.RaidInfo.Map));
             }
-            SocketClient.Send(socketMessages);
+            try
+            {
+                await SocketClient.Send(socketMessages);
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddMessage(
+                    $"Error updating the Tarkov.dev map position: {ex.Message}",
+                    "exception");
+            }
         }
 
         private void UpdateCheck_Error(object? sender, ExceptionEventArgs e)

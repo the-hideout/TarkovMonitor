@@ -35,11 +35,15 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher logFileCreateWatcher;
         private readonly FileSystemWatcher screenshotWatcher;
+        private readonly object logWatcherLock = new();
+        private readonly object screenshotWatcherLock = new();
+        private readonly object monitorLock = new();
         private readonly bool historicalReplay;
         private Profile parsingProfile = new();
         private Profile ActiveProfile => historicalReplay ? parsingProfile : CurrentProfile;
         private bool observedGameRunning;
         private string _logsPath = "";
+        private string lastReportedLogsPathFailure = "";
         public static Profile CurrentProfile { get; set; } = new();
         public static string LastDetectedSessionMode { get; private set; } = Properties.Settings.Default.lastTarkovSessionMode;
         public static bool ReadingPastLogs = false;
@@ -47,18 +51,32 @@ namespace TarkovMonitor
         public string LogsPath { 
             get
             {
-                if (_logsPath != "")
+                if (WatcherFileUtilities.TryResolveLogsFolder(_logsPath, out var cachedPath, out _))
                 {
-                    return _logsPath;
+                    _logsPath = cachedPath;
+                    return cachedPath;
                 }
-                if (Properties.Settings.Default.customLogsPath != null && Properties.Settings.Default.customLogsPath != "")
+
+                var configuredPath = Properties.Settings.Default.customLogsPath;
+                if (!string.IsNullOrWhiteSpace(configuredPath))
                 {
-                    _logsPath = Properties.Settings.Default.customLogsPath;
-                    return _logsPath;
+                    if (WatcherFileUtilities.TryResolveLogsFolder(configuredPath, out var resolvedPath, out var failureReason))
+                    {
+                        _logsPath = resolvedPath;
+                        lastReportedLogsPathFailure = "";
+                        return resolvedPath;
+                    }
+
+                    ReportLogsPathFailure(
+                        configuredPath,
+                        failureReason,
+                        "loading the configured logs folder");
                 }
+
                 try
                 {
                     _logsPath = GetDefaultLogsFolder();
+                    lastReportedLogsPathFailure = "";
                 }
                 catch (Exception ex)
                 {
@@ -68,11 +86,32 @@ namespace TarkovMonitor
             }
             set
             {
-                _logsPath = value;
-                if (logFileCreateWatcher.EnableRaisingEvents)
+                string resolvedPath;
+                string failureReason;
+                if (string.IsNullOrWhiteSpace(value))
                 {
-                    logFileCreateWatcher.Path = LogsPath;
-                    WatchLogsFolder(GetLatestLogFolder());
+                    try
+                    {
+                        resolvedPath = GetDefaultLogsFolder();
+                    }
+                    catch (Exception ex)
+                    {
+                        ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "resetting the logs folder"));
+                        return;
+                    }
+                }
+                else if (!WatcherFileUtilities.TryResolveLogsFolder(value, out resolvedPath, out failureReason))
+                {
+                    ReportLogsPathFailure(value, failureReason, "changing the logs folder");
+                    return;
+                }
+
+                var pathChanged = !string.Equals(_logsPath, resolvedPath, StringComparison.OrdinalIgnoreCase);
+                _logsPath = resolvedPath;
+                lastReportedLogsPathFailure = "";
+                if (pathChanged && logFileCreateWatcher.EnableRaisingEvents)
+                {
+                    RebindLogWatcher();
                 }
 
             }
@@ -80,14 +119,17 @@ namespace TarkovMonitor
         public string CurrentLogsFolder {
             get
             {
-                if (Monitors.Count == 0)
-                {
-                    return "";
-                }
                 try
                 {
-                    var logInfo = new FileInfo(Monitors[0].Path);
-                    return logInfo.DirectoryName ?? "";
+                    lock (monitorLock)
+                    {
+                        if (Monitors.Count == 0)
+                        {
+                            return "";
+                        }
+                        var logInfo = new FileInfo(Monitors.First().Value.Path);
+                        return logInfo.DirectoryName ?? "";
+                    }
                 }
                 catch { }
                 return "";
@@ -196,12 +238,7 @@ namespace TarkovMonitor
                 {
                     continue;
                 }
-                var logsPath = Path.Combine(installPath, "Logs");
-                if (!Directory.Exists(logsPath))
-                {
-                    logsPath = Path.Combine(installPath, "build", "Logs");
-                }
-                if (Directory.Exists(logsPath))
+                if (WatcherFileUtilities.TryResolveLogsFolder(installPath, out var logsPath, out _))
                 {
                     return logsPath;
                 }
@@ -218,72 +255,99 @@ namespace TarkovMonitor
 			{
 				Filter = "*.log",
 				IncludeSubdirectories = true,
+                InternalBufferSize = 32 * 1024,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
 			};
+			logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
+            logFileCreateWatcher.Error += LogFileCreateWatcher_Error;
 			processTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30).TotalMilliseconds)
 			{
 				AutoReset = true,
 				Enabled = false
 			};
-			screenshotWatcher = new FileSystemWatcher();
+			screenshotWatcher = new FileSystemWatcher
+            {
+                InternalBufferSize = 16 * 1024,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
+            };
+            screenshotWatcher.Error += ScreenshotWatcher_Error;
+            processTimer.Elapsed += ProcessTimer_Elapsed;
         }
 
         public void SetupScreenshotWatcher()
         {
-            try
+            lock (screenshotWatcherLock)
             {
-                bool screensPathExists = Directory.Exists(ScreenshotsPath);
-                if (!screensPathExists)
+                try
                 {
-                    //DebugMessage?.Invoke(this, new($"EFT screenshots folder not found; {ScreenshotsPath}"));
+                    screenshotWatcher.EnableRaisingEvents = false;
+                    var screenshotsPath = ScreenshotsPath;
+                    var tarkovDocumentsPath = Directory.GetParent(screenshotsPath)?.FullName ?? "";
+                    var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    var screensPathExists = Directory.Exists(screenshotsPath);
+                    var watchPath = screensPathExists
+                        ? screenshotsPath
+                        : Directory.Exists(tarkovDocumentsPath)
+                            ? tarkovDocumentsPath
+                            : documentsPath;
+                    if (string.IsNullOrWhiteSpace(watchPath) || !Directory.Exists(watchPath))
+                    {
+                        throw new DirectoryNotFoundException("The Documents folder used for EFT screenshots could not be found.");
+                    }
+
+                    screenshotWatcher.Path = watchPath;
+                    screenshotWatcher.IncludeSubdirectories = false;
+                    screenshotWatcher.Created -= ScreenshotWatcher_Created;
+                    screenshotWatcher.Created -= ScreenshotWatcher_FolderCreated;
+                    screenshotWatcher.Renamed -= ScreenshotWatcher_FolderCreated;
+                    if (screensPathExists)
+                    {
+                        screenshotWatcher.Filter = "*.png";
+                        screenshotWatcher.Created += ScreenshotWatcher_Created;
+                    }
+                    else
+                    {
+                        screenshotWatcher.Filter = "*";
+                        screenshotWatcher.Created += ScreenshotWatcher_FolderCreated;
+                        screenshotWatcher.Renamed += ScreenshotWatcher_FolderCreated;
+                    }
+                    screenshotWatcher.EnableRaisingEvents = true;
                 }
-                else
+                catch (Exception ex)
                 {
-                    //DebugMessage?.Invoke(this, new($"Watching EFT screenshots folder: {ScreenshotsPath}"));
+                    ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "initializing screenshot watcher"));
                 }
-                string watchPath = screensPathExists ? ScreenshotsPath : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                screenshotWatcher.Path = watchPath;
-                screenshotWatcher.IncludeSubdirectories = !screensPathExists;
-                screenshotWatcher.Created -= ScreenshotWatcher_Created;
-                screenshotWatcher.Created -= ScreenshotWatcher_FolderCreated;
-                screenshotWatcher.Renamed -= ScreenshotWatcher_FolderCreated;
-                if (screensPathExists)
-                {
-                    screenshotWatcher.Filter = "*.png";
-                    screenshotWatcher.Created += ScreenshotWatcher_Created;
-                }
-                else
-                {
-                    screenshotWatcher.Created += ScreenshotWatcher_FolderCreated;
-                    screenshotWatcher.Renamed += ScreenshotWatcher_FolderCreated;
-                }
-                screenshotWatcher.EnableRaisingEvents = true;
-            }
-            catch (Exception ex)
-            {
-                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "initializing screenshot watcher"));
             }
             //DebugMessage?.Invoke(this, new($"Watching screenshot folder {screenshotWatcher.Path}"));
         }
 
         private void ScreenshotWatcher_FolderCreated(object sender, FileSystemEventArgs e)
         {
-            if (e.FullPath.ToLower() == ScreenshotsPath.ToLower())
+            try
             {
-                SetupScreenshotWatcher();
+                var createdPath = Path.GetFullPath(e.FullPath)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var screenshotsPath = Path.GetFullPath(ScreenshotsPath)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var tarkovDocumentsPath = Directory.GetParent(screenshotsPath)?.FullName;
+                if (string.Equals(createdPath, screenshotsPath, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(createdPath, tarkovDocumentsPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    SetupScreenshotWatcher();
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "detecting the EFT screenshots folder"));
             }
         }
+
         private void ScreenshotWatcher_Created(object sender, FileSystemEventArgs e)
         {
             try
             {
                 string filename = e.Name ?? "";
-                var match = Regex.Match(filename, @"\d{4}-\d{2}-\d{2}\[\d{2}-\d{2}\]_?(?<position>.+) \(\d\)\.png");
-                if (!match.Success)
-                {
-                    return;
-                }
-                var position = Regex.Match(match.Groups["position"].Value, @"(?<x>-?[\d]+\.[\d]{2}), (?<y>-?[\d]+\.[\d]{2}), (?<z>-?[\d]+\.[\d]{2})_?(?<rx>-?[\d.]{1}\.[\d]{1,5}), (?<ry>-?[\d.]{1}\.[\d]{1,5}), (?<rz>-?[\d.]{1}\.[\d]{1,5}), (?<rw>-?[\d.]{1}\.[\d]{1,5})");
-                if (!position.Success)
+                if (!WatcherFileUtilities.TryParseScreenshotPosition(filename, out var position))
                 {
                     return;
                 }
@@ -300,83 +364,163 @@ namespace TarkovMonitor
                     return;
                 }
 
-                var rotation = QuarternionsToYaw(float.Parse(position.Groups["rx"].Value, CultureInfo.InvariantCulture), float.Parse(position.Groups["ry"].Value, CultureInfo.InvariantCulture), float.Parse(position.Groups["rz"].Value, CultureInfo.InvariantCulture), float.Parse(position.Groups["rw"].Value, CultureInfo.InvariantCulture));
-                PlayerPosition?.Invoke(this, new(raid, CurrentProfile, new Position(position.Groups["x"].Value, position.Groups["y"].Value, position.Groups["z"].Value), rotation, filename));
-                raid.Screenshots.Add(filename);
+                PlayerPosition?.Invoke(
+                    this,
+                    new(
+                        raid,
+                        CurrentProfile,
+                        new Position(position.X, position.Y, position.Z),
+                        position.Rotation,
+                        filename));
+                if (!raidInfo.Screenshots.Contains(filename, StringComparer.OrdinalIgnoreCase))
+                {
+                    raidInfo.Screenshots.Add(filename);
+                }
             } catch (Exception ex)
             {
                 ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing screenshot {e.Name}"));
             }
         }
 
-        private float QuarternionsToYaw(float x, float z, float y, float w)
-        {
-            // Calculate singularity test
-            // Roll (x-axis rotation)
-            /*float sinr_cosp = 2.0f * (w * x + y * z);
-            float cosr_cosp = 1.0f - 2.0f * (x * x + y * y);
-            float roll = (float)Math.Atan2(sinr_cosp, cosr_cosp);
-
-            // Pitch (y-axis rotation)
-            float sinp = 2.0f * (w * y - z * x);
-            float pitch;
-            if (Math.Abs(sinp) >= 1)
-                pitch = Math.Sign(sinp) * (float)Math.PI / 2;  // Pitch is 90 degrees if out of range
-            else
-                pitch = (float)Math.Asin(sinp);*/
-
-            // Yaw (z-axis rotation)
-            float siny_cosp = 2.0f * (w * z + x * y);
-            float cosy_cosp = 1.0f - 2.0f * (y * y + z * z);
-            float yaw = (float)Math.Atan2(siny_cosp, cosy_cosp);
-
-            // Convert radians to degrees
-            //roll *= (180f / (float)Math.PI);
-            //pitch *= (180f / (float)Math.PI);
-            yaw *= (180f / (float)Math.PI);
-
-            //System.Diagnostics.Debug.WriteLine($"roll: {roll}, pitch: {pitch}, yaw: {yaw}");
-
-            return yaw;
-        }
-
         public void Start()
         {
-			try
-			{
-                logFileCreateWatcher.Path = LogsPath;
-                logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
-				logFileCreateWatcher.EnableRaisingEvents = true;
-				processTimer.Elapsed += ProcessTimer_Elapsed;
-				UpdateProcess();
-				SetupScreenshotWatcher();
-				processTimer.Enabled = true;
-				if (Monitors.Count == 0)
-				{
-					WatchLogsFolder(GetLatestLogFolder());
-				}
-			}
-			catch (Exception ex)
-			{
-                ExceptionThrown?.Invoke(this, new(ex, "starting game watcher"));
-			}
+			StartLogWatcher();
+			UpdateProcess();
+			SetupScreenshotWatcher();
+			processTimer.Enabled = true;
         }
 
         private void LogFileCreateWatcher_Created(object sender, FileSystemEventArgs e)
         {
-            string filename = e.Name ?? "";
-            if (filename.Contains("application.log") || filename.Contains("application_000.log"))
+            if (TryGetLogType(e.FullPath, out var type) && type != GameLogType.Traces)
             {
                 StartNewMonitor(e.FullPath);
             }
-            if (filename.Contains("notifications.log") || filename.Contains("notifications_000.log"))
+        }
+
+        private void LogFileCreateWatcher_Error(object sender, ErrorEventArgs e)
+        {
+            var exception = e.GetException();
+            ExceptionThrown?.Invoke(
+                this,
+                new ExceptionEventArgs(
+                    exception,
+                    "watching the EFT logs folder",
+                    "Log monitoring was interrupted and Tarkov Monitor is reconnecting."));
+            RebindLogWatcher();
+        }
+
+        private void ScreenshotWatcher_Error(object sender, ErrorEventArgs e)
+        {
+            var exception = e.GetException();
+            ExceptionThrown?.Invoke(
+                this,
+                new ExceptionEventArgs(
+                    exception,
+                    "watching the EFT screenshots folder",
+                    "Screenshot monitoring was interrupted and Tarkov Monitor is reconnecting."));
+            SetupScreenshotWatcher();
+        }
+
+        private void StartLogWatcher()
+        {
+            lock (logWatcherLock)
             {
-                StartNewMonitor(e.FullPath);
+                var logsPath = LogsPath;
+                if (string.IsNullOrWhiteSpace(logsPath))
+                {
+                    CompleteInitialLogsReadIfNeeded();
+                    return;
+                }
+
+                try
+                {
+                    logFileCreateWatcher.EnableRaisingEvents = false;
+                    logFileCreateWatcher.Path = logsPath;
+                    logFileCreateWatcher.EnableRaisingEvents = true;
+                    WatchLogsFolder(GetLatestLogFolder());
+                }
+                catch (Exception ex)
+                {
+                    logFileCreateWatcher.EnableRaisingEvents = false;
+                    ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "starting EFT log monitoring"));
+                    CompleteInitialLogsReadIfNeeded();
+                }
             }
-            if (filename.Contains("output.log") || filename.Contains("output_000.log"))
+        }
+
+        private void RebindLogWatcher()
+        {
+            lock (logWatcherLock)
             {
-                StartNewMonitor(e.FullPath);
+                StopLogMonitors();
+                InitialLogsRead = false;
+                StartLogWatcher();
             }
+        }
+
+        private void StopLogMonitors()
+        {
+            lock (monitorLock)
+            {
+                foreach (var monitor in Monitors.Values)
+                {
+                    monitor.Stop();
+                }
+                Monitors.Clear();
+            }
+        }
+
+        private void ReportLogsPathFailure(string path, string failureReason, string context)
+        {
+            var message = $"{path}|{failureReason}";
+            if (string.Equals(lastReportedLogsPathFailure, message, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            lastReportedLogsPathFailure = message;
+            ExceptionThrown?.Invoke(
+                this,
+                new ExceptionEventArgs(
+                    new DirectoryNotFoundException(failureReason),
+                    context,
+                    $"Tarkov Monitor could not use the selected logs folder. {failureReason}"));
+        }
+
+        private static bool TryGetLogType(string path, out GameLogType logType)
+        {
+            logType = default;
+            var filename = Path.GetFileName(path);
+            var match = Regex.Match(
+                filename,
+                @"^(?<type>application|notifications|output|traces)(?:_\d+)?\.log$",
+                RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            logType = match.Groups["type"].Value.ToLowerInvariant() switch
+            {
+                "application" => GameLogType.Application,
+                "notifications" => GameLogType.Notifications,
+                "output" => GameLogType.Output,
+                "traces" => GameLogType.Traces,
+                _ => default,
+            };
+            return true;
+        }
+
+        private void CompleteInitialLogsReadIfNeeded()
+        {
+            if (InitialLogsRead)
+            {
+                return;
+            }
+
+            InitialLogsRead = true;
+            InitialReadComplete?.Invoke(this, new(CurrentProfile));
         }
 
         internal static EftSessionMode ResolveSessionMode(string? rawSessionMode)
@@ -856,29 +1000,27 @@ namespace TarkovMonitor
         public Dictionary<DateTime, string> GetLogFolders()
         {
 			Dictionary<DateTime, string> folderDictionary = new();
-            if (LogsPath == "" || !Directory.Exists(LogsPath))
+            var logsPath = LogsPath;
+            if (string.IsNullOrWhiteSpace(logsPath) || !Directory.Exists(logsPath))
             {
                 return folderDictionary;
 			}
 
-			// Find all of the log folders in the Logs directory
-			var logFolders = Directory.GetDirectories(LogsPath);
-            // For each log folder, get the timestamp from the folder name
-            foreach (string folderName in logFolders)
+            try
             {
-                var match = Regex.Match(folderName, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)");
-                if (!match.Success
-                    || !DateTime.TryParseExact(
-                        match.Groups["timestamp"].Value,
-                        "yyyy.MM.dd_H-mm-ss",
-                        CultureInfo.InvariantCulture,
-                        DateTimeStyles.None,
-                        out var folderDate))
+                foreach (var folderName in Directory.EnumerateDirectories(logsPath))
                 {
-                    continue;
+                    if (WatcherFileUtilities.TryGetLogFolderTimestamp(folderName, out var folderDate))
+                    {
+                        folderDictionary.TryAdd(folderDate, folderName);
+                    }
                 }
-                folderDictionary.TryAdd(folderDate, folderName);
             }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "enumerating EFT log folders"));
+            }
+
             // Return the dictionary sorted by the timestamp
             return folderDictionary.OrderByDescending(key => key.Key).ToDictionary(x => x.Key, x => x.Value);
         }
@@ -1090,9 +1232,8 @@ namespace TarkovMonitor
                 throw new InvalidOperationException("Past logs must be processed by an isolated historical watcher.");
             }
             List<List<LogDetails>> logDetails = new();
-            var logFolders = Directory.GetDirectories(LogsPath);
             // For each log folder, get the details
-            foreach (string folderName in logFolders)
+            foreach (var folderName in GetLogFolders().Values)
             {
                 var details = GetLogDetails(folderName);
                 if (details.Count == 0)
@@ -1161,34 +1302,55 @@ namespace TarkovMonitor
 
         private string GetLatestLogFolder()
         {
-            var logFolders = System.IO.Directory.GetDirectories(LogsPath);
-            var latestDate = new DateTime(0);
-            var latestLogFolder = logFolders.Last();
-            foreach (var logFolder in logFolders)
-            {
-                var dateTimeMatch = Regex.Match(logFolder, @"log_(?<timestamp>\d+\.\d+\.\d+_\d+-\d+-\d+)").Groups["timestamp"];
-                if (!dateTimeMatch.Success)
-                {
-                    continue;
-                }
-                var dateTimeString = dateTimeMatch.Value;
-
-                var logDate = DateTime.ParseExact(dateTimeString, "yyyy.MM.dd_H-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
-                if (logDate > latestDate)
-                {
-                    latestDate = logDate;
-                    latestLogFolder = logFolder;
-                }
-            }
-            return latestLogFolder ?? "";
+            return GetLogFolders().FirstOrDefault().Value ?? "";
         }
 
         private void WatchLogsFolder(string folderPath)
         {
-            List<string> monitoringLogs = new() { "notifications.log", "application.log", "output.log", "notifications_000.log", "application_000.log", "output_000.log" };
-            var files = System.IO.Directory.GetFiles(folderPath)
-                .Where(file => monitoringLogs.Any(logType => file.Contains(logType, StringComparison.OrdinalIgnoreCase)))
-                .ToArray();
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            {
+                CompleteInitialLogsReadIfNeeded();
+                return;
+            }
+
+            string[] files;
+            try
+            {
+                var candidates = new List<(string Path, GameLogType Type, DateTime LastWriteTimeUtc)>();
+                foreach (var file in Directory.EnumerateFiles(folderPath))
+                {
+                    if (!TryGetLogType(file, out var type) || type == GameLogType.Traces)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        candidates.Add((file, type, File.GetLastWriteTimeUtc(file)));
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        // A rotated file can disappear between enumeration and inspection.
+                        // Keep the remaining log types available instead of aborting startup.
+                    }
+                }
+
+                files = candidates
+                    .GroupBy(file => file.Type)
+                    .Select(group => group
+                        .OrderByDescending(file => file.LastWriteTimeUtc)
+                        .ThenByDescending(file => file.Path, StringComparer.OrdinalIgnoreCase)
+                        .First()
+                        .Path)
+                    .ToArray();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"reading EFT log folder {folderPath}"));
+                CompleteInitialLogsReadIfNeeded();
+                return;
+            }
+
             var monitorsStarted = files.Length;
             var monitorsCompletedInitialRead = 0;
 
@@ -1203,8 +1365,7 @@ namespace TarkovMonitor
 
             if (monitorsStarted == 0)
             {
-                InitialLogsRead = true;
-                InitialReadComplete?.Invoke(this, new(CurrentProfile));
+                CompleteInitialLogsReadIfNeeded();
                 return;
             }
 
@@ -1239,41 +1400,12 @@ namespace TarkovMonitor
 
         private LogMonitor? StartNewMonitor(string path, EventHandler? initialReadComplete = null)
         {
-            GameLogType? newType = null;
-            if (path.Contains("application.log") || path.Contains("application_000.log"))
-            {
-                newType = GameLogType.Application;
-                ProfileChanging?.Invoke(
-                    this,
-                    new(
-                        ProfileTransitionKind.SessionReset,
-                        CurrentProfile,
-                        new Profile()));
-                CurrentProfile = new();
-            }
-            if (path.Contains("notifications.log") || path.Contains("notifications_000.log"))
-            {
-                newType = GameLogType.Notifications;
-            }
-            if (path.Contains("output.log") || path.Contains("output_000.log"))
-            {
-                newType = GameLogType.Output;
-                outputLogTail = "";
-            }
-            if (path.Contains("traces.log") || path.Contains("traces_000.log"))
-            {
-                newType = GameLogType.Traces;
-            }
-            if (newType == null)
+            if (!TryGetLogType(path, out var newType))
             {
                 return null;
             }
-            //Debug.WriteLine($"Starting new {newType} monitor at {path}");
-            if (Monitors.ContainsKey((GameLogType)newType))
-            {
-                Monitors[(GameLogType)newType].Stop();
-            }
-            var newMon = new LogMonitor(path, (GameLogType)newType);
+
+            var newMon = new LogMonitor(path, newType);
             newMon.NewLogData += GameWatcher_NewLogData;
             newMon.Exception += (sender, e) => {
                 ExceptionThrown?.Invoke(sender, e);
@@ -1282,7 +1414,35 @@ namespace TarkovMonitor
             {
                 newMon.InitialReadComplete += initialReadComplete;
             }
-            Monitors[(GameLogType)newType] = newMon;
+            lock (monitorLock)
+            {
+                if (Monitors.TryGetValue(newType, out var previousMonitor))
+                {
+                    if (initialReadComplete == null
+                        && string.Equals(previousMonitor.Path, path, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return previousMonitor;
+                    }
+                    previousMonitor.Stop();
+                }
+                Monitors[newType] = newMon;
+            }
+
+            if (newType == GameLogType.Application)
+            {
+                ProfileChanging?.Invoke(
+                    this,
+                    new(
+                        ProfileTransitionKind.SessionReset,
+                        CurrentProfile,
+                        new Profile()));
+                CurrentProfile = new();
+            }
+            else if (newType == GameLogType.Output)
+            {
+                outputLogTail = "";
+            }
+
             _ = newMon.Start();
             return newMon;
         }

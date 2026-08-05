@@ -1,7 +1,6 @@
 ﻿@page "/settings"
 @using System.Diagnostics
 @using NAudio.Wave
-@using Microsoft.WindowsAPICodePack.Dialogs;
 @using System.Text.RegularExpressions;
 @inject GameWatcher eft
 @inject MessageLog messageLog
@@ -1532,9 +1531,12 @@
     {
         get
         {
-            if (Properties.Settings.Default.customLogsPath != null && Properties.Settings.Default.customLogsPath != "")
+            if (WatcherFileUtilities.TryResolveLogsFolder(
+                Properties.Settings.Default.customLogsPath,
+                out var configuredLogsPath,
+                out _))
             {
-                return Properties.Settings.Default.customLogsPath;
+                return configuredLogsPath;
             }
             try
             {
@@ -1555,12 +1557,38 @@
 
     void CustomLogsFolderClick()
     {
-        using CommonOpenFileDialog dialog = new CommonOpenFileDialog();
-        dialog.InitialDirectory = CustomLogsFolder;
-        dialog.IsFolderPicker = true;
-        if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+        try
         {
-            CustomLogsFolder = dialog.FileName;
+            var currentFolder = CustomLogsFolder;
+            using var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select the Escape from Tarkov logs folder.",
+                UseDescriptionForTitle = true,
+                ShowNewFolderButton = false,
+                SelectedPath = Directory.Exists(currentFolder) ? currentFolder : "",
+            };
+            if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+            {
+                return;
+            }
+
+            if (!WatcherFileUtilities.TryResolveLogsFolder(
+                dialog.SelectedPath,
+                out var resolvedLogsPath,
+                out var failureReason))
+            {
+                messageLog.AddMessage(
+                    $"Logs folder was not changed. {failureReason}",
+                    "warning");
+                return;
+            }
+
+            CustomLogsFolder = resolvedLogsPath;
+            messageLog.AddMessage($"Using EFT logs folder: {resolvedLogsPath}", "info");
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Error opening logs folder picker: {ex.Message}", "exception");
         }
     }
 
