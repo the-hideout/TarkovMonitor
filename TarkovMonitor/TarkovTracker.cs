@@ -987,7 +987,9 @@ namespace TarkovMonitor
             {
                 "PVP" => "Regular (PVP)",
                 "PVE" => "PVE",
-                // "SN1" => "Seasonal", // Enable with the Seasonal user interface.
+                // Display is safe before import/write support: the separate token,
+                // profile, and request gates still keep Seasonal inactive.
+                "SN1" => "Seasonal",
                 _ => "Unknown",
             };
         }
