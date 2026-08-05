@@ -19,9 +19,12 @@ body {
 .mud-paper.app-surface {
     border: 1px solid rgba(143, 130, 95, 0.42);
     border-radius: 8px;
-    background-color: rgba(25, 25, 24, 0.84);
+    background-color: rgba(25, 25, 24, 0.96);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24);
-    backdrop-filter: blur(2px);
+}
+
+.settings-grid {
+    align-content: flex-start;
 }
 
 .mud-dialog {

@@ -13,10 +13,10 @@
         {
             <MudAlert Severity="Severity.Info">@LocalizationService.GetString("YouArentInAGroupOrHavePartyMembersYet")</MudAlert>
         }else{
-            <MudTabs Elevation="3" Rounded="true" Centered="true" PanelClass="pa-3">
+            <MudTabs Elevation="3" Rounded="true" Centered="true">
                 @foreach (KeyValuePair<string, GroupMember> member in groupManager.GroupMembers)
                 {
-                    <MudTabPanel Text="@member.Key" Icon="@Icons.Material.Filled.Person">
+                    <MudTabPanel Text="@member.Key" Icon="@Icons.Material.Filled.Person" PanelClass="pa-3">
                         <div class="d-flex justify-space-between align-center">
                             <div class="d-flex align-center"><LevelIcon Level="@member.Value.Loadout.Info.Level" Width="48" /><MudText Typo="Typo.h4">@member.Value.Loadout.Info.Level</MudText></div>
                             <div><MudText Typo="Typo.h4">@member.Value.Loadout.Info.Nickname</MudText></div>
