@@ -785,9 +785,9 @@ namespace TarkovMonitor
                             if (map != null)
                             {
                                 raidInfo.Map = map;
-                                MapLoading?.Invoke(this, new(raidInfo, ActiveProfile));
                             }
                         }
+                        MapLoading?.Invoke(this, new(raidInfo, ActiveProfile));
                     }
                     if (eventLine.Contains("application|LocationLoaded"))
                     {

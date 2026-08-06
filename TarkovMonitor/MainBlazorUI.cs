@@ -63,6 +63,7 @@ namespace TarkovMonitor
         private readonly object reportedStatsFailuresLock = new();
         private readonly SemaphoreSlim profileChangeLock = new(1, 1);
         private readonly object trackerStatusNoticeLock = new();
+        private RaidInfo? announcedLoadingRaid;
         private long profileChangeGeneration;
         private long trackerStatusNoticeEpoch;
         private int trackerStatusTransitionDepth;
@@ -895,8 +896,19 @@ namespace TarkovMonitor
             messageLog.AddMessage($"New TarkovMonitor version available ({e.Version})! Click here to open the download page. Please update to this new version before reporting any bugs.", null, e.Uri.ToString());
         }
 
-        private async void Eft_MapLoading(object? sender, EventArgs e)
+        private async void Eft_MapLoading(object? sender, RaidInfoEventArgs e)
         {
+            if (ReferenceEquals(announcedLoadingRaid, e.RaidInfo))
+            {
+                return;
+            }
+
+            announcedLoadingRaid = e.RaidInfo;
+            var mapName = e.RaidInfo.Map?.name;
+            messageLog.AddMessage(string.IsNullOrWhiteSpace(mapName)
+                ? "Loading raid."
+                : $"Loading raid on {mapName}.");
+
             if (TarkovTracker.Progress?.data?.tasksProgress == null)
             {
                 return;
