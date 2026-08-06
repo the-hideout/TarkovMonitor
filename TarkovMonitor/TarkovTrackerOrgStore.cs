@@ -636,7 +636,7 @@ namespace TarkovMonitor
             }
             var pieces = token.Split('_');
             return pieces.Length == 2
-                && pieces[0] is "PVE" or "PVP" or "SN1"
+                && pieces[0] is "PVE" or "PVP" or "SZN"
                 && pieces[1].Length == 18
                 && pieces[1].All(Uri.IsHexDigit);
         }
@@ -866,9 +866,7 @@ namespace TarkovMonitor
             if (key.IsBound)
             {
                 var resolvedMode = GameWatcher.ResolveSessionMode(key.SessionMode);
-                var expectedPrefix = resolvedMode == EftSessionMode.Seasonal
-                    ? "SN1"
-                    : TarkovTracker.GetPrefixForSessionMode(resolvedMode);
+                var expectedPrefix = TarkovTracker.GetPrefixForSessionMode(resolvedMode);
                 if (!key.AccountId.All(char.IsDigit)
                     || resolvedMode is not (EftSessionMode.Regular or EftSessionMode.PVE or EftSessionMode.Seasonal)
                     || !string.Equals(

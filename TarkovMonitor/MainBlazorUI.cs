@@ -82,7 +82,6 @@ namespace TarkovMonitor
         {
             Active,
             MissingKey,
-            SeasonalInactive,
         }
 
         private readonly record struct TrackerStatusNotice(
@@ -407,7 +406,6 @@ namespace TarkovMonitor
                 // This is local state and must be visible immediately. Network calls
                 // below are optional startup work and must never delay this message.
                 AnnounceProfile(profile, force: true);
-                AnnounceSeasonalTrackerInactive(profile);
 
                 // Migrate the original single-token setting before initializing the
                 // tracker profile so an existing user keeps their saved token.
@@ -538,9 +536,6 @@ namespace TarkovMonitor
             // First block status publication, then revoke the old tracker activation.
             // Once publication is unblocked, the old request generation is already
             // cancelled, so nothing can label the pre-change key as the new profile.
-            // Seasonal inactivity is independent of profile identity. Preserve that
-            // one notice while its later identity marker arrives so the same session
-            // does not produce a second user-visible message.
             if (e.Kind == ProfileTransitionKind.SessionReset)
             {
                 // A new application log means EFT is presenting a fresh selector.
@@ -548,10 +543,7 @@ namespace TarkovMonitor
                 // identity marker to publish one new confirmed-profile message.
                 ResetDisplayedEftSessionIdentity();
             }
-            var preserveSeasonalNotice = e.Kind == ProfileTransitionKind.Identity
-                && e.PreviousProfile.SessionMode == EftSessionMode.Seasonal
-                && e.NextProfile.SessionMode == EftSessionMode.Seasonal;
-            BeginTrackerStatusTransitionCore(preserveSeasonalNotice);
+            BeginTrackerStatusTransition();
             try
             {
                 TarkovTracker.DeactivateProfile();
@@ -583,16 +575,9 @@ namespace TarkovMonitor
                 trackerProfileId = "";
                 trackerAccountId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
-                if (profile.SessionMode == EftSessionMode.Seasonal)
-                {
-                    AnnounceSeasonalTrackerInactive(profile);
-                }
-                else
-                {
-                    // Unknown and identity-incomplete PVE/PVP records are transition
-                    // states, not evidence that a current key is active or missing.
-                    ResetTrackerStatusNotice();
-                }
+                // Unknown and identity-incomplete records are transition states, not
+                // evidence that a current key is active or missing.
+                ResetTrackerStatusNotice();
             }
 
             await profileChangeLock.WaitAsync();
@@ -607,8 +592,8 @@ namespace TarkovMonitor
                     && (trackerProfileId != "" || TarkovTracker.CurrentProfileId != ""))
                 {
                     // Session mode is known before EFT emits the new profile identity.
-                    // Revoke the old activation during that gap, and keep unsupported
-                    // Seasonal/Unknown sessions inactive after identity arrives.
+                    // Revoke the old activation during that gap and keep incomplete or
+                    // unknown sessions inactive after identity arrives.
                     TarkovTracker.DeactivateProfile();
                     trackerProfileId = "";
                     trackerAccountId = "";
@@ -1182,14 +1167,7 @@ namespace TarkovMonitor
                 trackerProfileId = "";
                 trackerAccountId = "";
                 trackerSessionMode = EftSessionMode.Unknown;
-                if (profile.SessionMode == EftSessionMode.Seasonal)
-                {
-                    AnnounceSeasonalTrackerInactive(profile);
-                }
-                else
-                {
-                    ResetTrackerStatusNotice();
-                }
+                ResetTrackerStatusNotice();
                 return;
             }
 
@@ -1342,31 +1320,6 @@ namespace TarkovMonitor
                 profile.Id);
         }
 
-        private void AnnounceSeasonalTrackerInactive(Profile profile)
-        {
-            var expectedStatusEpoch = CaptureTrackerStatusNoticeEpoch();
-            if (TarkovTracker.IsLegacyService
-                || !eft.IsGameRunning
-                || string.IsNullOrWhiteSpace(profile.Id)
-                || profile.SessionMode != EftSessionMode.Seasonal
-                || profile.Id != GameWatcher.CurrentProfile.Id
-                || profile.AccountId != GameWatcher.CurrentProfile.AccountId
-                || GameWatcher.CurrentProfile.SessionMode != EftSessionMode.Seasonal)
-            {
-                return;
-            }
-
-            // The visible notice waits for a selected identity. It remains keyed only
-            // by mode so repeated identity markers cannot duplicate the same status.
-            AddTrackerStatusNotice(
-                new(TrackerStatusKind.SeasonalInactive, "", "", EftSessionMode.Seasonal),
-                "TarkovTracker.org inactive - Mode: Seasonal is not supported yet.",
-                "info",
-                expectedStatusEpoch,
-                accountId: profile.AccountId,
-                profileId: profile.Id);
-        }
-
         private void AddTrackerStatusNotice(
             TrackerStatusNotice notice,
             string message,
@@ -1458,25 +1411,11 @@ namespace TarkovMonitor
 
         internal void BeginTrackerStatusTransition()
         {
-            BeginTrackerStatusTransitionCore(preserveSeasonalInactive: false);
-        }
-
-        private void BeginTrackerStatusTransitionCore(bool preserveSeasonalInactive)
-        {
             lock (trackerStatusNoticeLock)
             {
                 trackerStatusTransitionDepth++;
                 trackerStatusNoticeEpoch = unchecked(trackerStatusNoticeEpoch + 1);
-                var seasonalInactiveNotice = new TrackerStatusNotice(
-                    TrackerStatusKind.SeasonalInactive,
-                    "",
-                    "",
-                    EftSessionMode.Seasonal);
-                if (!preserveSeasonalInactive
-                    || displayedTrackerStatusNotice != seasonalInactiveNotice)
-                {
-                    displayedTrackerStatusNotice = null;
-                }
+                displayedTrackerStatusNotice = null;
             }
         }
 
@@ -1540,11 +1479,6 @@ namespace TarkovMonitor
                 ResetTrackerStatusNotice();
                 return;
             }
-            if (profile.SessionMode == EftSessionMode.Seasonal)
-            {
-                AnnounceSeasonalTrackerInactive(profile);
-                return;
-            }
             if (!profile.SupportsTarkovTrackerWrites)
             {
                 ResetTrackerStatusNotice();
@@ -1569,7 +1503,7 @@ namespace TarkovMonitor
 
         private static bool IsSupportedTrackerSession(EftSessionMode sessionMode)
         {
-            return sessionMode is EftSessionMode.PVE or EftSessionMode.Regular;
+            return sessionMode is EftSessionMode.PVE or EftSessionMode.Regular or EftSessionMode.Seasonal;
         }
 
         private void Eft_MatchFound(object? sender, RaidInfoEventArgs e)

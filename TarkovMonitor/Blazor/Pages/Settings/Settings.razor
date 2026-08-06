@@ -871,8 +871,9 @@
     private List<TarkovTracker.OrgKeySummary> BoundOrgKeys => OrgKeys.Where(key => key.IsBound).ToList();
     private bool HasPendingOrgKey => TarkovTracker.HasPendingOrgKey();
     private bool CanImportOrgKey => !PendingOrgKeys.Any(key => string.Equals(key.Prefix, "PVE", StringComparison.OrdinalIgnoreCase))
-        || !PendingOrgKeys.Any(key => string.Equals(key.Prefix, "PVP", StringComparison.OrdinalIgnoreCase));
-    private string OrgImportBlockedReason => "PVE and PVP already have unbound keys.";
+        || !PendingOrgKeys.Any(key => string.Equals(key.Prefix, "PVP", StringComparison.OrdinalIgnoreCase))
+        || !PendingOrgKeys.Any(key => string.Equals(key.Prefix, "SZN", StringComparison.OrdinalIgnoreCase));
+    private string OrgImportBlockedReason => "PVE, Regular (PVP), and Seasonal already have unassigned keys.";
     private List<OrgAccountGroup> BoundOrgKeyGroups
     {
         get
@@ -951,7 +952,7 @@
         {
             "PVE" => "tracker-mode-badge--pve",
             "PVP" => "tracker-mode-badge--pvp",
-            "SN1" => "tracker-mode-badge--seasonal",
+            "SZN" => "tracker-mode-badge--seasonal",
             _ => "tracker-mode-badge--unknown",
         };
     }
@@ -962,7 +963,7 @@
         {
             "PVE" => "PVE",
             "PVP" => "PVP",
-            "SN1" => "Seasonal",
+            "SZN" => "Seasonal",
             _ => "?",
         };
     }

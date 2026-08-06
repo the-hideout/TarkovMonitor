@@ -10,7 +10,7 @@ namespace TarkovMonitor
             var suppliedPrefix = TarkovTracker.GetTokenPrefix(apiToken);
             if (!TarkovTracker.IsImportablePrefix(suppliedPrefix))
             {
-                throw new Exception("The verified API key must be a PVP_ or PVE_ key. For accuracy, copy the API key directly from TarkovTracker.org instead of typing or editing it manually.");
+                throw new Exception("The verified API key must be a PVP_, PVE_, or SZN_ key. For accuracy, copy the API key directly from TarkovTracker.org instead of typing or editing it manually.");
             }
 
             if (!string.IsNullOrWhiteSpace(returnedToken)
@@ -19,13 +19,12 @@ namespace TarkovMonitor
                 throw new Exception("The API key returned by TarkovTracker does not exactly match the imported key. For accuracy, copy it directly from TarkovTracker.org instead of typing or editing it manually.");
             }
 
-            // The published API currently exposes only pvp and pve game modes.
-            // Add Seasonal only after TarkovTracker publishes its final gameMode value.
             var verifiedPrefix = gameMode?.Trim().ToLowerInvariant() switch
             {
                 "pvp" => "PVP",
                 "pve" => "PVE",
-                _ => throw new Exception("TarkovTracker did not return a supported PVP or PVE game mode for this API key."),
+                "seasonal" => "SZN",
+                _ => throw new Exception("TarkovTracker did not return a supported PVP, PVE, or Seasonal game mode for this API key."),
             };
             if (!string.Equals(suppliedPrefix, verifiedPrefix, StringComparison.OrdinalIgnoreCase))
             {

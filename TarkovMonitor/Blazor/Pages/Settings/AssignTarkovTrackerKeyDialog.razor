@@ -57,12 +57,6 @@
                 <MudText Typo="Typo.body2">Scanning past EFT logs...</MudText>
             </div>
         }
-        else if (string.Equals(KeyPrefix, "SN1", StringComparison.OrdinalIgnoreCase))
-        {
-            <MudAlert Severity="Severity.Warning" Dense="true">
-                Seasonal API keys cannot be assigned yet.
-            </MudAlert>
-        }
         else if (MatchingProfiles.Count == 0)
         {
             <MudAlert Severity="Severity.Info" Dense="true">

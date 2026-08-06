@@ -361,8 +361,10 @@ namespace TarkovMonitor
             {
                 return "PVE";
             }
-            // if (string.Equals(normalizedMode, "Seasonal", StringComparison.OrdinalIgnoreCase)) return "SN1";
-            // Enable only after EFT's released Seasonal Session mode value is confirmed.
+            if (string.Equals(normalizedMode, "Seasonal", StringComparison.OrdinalIgnoreCase))
+            {
+                return "SZN";
+            }
             return "";
         }
 
@@ -1144,8 +1146,8 @@ namespace TarkovMonitor
             {
                 "PVP" => "Regular (PVP)",
                 "PVE" => "PVE",
-                // Display is safe before import/write support: the separate token,
-                // profile, and request gates still keep Seasonal inactive.
+                "SZN" => "Seasonal",
+                // Preserve a clear label for quarantined preview-era records.
                 "SN1" => "Seasonal",
                 _ => "Unknown",
             };
@@ -1178,15 +1180,14 @@ namespace TarkovMonitor
         {
             return prefix.Equals("PVP", StringComparison.OrdinalIgnoreCase)
                 || prefix.Equals("PVE", StringComparison.OrdinalIgnoreCase)
-                || prefix.Equals("SN1", StringComparison.OrdinalIgnoreCase);
+                || prefix.Equals("SZN", StringComparison.OrdinalIgnoreCase);
         }
 
         internal static bool IsImportablePrefix(string prefix)
         {
             return prefix.Equals("PVP", StringComparison.OrdinalIgnoreCase)
                 || prefix.Equals("PVE", StringComparison.OrdinalIgnoreCase)
-                // || prefix.Equals("SN1", StringComparison.OrdinalIgnoreCase) // Enable with the Seasonal user interface.
-                ;
+                || prefix.Equals("SZN", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsImportableToken(string apiToken)
@@ -1230,7 +1231,7 @@ namespace TarkovMonitor
                 || identifier.Length != 18
                 || !identifierIsHexadecimal)
             {
-                throw new Exception("The API key format is invalid. Expected PVP_ or PVE_ followed by an 18-character hexadecimal identifier. Copy the key directly from TarkovTracker.org and try again.");
+                throw new Exception("The API key format is invalid. Expected PVP_, PVE_, or SZN_ followed by an 18-character hexadecimal identifier. Copy the key directly from TarkovTracker.org and try again.");
             }
         }
 

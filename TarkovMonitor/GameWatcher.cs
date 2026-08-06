@@ -1637,14 +1637,14 @@ namespace TarkovMonitor
         };
 
         public bool SupportsTarkovDevWrites => SessionMode is EftSessionMode.PVE or EftSessionMode.Regular;
-        public bool SupportsTarkovTrackerWrites => SessionMode is EftSessionMode.PVE or EftSessionMode.Regular;
-        public bool SupportsScavCooldown => SessionMode is EftSessionMode.PVE or EftSessionMode.Regular;
+        public bool SupportsTarkovTrackerWrites => SessionMode is EftSessionMode.PVE or EftSessionMode.Regular or EftSessionMode.Seasonal;
+        public bool SupportsScavCooldown => SessionMode is EftSessionMode.PVE or EftSessionMode.Regular or EftSessionMode.Seasonal;
         public bool HasIdentity => !string.IsNullOrWhiteSpace(AccountId);
         public bool HasTarkovDevPlayerRoute => HasIdentity
             && SessionMode is EftSessionMode.PVE or EftSessionMode.Regular;
         // Keep service routing separate from the raw EFT session identity. Seasonal
-        // reads now use tarkov.dev's explicit pvp-season route, while tracker writes
-        // remain disabled until the live EFT/TarkovTracker release gate is cleared.
+        // reads use tarkov.dev's explicit pvp-season route, while Tarkov.dev writes
+        // remain disabled until that separate service publishes a write contract.
         public ProfileType TarkovDevDataType => SessionMode switch
         {
             EftSessionMode.PVE => ProfileType.PVE,
