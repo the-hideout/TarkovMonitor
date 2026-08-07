@@ -119,17 +119,26 @@
     <MudItem xs="12">
         <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@trackerIcon" Class="mr-2"/>@LocalizationService.GetString("TarkovTracker")</MudText>
-            <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
-            <MudButton @onclick="TestToken" @bind-Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
-            @LocalizationService.GetString("CurrentProfile"):
-            <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToApiString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@CurrentProfileName (@GameWatcher.CurrentProfile.Type)</MudLink>
-            <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
             <MudSelect @bind-Value="@TarkovTrackerDomain" T="string" Label="@LocalizationService.GetString("TarkovTrackerService")" ShrinkLabel="true" HelperText="@LocalizationService.GetString("TarkovTrackerServiceHelperText")" AnchorOrigin="Origin.BottomCenter" xs="3">
                 @foreach (var pair in TarkovTracker.Domains)
                 {
                     <MudSelectItem T="string" Value="@pair.Key">@pair.Value</MudSelectItem>
                 }
             </MudSelect>
+            @if (IsRetiredTrackerService)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                    Support for TarkovTracker.io has been retired. Switch to <MudLink Href="https://tarkovtracker.org/settings/" Target="_blank">TarkovTracker.org</MudLink> for continued support.
+                </MudAlert>
+            }
+            @if (!IsRetiredTrackerService)
+            {
+                <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
+                <MudButton @onclick="TestToken" Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
+                <span>@LocalizationService.GetString("CurrentProfile"):</span>
+                <MudLink Href="@CurrentProfileUrl">@CurrentProfileName (@GameWatcher.CurrentProfile.Type)</MudLink>
+                <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
+            }
         </MudPaper>
     </MudItem>
 
@@ -507,7 +516,7 @@
     {
         get
         {
-            return TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id).Length != 22;
+            return TarkovTracker.IsLegacyService || TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id).Length != 22;
         }
         set
         {
@@ -555,11 +564,14 @@
     {
         get
         {
-            return TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id);
+            return TarkovTracker.IsLegacyService ? "" : TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id);
         }
         set
         {
-            TarkovTracker.SetToken(GameWatcher.CurrentProfile.Id, value);
+            if (!TarkovTracker.IsLegacyService)
+            {
+                TarkovTracker.SetToken(GameWatcher.CurrentProfile.Id, value);
+            }
         }
     }
     public string TarkovTrackerDomain
@@ -575,11 +587,40 @@
                 return;
             }
             Properties.Settings.Default.tarkovTrackerDomain = value;
-            TarkovTrackerToken = "";
+            TarkovTracker.ResetActiveState();
             TarkovTracker.InitAPI();
             Properties.Settings.Default.Save();
+            if (!TarkovTracker.IsLegacyService)
+            {
+                _ = RevalidateTrackerProfile();
+            }
         }
     }
+
+    private async Task RevalidateTrackerProfile()
+    {
+        if (string.IsNullOrWhiteSpace(GameWatcher.CurrentProfile.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage(ex.Message, "exception");
+        }
+    }
+
+    private bool IsRetiredTrackerService => string.Equals(
+        TarkovTrackerDomain,
+        "tarkovtracker.io",
+        StringComparison.OrdinalIgnoreCase);
+
+    private string CurrentProfileUrl =>
+        $"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}";
 
     void TokenShowClick()
     {
