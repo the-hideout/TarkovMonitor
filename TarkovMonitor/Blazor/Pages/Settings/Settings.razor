@@ -1,7 +1,6 @@
 ﻿@page "/settings"
 @using System.Diagnostics
 @using NAudio.Wave
-@using Microsoft.WindowsAPICodePack.Dialogs;
 @using System.Text.RegularExpressions;
 @inject GameWatcher eft
 @inject MessageLog messageLog
@@ -722,12 +721,25 @@
 
     void CustomLogsFolderClick()
     {
-        using CommonOpenFileDialog dialog = new CommonOpenFileDialog();
-        dialog.InitialDirectory = CustomLogsFolder;
-        dialog.IsFolderPicker = true;
-        if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+        try
         {
-            CustomLogsFolder = dialog.FileName;
+            var currentFolder = CustomLogsFolder;
+            using var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select the Escape from Tarkov logs folder.",
+                UseDescriptionForTitle = true,
+                ShowNewFolderButton = false,
+                SelectedPath = Directory.Exists(currentFolder) ? currentFolder : "",
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                CustomLogsFolder = dialog.SelectedPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            messageLog.AddMessage($"Error opening logs folder picker: {ex.Message}", "exception");
         }
     }
 
