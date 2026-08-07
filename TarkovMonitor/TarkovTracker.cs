@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Transactions;
 using Refit;
@@ -13,10 +14,6 @@ namespace TarkovMonitor
         {
             HttpClient Client { get; }
 
-            [Get("/token")]
-            [Headers("Authorization: Bearer {token}")]
-            Task<TokenResponse> TestToken(string token);
-
             [Get("/progress")]
             [Headers("Authorization: Bearer")]
             Task<ProgressResponse> GetProgress();
@@ -30,6 +27,7 @@ namespace TarkovMonitor
             Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
         }
 
+        private static readonly HttpClient tokenInspectionClient = new();
         private static ITarkovTrackerAPI api = InitAPI();
 
         public static ProgressResponse Progress { get; private set; } = new();
@@ -51,12 +49,94 @@ namespace TarkovMonitor
         };
 
         static TarkovTracker() {
+            tokenInspectionClient.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
             tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
+        }
+
+        public static string GetApiBaseUrl(string trackerDomain)
+        {
+            if (trackerDomain == "tarkovtracker.org")
+            {
+                return "https://api.tarkovtracker.org";
+            }
+            return $"https://{trackerDomain}/api/v2";
+        }
+
+        public static bool IsSupportedOrgToken(string? token)
+        {
+            var value = token?.Trim() ?? string.Empty;
+            if (value.Length != 22 || value[3] != '_')
+            {
+                return false;
+            }
+
+            var prefix = value[..3].ToUpperInvariant();
+            if (prefix is not ("PVE" or "PVP" or "SZN"))
+            {
+                return false;
+            }
+
+            for (var index = 4; index < value.Length; index++)
+            {
+                var character = value[index];
+                if (!((character >= '0' && character <= '9')
+                    || (character >= 'a' && character <= 'f')
+                    || (character >= 'A' && character <= 'F')))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static string GetOrgTokenPrefix(string token)
+        {
+            var value = token.Trim();
+            return value[..3].ToUpperInvariant();
+        }
+
+        private static void VerifyOrgTokenResponse(string submittedToken, TokenResponse response)
+        {
+            var submitted = submittedToken.Trim();
+            if (!IsSupportedOrgToken(submitted))
+            {
+                throw new Exception("The TarkovTracker.org API key format is invalid.");
+            }
+
+            var returnedToken = response.token?.Trim();
+            if (!string.IsNullOrWhiteSpace(returnedToken))
+            {
+                if (!IsSupportedOrgToken(returnedToken)
+                    || !string.Equals(GetOrgTokenPrefix(submitted), GetOrgTokenPrefix(returnedToken), StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(submitted[4..], returnedToken[4..], StringComparison.Ordinal))
+                {
+                    throw new Exception("TarkovTracker returned a different API key than the one supplied.");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(response.gameMode))
+            {
+                return;
+            }
+
+            var verifiedPrefix = response.gameMode.Trim().ToLowerInvariant() switch
+            {
+                "pve" => "PVE",
+                "pvp" or "regular" => "PVP",
+                "seasonal" or "pvpseason" or "sn1" => "SZN",
+                _ => throw new Exception("TarkovTracker returned an unsupported game mode for this API key."),
+            };
+            var submittedPrefix = GetOrgTokenPrefix(submitted);
+            if (!string.Equals(submittedPrefix, verifiedPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception($"This API key is {submittedPrefix}, but TarkovTracker verified it as {verifiedPrefix}.");
+            }
         }
 
         public static ITarkovTrackerAPI InitAPI()
         {
-            api = RestService.For<ITarkovTrackerAPI>($"https://{Properties.Settings.Default.tarkovTrackerDomain}/api/v2",
+            api = RestService.For<ITarkovTrackerAPI>(GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain),
                 new RefitSettings {
                     AuthorizationHeaderValueGetter = (rq, cr) => {
                         return new ValueTask<string>(Task.Run<string>(() => {
@@ -331,13 +411,45 @@ namespace TarkovMonitor
                 throw new InvalidOperationException(
                     "Support for TarkovTracker.io has been retired. Switch to TarkovTracker.org.");
             }
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                $"{GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain).TrimEnd('/')}/token");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiToken.Trim());
+
+            HttpResponseMessage httpResponse;
             try
             {
-                var response = await api.TestToken(apiToken);
+                httpResponse = await tokenInspectionClient.SendAsync(request);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new Exception($"TarkovTracker API connection error: {ex.Message}");
+            }
+
+            using (httpResponse)
+            {
+                if (httpResponse.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    InvalidTokenException();
+                }
+                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                if (!httpResponse.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Invalid TarkovTracker API response code: {(int)httpResponse.StatusCode} {httpResponse.ReasonPhrase}");
+                }
+
+                var responseBody = await httpResponse.Content.ReadAsStringAsync();
+                var response = JsonSerializer.Deserialize<TokenResponse>(responseBody)
+                    ?? throw new Exception("TarkovTracker returned an empty token response.");
+                VerifyOrgTokenResponse(apiToken, response);
                 if (response.permissions.Contains("WP"))
                 {
                     ValidToken = true;
-                    GetProgress();
+                    await GetProgress();
                     TokenValidated?.Invoke(null, new EventArgs());
                 }
                 else
@@ -347,22 +459,6 @@ namespace TarkovMonitor
                     TokenInvalid?.Invoke(null, new EventArgs());
                 }
                 return response;
-            }
-            catch (ApiException ex)
-            {
-                if (ex.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    InvalidTokenException();
-                }
-                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    throw new Exception("Rate limited by Tarkov Tracker API");
-                }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
             }
         }
 
@@ -396,8 +492,10 @@ namespace TarkovMonitor
 
         public class TokenResponse
         {
-            public List<string> permissions { get; set; }
-            public string token { get; set; }
+            public bool success { get; set; }
+            public List<string> permissions { get; set; } = new();
+            public string? token { get; set; }
+            public string? gameMode { get; set; }
         }
 
         public class ProgressResponse
