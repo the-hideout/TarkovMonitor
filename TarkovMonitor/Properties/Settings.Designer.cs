@@ -382,5 +382,29 @@ namespace TarkovMonitor.Properties {
                 this["floatingTimerPanelShowRunThrough"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string lastSeenReleaseTag {
+            get {
+                return ((string)(this["lastSeenReleaseTag"]));
+            }
+            set {
+                this["lastSeenReleaseTag"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string lastSeenReleaseAssetUpdatedAt {
+            get {
+                return ((string)(this["lastSeenReleaseAssetUpdatedAt"]));
+            }
+            set {
+                this["lastSeenReleaseAssetUpdatedAt"] = value;
+            }
+        }
     }
 }
