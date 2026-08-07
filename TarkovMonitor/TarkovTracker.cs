@@ -86,6 +86,50 @@ namespace TarkovMonitor
             return true;
         }
 
+        private static string GetOrgTokenPrefix(string token)
+        {
+            var value = token.Trim();
+            return value[..3].ToUpperInvariant();
+        }
+
+        private static void VerifyOrgTokenResponse(string submittedToken, TokenResponse response)
+        {
+            var submitted = submittedToken.Trim();
+            if (!IsSupportedOrgToken(submitted))
+            {
+                throw new Exception("The TarkovTracker.org API key format is invalid.");
+            }
+
+            var returnedToken = response.token?.Trim();
+            if (!string.IsNullOrWhiteSpace(returnedToken))
+            {
+                if (!IsSupportedOrgToken(returnedToken)
+                    || !string.Equals(GetOrgTokenPrefix(submitted), GetOrgTokenPrefix(returnedToken), StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(submitted[4..], returnedToken[4..], StringComparison.Ordinal))
+                {
+                    throw new Exception("TarkovTracker returned a different API key than the one supplied.");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(response.gameMode))
+            {
+                return;
+            }
+
+            var verifiedPrefix = response.gameMode.Trim().ToLowerInvariant() switch
+            {
+                "pve" => "PVE",
+                "pvp" or "regular" => "PVP",
+                "seasonal" or "pvpseason" or "sn1" => "SZN",
+                _ => throw new Exception("TarkovTracker returned an unsupported game mode for this API key."),
+            };
+            var submittedPrefix = GetOrgTokenPrefix(submitted);
+            if (!string.Equals(submittedPrefix, verifiedPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception($"This API key is {submittedPrefix}, but TarkovTracker verified it as {verifiedPrefix}.");
+            }
+        }
+
         public static ITarkovTrackerAPI InitAPI()
         {
             api = RestService.For<ITarkovTrackerAPI>(GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain),
@@ -370,6 +414,7 @@ namespace TarkovMonitor
                 var responseBody = await httpResponse.Content.ReadAsStringAsync();
                 var response = JsonSerializer.Deserialize<TokenResponse>(responseBody)
                     ?? throw new Exception("TarkovTracker returned an empty token response.");
+                VerifyOrgTokenResponse(apiToken, response);
                 if (response.permissions.Contains("WP"))
                 {
                     ValidToken = true;
