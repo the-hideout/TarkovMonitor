@@ -34,6 +34,10 @@ namespace TarkovMonitor
 
         public static ProgressResponse Progress { get; private set; } = new();
         public static bool ValidToken { get; private set; } = false;
+        public static bool IsLegacyService => string.Equals(
+            Properties.Settings.Default.tarkovTrackerDomain,
+            "tarkovtracker.io",
+            StringComparison.OrdinalIgnoreCase);
         private static Dictionary<string, string> tokens = new();
         private static string currentProfile = "";
         public static string CurrentProfileId { get { return currentProfile; } }
@@ -89,6 +93,10 @@ namespace TarkovMonitor
             {
                 throw new Exception("No PVP or PVE profile initialized, please launch Escape from Tarkov first");
             }
+            if (IsLegacyService && !string.IsNullOrWhiteSpace(token))
+            {
+                return;
+            }
             tokens[profileId] = token;
             Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
             Properties.Settings.Default.Save();
@@ -98,6 +106,13 @@ namespace TarkovMonitor
         {
             if (profileId == "") {
                 throw new Exception("Can't set PVP or PVE profile, please launch Escape from Tarkov and then restart this application");
+            }
+
+            if (IsLegacyService)
+            {
+                ValidToken = false;
+                Progress = new();
+                return Progress;
             }
 
             if (currentProfile == profileId)
@@ -310,6 +325,11 @@ namespace TarkovMonitor
 
         public static async Task<TokenResponse> TestToken(string apiToken)
         {
+            if (IsLegacyService)
+            {
+                throw new InvalidOperationException(
+                    "Support for TarkovTracker.io has been retired. Switch to TarkovTracker.org.");
+            }
             try
             {
                 var response = await api.TestToken(apiToken);
