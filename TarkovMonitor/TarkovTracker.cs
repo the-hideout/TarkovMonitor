@@ -58,6 +58,34 @@ namespace TarkovMonitor
             return $"https://{trackerDomain}/api/v2";
         }
 
+        public static bool IsSupportedOrgToken(string? token)
+        {
+            var value = token?.Trim() ?? string.Empty;
+            if (value.Length != 22 || value[3] != '_')
+            {
+                return false;
+            }
+
+            var prefix = value[..3].ToUpperInvariant();
+            if (prefix is not ("PVE" or "PVP" or "SZN"))
+            {
+                return false;
+            }
+
+            for (var index = 4; index < value.Length; index++)
+            {
+                var character = value[index];
+                if (!((character >= '0' && character <= '9')
+                    || (character >= 'a' && character <= 'f')
+                    || (character >= 'A' && character <= 'F')))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public static ITarkovTrackerAPI InitAPI()
         {
             api = RestService.For<ITarkovTrackerAPI>(GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain),

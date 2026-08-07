@@ -578,9 +578,9 @@
 
     private async void TestToken()
     {
-        if (!Regex.Match(TarkovTrackerToken, @"^(?:[A-Z]{3}_)?.{22}$").Success)
+        if (!TarkovTracker.IsSupportedOrgToken(TarkovTrackerToken))
         {
-            messageLog.AddMessage("You must enter a valid TarkovTracker API token.", "warning");
+            messageLog.AddMessage("Enter a PVE_, PVP_, or SZN_ TarkovTracker.org key followed by its 18-character hexadecimal identifier.", "warning");
             return;
         } else {
             try
