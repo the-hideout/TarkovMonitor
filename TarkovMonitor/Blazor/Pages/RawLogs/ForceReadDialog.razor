@@ -7,7 +7,7 @@
     <DialogContent>
         <MudText>
             @LocalizationService.GetString("CurrentProfile"):
-            <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@TarkovDev.GetPlayerName(GameWatcher.CurrentProfile) (@GameWatcher.CurrentProfile.Type)</MudLink>
+            <MudLink Href="@($"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}")">@CurrentProfileName (@GameWatcher.CurrentProfile.Type)</MudLink>
         </MudText>
         <MudText>
             @LocalizationService.GetString("IfYouWantToUpdateProgressForDifferentProfile")
@@ -61,10 +61,31 @@
     Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
     bool SubmitDisabled { get; set; } = true;
 
+    private string currentProfileName = GameWatcher.CurrentProfile.AccountId;
+    private string CurrentProfileName
+    {
+        get
+        {
+            return currentProfileName;
+        }
+    }
+    private Task UpdateProfileName()
+    {
+        return TarkovDev.GetPlayerName(GameWatcher.CurrentProfile).ContinueWith(t =>
+        {
+            if (!t.IsCompletedSuccessfully)
+            {
+                return;
+            }
+            currentProfileName = t.Result;
+        });
+    }
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         Task.Run(GetBreakPoints);
+        UpdateProfileName();
 
         Properties.Settings.Default.PropertyChanged += (object? sender, PropertyChangedEventArgs e) =>
         {

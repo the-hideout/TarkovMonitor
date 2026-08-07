@@ -148,7 +148,7 @@ namespace TarkovMonitor
 
                 UpdateTarkovDevApiData();
                 TarkovDev.StartAutoUpdates();
-                TarkovDev.UpdatePlayerNames();
+                //TarkovDev.UpdatePlayerNames();
 
                 // Update Tarkov Tracker
                 if (Properties.Settings.Default.tarkovTrackerToken != "" && e.Profile.Id != "")

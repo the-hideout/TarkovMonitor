@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using Refit;
+using System.Diagnostics;
 
 namespace TarkovMonitor
 {
@@ -50,6 +51,9 @@ namespace TarkovMonitor
         {
             [Get("/profile/index.json")]
             Task<Dictionary<string, string>> GetPlayerNames();
+
+            [Get("/{gameMode}/{accountId}.json")]
+            Task<PlayerProfileResult> GetPlayerProfile(string gameMode, string accountId);
         }
         private static ITarkovDevPlayerJsonAPI playerJsonApi = RestService.For<ITarkovDevPlayerJsonAPI>(playersClient);
 
@@ -67,16 +71,16 @@ namespace TarkovMonitor
         public static List<PlayerLevel> PlayerLevels { get; private set; } = new();
         public static DateTime ScavAvailableTime { get; set; } = DateTime.Now;
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
-        public static Dictionary<string, string> PlayerNames { get; private set; } = new();
+        public static Dictionary<ProfileType, Dictionary<string, string>> PlayerNames { get; private set; } = new();
 
         private static Dictionary<ProfileType, int> ScavCooldownBaseValues = new();
 
         static TarkovDev()
         {
-            // sets default values; actual values are retrieved from API
             foreach (ProfileType profileType in Enum.GetValues<ProfileType>())
             {
                 ScavCooldownBaseValues[profileType] = 1500;
+                PlayerNames.Add(profileType, new());
             }
         }
 
@@ -252,17 +256,20 @@ namespace TarkovMonitor
             }
         }
 
-        public async static Task<Dictionary<string, string>> UpdatePlayerNames()
+        public async static Task<string> GetPlayerName(Profile profile)
         {
-            PlayerNames = await playerJsonApi.GetPlayerNames();
-            return PlayerNames;
-        }
-
-        public static string GetPlayerName(Profile profile)
-        {
-            if (PlayerNames.ContainsKey(profile.AccountId))
+            if (PlayerNames[profile.Type].ContainsKey(profile.AccountId))
             {
-                return PlayerNames[profile.AccountId];
+                return PlayerNames[profile.Type][profile.AccountId];
+            }
+            try
+            {
+                var p = await playerJsonApi.GetPlayerProfile(profile.Type.ToPlayersApiString(), profile.AccountId);
+                PlayerNames[profile.Type].Add(profile.AccountId, p.info.nickname);
+                return p.info.nickname;
+            } catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
             }
             return profile.AccountId;
         }
@@ -505,26 +512,15 @@ namespace TarkovMonitor
             public int accountId { get; set; }
         }
 
-        public class PlayerApiResponse
-        {
-            public int? err { get; set; }
-            public string? errmsg { get; set; }
-        }
-
-        public class PlayerSearchResult
-        {
-            public int aid { get; set; }
-            public string name { get; set; }
-        }
-
         public class PlayerProfileResult
         {
-            public int? err { get; set; }
-            public string? errmsg { get; set; }
-            public PlayerProfileInfo? Info { get; set; }
+            public int aid { get; set; }
+            public PlayerProfileInfo info { get; set; }
         }
         public class PlayerProfileInfo
         {
+            public string nickname { get; set; }
+            public string side { get; set; }
             public int experience { get; set; }
         }
 

@@ -1104,6 +1104,12 @@ namespace TarkovMonitor
             ProfileType.PvpSeason => "pvp-season",
             _ => profileType.ToString().ToLower(),
         };
+        public static string ToPlayersApiString(this ProfileType profileType) => profileType switch
+        {
+            ProfileType.PvpSeason => "pvp-season",
+            ProfileType.Regular => "profile",
+            _ => profileType.ToString().ToLower(),
+        };
     }
 
     public class Profile
