@@ -69,6 +69,13 @@ namespace TarkovMonitor
             return api;
         }
 
+        public static void ResetActiveState()
+        {
+            currentProfile = "";
+            ValidToken = false;
+            Progress = new();
+        }
+
         public static string GetToken(string profileId)
         {
             if (!tokens.ContainsKey(profileId))
@@ -80,13 +87,13 @@ namespace TarkovMonitor
 
         public static void SetToken(string profileId, string token)
         {
+            if (IsLegacyService)
+            {
+                return;
+            }
             if (profileId == "")
             {
                 throw new Exception("No PVP or PVE profile initialized, please launch Escape from Tarkov first");
-            }
-            if (IsLegacyService && !string.IsNullOrWhiteSpace(token))
-            {
-                return;
             }
             tokens[profileId] = token;
             Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
@@ -95,15 +102,13 @@ namespace TarkovMonitor
 
         public static async Task<ProgressResponse> SetProfile(string profileId)
         {
-            if (profileId == "") {
-                throw new Exception("Can't set PVP or PVE profile, please launch Escape from Tarkov and then restart this application");
-            }
-
             if (IsLegacyService)
             {
-                ValidToken = false;
-                Progress = new();
+                ResetActiveState();
                 return Progress;
+            }
+            if (profileId == "") {
+                throw new Exception("Can't set PVP or PVE profile, please launch Escape from Tarkov and then restart this application");
             }
 
             if (currentProfile == profileId)
@@ -160,7 +165,7 @@ namespace TarkovMonitor
 
         public static async Task<string> SetTaskStatus(string questId, TaskStatus status)
         {
-            if (!ValidToken)
+            if (IsLegacyService || !ValidToken)
             {
                 throw new Exception("Invalid token");
             }
@@ -246,7 +251,7 @@ namespace TarkovMonitor
 
         public static async Task<string> SetTaskStatuses(Dictionary<string, TaskStatus> statuses)
         {
-			if (!ValidToken)
+			if (IsLegacyService || !ValidToken)
 			{
 				throw new Exception("Invalid token");
 			}
@@ -286,6 +291,11 @@ namespace TarkovMonitor
 
         public static async Task<ProgressResponse> GetProgress()
 		{
+			if (IsLegacyService)
+			{
+				ResetActiveState();
+				return Progress;
+			}
 			if (!ValidToken)
 			{
 				throw new Exception("Invalid token");
