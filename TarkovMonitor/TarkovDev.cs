@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Refit;
 using System.Diagnostics;
 
@@ -6,7 +7,12 @@ namespace TarkovMonitor
 {
     public class TarkovDev
     {
-        private static readonly HttpClient jsonClient = new()
+        private static readonly HttpClient jsonClient = new(new HttpClientHandler
+        {
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip
+                | System.Net.DecompressionMethods.Deflate
+                | System.Net.DecompressionMethods.Brotli,
+        })
         {
             BaseAddress = new Uri("https://json.tarkov.dev"),
             DefaultRequestHeaders = {
@@ -84,55 +90,58 @@ namespace TarkovMonitor
             }
         }
 
-        private async static Task<JObject> GetJObject(string path) {
-            var response = await jsonClient.GetAsync(path);
+        private static readonly JsonSerializerSettings jsonSerializerSettings = new()
+        {
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            NullValueHandling = NullValueHandling.Ignore,
+        };
+
+        private async static Task<T> GetJson<T>(string path)
+        {
+            using var response = await jsonClient.GetAsync(path, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
-            string responseBody = await response.Content.ReadAsStringAsync();
-            return JObject.Parse(responseBody);
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+            using var jsonReader = new JsonTextReader(reader);
+            var serializer = JsonSerializer.Create(jsonSerializerSettings);
+            return serializer.Deserialize<T>(jsonReader)
+                ?? throw new InvalidDataException($"The tarkov.dev response for '{path}' was empty.");
         }
 
         private async static Task<T> JsonApiRequest<T>(string path, string lang = null)
         {
-            JObject data = null;
-            Dictionary<string, string> langData = new();
-            Dictionary<string, string> langDataFallback = new();
-            var dataTask = GetJObject(path);
-            var langDataTask = System.Threading.Tasks.Task.FromResult(new JObject());
-            var langDataFallbackTask = System.Threading.Tasks.Task.FromResult(new JObject());
-            if (lang != null)
+            var dataTask = GetJson<T>(path);
+            if (lang == null)
             {
-                langDataTask = GetJObject($"{path}_{lang}");
-                if (lang != "en")
-                {
-                    langDataFallbackTask = GetJObject($"{path}_en");
-                }
+                return await dataTask;
             }
+
+            var langDataTask = GetJson<LocalizationResponse>($"{path}_{lang}");
+            var langDataFallbackTask = lang != "en"
+                ? GetJson<LocalizationResponse>($"{path}_en")
+                : System.Threading.Tasks.Task.FromResult<LocalizationResponse>(null!);
             await System.Threading.Tasks.Task.WhenAll(dataTask, langDataTask, langDataFallbackTask);
-            if (dataTask.IsFaulted)
+
+            var data = dataTask.Result;
+            var translations = (data as JsonApiResponse)?.translations;
+            var langData = langDataTask.Result.data;
+            var langDataFallback = langDataFallbackTask.Result?.data ?? new();
+            return ApplyTranslations(data, translations, langData, langDataFallback);
+        }
+
+        private static T ApplyTranslations<T>(T data, List<string>? paths,
+            Dictionary<string, string> langData, Dictionary<string, string> langDataFallback)
+        {
+            if (data == null || paths == null || paths.Count == 0)
             {
-                throw dataTask.Exception.InnerException;
+                return data;
             }
-            data = dataTask.Result;
-            if (lang == null || !data.ContainsKey("translations"))
+
+            // Materialize only the already-projected model, not the full response.
+            var projected = JObject.FromObject(data);
+            foreach (var jPath in paths)
             {
-                return data.ToObject<T>();
-            }
-            if (langDataTask.IsFaulted)
-            {
-                throw langDataTask.Exception.InnerException;
-            }
-            langData = langDataTask.Result.ToObject<LocalizationResponse>().data;
-            if (lang != "en")
-            {
-                if (langDataFallbackTask.IsFaulted)
-                {
-                    throw langDataFallbackTask.Exception.InnerException;
-                }
-                langDataFallback = langDataFallbackTask.Result.ToObject<LocalizationResponse>().data;
-            }
-            foreach (var jPath in data["translations"].ToObject<string[]>())
-            {
-                foreach (JValue translationTarget in data.SelectTokens(jPath))
+                foreach (JValue translationTarget in projected.SelectTokens(jPath))
                 {
                     var translatedValue = translationTarget.Value<string>();
                     if (langData.ContainsKey(translatedValue))
@@ -150,7 +159,7 @@ namespace TarkovMonitor
                     translationTarget.Value = translatedValue;
                 }
             }
-            return data.ToObject<T>();
+            return projected.ToObject<T>();
         }
 
         public async static Task<List<Task>> GetTasks()
