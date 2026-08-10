@@ -3,13 +3,13 @@
 
 <MudDialog>
     <DialogContent>
-        <MudSelect @bind-Value="gameLogType" Label="Log type" HelperText="This changes the GameWatcher monitor used to process the log" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary">
+        <MudSelect @bind-Value="gameLogType" Label="Log type" RelativeWidth="DropdownWidth.Adaptive" HelperText="Choose which GameWatcher monitor should process this log" OpenIcon="@Icons.Material.Filled.TextSnippet" AdornmentColor="Color.Secondary" PopoverFixed="false" Modal="false" MaxHeight="280" Margin="Margin.Dense" Dense="true" Class="tm-select tm-select--dialog" PopoverClass="tm-select-popover" ListClass="tm-select-list">
             @foreach (GameLogType item in Enum.GetValues(typeof(GameLogType)))
             {
                 <MudSelectItem Value="@item">@item</MudSelectItem>
             }
         </MudSelect>
-        <MudTextField Immediate="true" @bind-Value="@sampleText" T="string" Label="Log Data" Variant="Variant.Outlined" Lines="5" Class="mt-4"/>
+        <MudTextField Immediate="true" @bind-Value="@sampleText" T="string" Label="Log data" Variant="Variant.Outlined" Lines="5" Class="mt-4"/>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">@LocalizationService.GetString("Cancel")</MudButton>

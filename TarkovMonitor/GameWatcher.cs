@@ -16,6 +16,9 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer processTimer;
         private readonly FileSystemWatcher logFileCreateWatcher;
         private readonly FileSystemWatcher screenshotWatcher;
+        private readonly bool historicalReplay;
+        private Profile parsingProfile = new();
+        private Profile ActiveProfile => historicalReplay ? parsingProfile : CurrentProfile;
         private string _logsPath = "";
         public static Profile CurrentProfile { get; set; } = new();
         public static bool ReadingPastLogs = false;
@@ -179,8 +182,9 @@ namespace TarkovMonitor
 		    throw new Exception("No Tarkov install path found");
 		}
 
-        public GameWatcher()
+        public GameWatcher(bool historicalReplay = false)
 		{
+			this.historicalReplay = historicalReplay;
 			Monitors = new();
 			raidInfo = new RaidInfo();
             logFileCreateWatcher = new FileSystemWatcher
@@ -653,18 +657,18 @@ namespace TarkovMonitor
                         if (systemMessageEvent.message.type >= MessageType.TaskStarted && systemMessageEvent.message.type <= MessageType.TaskFinished)
                         {
                             var args = jsonNode?.AsObject().Deserialize<TaskStatusMessageLogContent>() ?? throw new Exception("Error parsing TaskStatusMessageLogContent");
-                            TaskModified?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                            TaskModified?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = ActiveProfile });
                             if (args.Status == TaskStatus.Started)
                             {
-                                TaskStarted?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskStarted?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = ActiveProfile });
                             }
                             if (args.Status == TaskStatus.Failed)
                             {
-                                TaskFailed?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskFailed?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = ActiveProfile });
                             }
                             if (args.Status == TaskStatus.Finished)
                             {
-                                TaskFinished?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskFinished?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = ActiveProfile });
                             }
                         }
                     }
@@ -705,10 +709,12 @@ namespace TarkovMonitor
         // Process the log files in the specified folder
         public void ProcessLogs(LogDetails target, List<LogDetails> profiles)
         {
+            profiles = profiles.OrderBy(profile => profile.Date).ToList();
             for (var i = 0; i < profiles.Count; i++)
             {
                 var logProfile = profiles[i];
-                if (logProfile.Profile.Id != target.Profile.Id)
+                if (logProfile.Profile.Id != target.Profile.Id
+                    || logProfile.Profile.SessionMode != target.Profile.SessionMode)
                 {
                     continue;
                 }
@@ -717,30 +723,19 @@ namespace TarkovMonitor
                 {
                     endDate = profiles[i + 1].Date;
                 }
+                var startDate = logProfile.Date > target.Date ? logProfile.Date : target.Date;
+                if (endDate <= startDate)
+                {
+                    continue;
+                }
+                parsingProfile = logProfile.Profile.Snapshot();
                 var logFiles = Directory.GetFiles(logProfile.Folder);
-                // TODO: This could be improved by processing lines in the order they were created
-                // rather than a full file at a time, this could be valuable for future features
+                var replayEntries = new List<(DateTime Date, string Data)>();
                 foreach (string logFile in logFiles)
                 {
-                    GameLogType logType;
-                    // Check which type of log file this is by the filename
-                    if (logFile.Contains("application.log") || logFile.Contains("application_000.log"))
+                    if (!logFile.Contains("notifications.log")
+                        && !logFile.Contains("notifications_000.log"))
                     {
-                        logType = GameLogType.Application;
-                    }
-                    else if (logFile.Contains("notifications.log") || logFile.Contains("notifications_000.log"))
-                    {
-                        logType = GameLogType.Notifications;
-                    }
-                    else if (logFile.Contains("traces.log") || logFile.Contains("traces_000.log"))
-                    {
-                        // logType = GameLogType.Traces;
-                        // Traces are not currently used, so skip them
-                        continue;
-                    }
-                    else
-                    {
-                        // We're not a known log type, so skip this file
                         continue;
                     }
 
@@ -756,13 +751,21 @@ namespace TarkovMonitor
                         var dateTimeString = match.Groups["date"].Value + " " + match.Groups["time"].Value;
                         DateTime logMessageDate = DateTime.ParseExact(dateTimeString, "yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
 
-                        if (logMessageDate < logProfile.Date || logMessageDate >= endDate)
+                        if (logMessageDate < startDate || logMessageDate >= endDate)
                         {
                             continue;
                         }
 
-                        GameWatcher_NewLogData(this, new NewLogDataEventArgs { Type = logType, Data = match.Value });
+                        replayEntries.Add((logMessageDate, match.Value));
                     }
+                }
+                foreach (var replayEntry in replayEntries.OrderBy(entry => entry.Date))
+                {
+                    GameWatcher_NewLogData(this, new NewLogDataEventArgs
+                    {
+                        Type = GameLogType.Notifications,
+                        Data = replayEntry.Data,
+                    });
                 }
             }
         }
@@ -891,18 +894,24 @@ namespace TarkovMonitor
                     {
                         continue;
                     }
-                    var matchingBreakpoint = breakpoints.Where((bp) => bp.Version == breakpoint.Version && bp.Profile.Id == breakpoint.Profile.Id).FirstOrDefault();
+                    var matchingBreakpoint = breakpoints.Where((bp) => bp.Version == breakpoint.Version
+                        && bp.Profile.Id == breakpoint.Profile.Id
+                        && bp.Profile.SessionMode == breakpoint.Profile.SessionMode).FirstOrDefault();
                     if (matchingBreakpoint == null)
                     {
                         breakpoints.Add(breakpoint);
                     }
                 }
             }
-            return breakpoints;
+            return breakpoints.OrderBy(breakpoint => breakpoint.Date).ToList();
         }
 
         public void ProcessLogsFromBreakpoint(LogDetails breakpoint)
         {
+            if (!historicalReplay)
+            {
+                throw new InvalidOperationException("Past logs must be processed by an isolated historical watcher.");
+            }
             List<List<LogDetails>> logDetails = new();
             var logFolders = Directory.GetDirectories(LogsPath);
             // For each log folder, get the details
@@ -913,7 +922,8 @@ namespace TarkovMonitor
                 {
                     continue;
                 }
-                if (!details.Any(d => d.Profile.Id == breakpoint.Profile.Id))
+                if (!details.Any(d => d.Profile.Id == breakpoint.Profile.Id
+                    && d.Profile.SessionMode == breakpoint.Profile.SessionMode))
                 {
                     continue;
                 }

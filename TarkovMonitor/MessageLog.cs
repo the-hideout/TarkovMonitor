@@ -54,6 +54,36 @@ namespace TarkovMonitor
             AddMessageCore(monMessage);
         }
 
+        public void AddMessages(IEnumerable<MonitorMessage> messageBatch, bool preserveDisplayOrder = false)
+        {
+            var batch = messageBatch.ToList();
+            if (batch.Count == 0)
+            {
+                return;
+            }
+
+            var batchId = preserveDisplayOrder ? Guid.NewGuid() : (Guid?)null;
+            foreach (var message in batch)
+            {
+                message.Message = LimitMessageLength(message.Message);
+                message.DisplayBatchId = batchId;
+                message.PreserveDisplayBatchOrder = preserveDisplayOrder;
+            }
+
+            lock (messagesLock)
+            {
+                messages.AddRange(batch);
+                if (messages.Count > MaxMessages)
+                {
+                    messages.RemoveRange(0, messages.Count - MaxMessages);
+                }
+            }
+
+            // A historical replay can produce many task messages at once. Notify once
+            // after the complete batch is visible so the UI performs one stable render.
+            newMessage(this, new NewLogMessageArgs(batch[^1]));
+        }
+
         public void AddProtectedMessage(
             string message,
             string? type,

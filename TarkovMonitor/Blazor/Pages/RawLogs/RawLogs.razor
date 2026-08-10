@@ -16,10 +16,10 @@
     </MudItem>
     @if (DebugMode() || LogsFolderSet())
     {
-        <div class="ma-2" style="position:fixed; bottom: 0px; right: 16px;">
-            <MudMenu AnchorOrigin="Origin.TopLeft" TransformOrigin="Origin.BottomRight">
+        <div class="tm-menu-host">
+            <MudMenu AnchorOrigin="Origin.TopRight" TransformOrigin="Origin.BottomRight" RelativeWidth="DropdownWidth.Adaptive" PopoverFixed="false" Modal="false" Dense="true" MaxHeight="280" Class="tm-menu" PopoverClass="tm-menu-popover" ListClass="tm-menu-list">
                 <ActivatorContent>
-                    <MudFab Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                    <MudFab Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Class="tm-menu-activator" aria-label="Log actions" />
                 </ActivatorContent>
                 <ChildContent>
                     @if(DebugMode())
@@ -46,13 +46,13 @@
     private void OpenCustomDialog()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
-        DialogService.ShowAsync<CustomLogDialog>("Process Custom Log Data", options);
+        DialogService.ShowAsync<CustomLogDialog>("Process custom log data", options);
     }
 
     private void OpenForceReadDialog()
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
-        DialogService.ShowAsync<ForceReadDialog>("Read Past Log Files", options);
+        var options = new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true };
+        DialogService.ShowAsync<ForceReadDialog>("Read past log files", options);
     }
 
     private void OpenLogsFolder()

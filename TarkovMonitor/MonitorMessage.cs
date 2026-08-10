@@ -81,6 +81,8 @@ namespace TarkovMonitor
 
     public class MonitorMessage
     {
+        internal Guid? DisplayBatchId { get; set; }
+        internal bool PreserveDisplayBatchOrder { get; set; }
         public string Message { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
         public string Type { get; set; } = "";

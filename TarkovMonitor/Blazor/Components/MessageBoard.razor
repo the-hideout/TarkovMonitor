@@ -54,11 +54,11 @@
                                 }
                             </div>
                         </div>
-                        <div class="d-flex align-center">
+                        <div class="tm-message-actions">
                             @foreach (MonitorMessageSelect select in message.Selects.GetSnapshot())
                             {
 
-                                <MudSelect T="MonitorMessageSelectOption" Placeholder="@select.Placeholder" SelectedValuesChanged="@((e) => MessageSelectChanged(select, e) )">
+                                <MudSelect T="MonitorMessageSelectOption" Placeholder="@select.Placeholder" aria-label="@select.Placeholder" RelativeWidth="DropdownWidth.Adaptive" PopoverFixed="false" Modal="false" MaxHeight="280" SelectedValuesChanged="@((e) => MessageSelectChanged(select, e) )" Margin="Margin.Dense" Dense="true" Class="tm-select tm-select--compact tm-message-select" PopoverClass="tm-select-popover" ListClass="tm-select-list">
                                     @foreach (MonitorMessageSelectOption option in select.Options)
                                     {
                                         <MudSelectItem Value="@option">@option.Text</MudSelectItem>
@@ -95,7 +95,7 @@
         // timestamp refreshes. Listen to the source directly so the card redraws
         // as soon as a message is recorded.
         messageLog.newMessage += MessageLog_NewMessage;
-        messages = messageLog.GetSnapshot();
+        messages = PrepareForReverseStack(messageLog.GetSnapshot());
         timer = new Timer(RefreshCallback, null, 60000, 60000);
     }
 
@@ -105,9 +105,45 @@
         // InvokeAsync safely schedules the redraw on the correct dispatcher.
         _ = InvokeAsync(() =>
         {
-            messages = messageLog.GetSnapshot();
+            messages = PrepareForReverseStack(messageLog.GetSnapshot());
             StateHasChanged();
         });
+    }
+
+    private static IReadOnlyList<MonitorMessage> PrepareForReverseStack(IReadOnlyList<MonitorMessage> snapshot)
+    {
+        if (snapshot.Count < 2)
+        {
+            return snapshot;
+        }
+
+        var displayItems = new List<MonitorMessage>(snapshot.Count);
+        for (var index = 0; index < snapshot.Count;)
+        {
+            var message = snapshot[index];
+            if (!message.PreserveDisplayBatchOrder || message.DisplayBatchId == null)
+            {
+                displayItems.Add(message);
+                index++;
+                continue;
+            }
+
+            var batchEnd = index + 1;
+            while (batchEnd < snapshot.Count
+                && snapshot[batchEnd].PreserveDisplayBatchOrder
+                && snapshot[batchEnd].DisplayBatchId == message.DisplayBatchId)
+            {
+                batchEnd++;
+            }
+
+            for (var batchIndex = batchEnd - 1; batchIndex >= index; batchIndex--)
+            {
+                displayItems.Add(snapshot[batchIndex]);
+            }
+            index = batchEnd;
+        }
+
+        return displayItems;
     }
 
     private string GetTypeIcon(string type)
@@ -197,19 +233,24 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error in message button: ${ex.Message} {ex.StackTrace}", "exception");
+            messageLog.AddMessage($"Could not activate the message button: {ex.Message} {ex.StackTrace}", "exception");
         }
     }
 
-    private async void MessageSelectChanged(MonitorMessageSelect select, IEnumerable<MonitorMessageSelectOption> selected)
+    private void MessageSelectChanged(MonitorMessageSelect select, IEnumerable<MonitorMessageSelectOption>? selected)
     {
         try
         {
-            select.ChangeSelection(selected.First());
+            MonitorMessageSelectOption? option = selected?.FirstOrDefault();
+            if (option == null)
+            {
+                return;
+            }
+            select.ChangeSelection(option);
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error in message select: ${ex.Message} {ex.StackTrace}", "exception");
+            messageLog.AddMessage($"Could not update the message selection: {ex.Message} {ex.StackTrace}", "exception");
         }
     }
 
