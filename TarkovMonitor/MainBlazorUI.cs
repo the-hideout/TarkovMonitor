@@ -63,10 +63,12 @@ namespace TarkovMonitor
         private LocalizationService localizationService;
         private DisclaimerInformationForm? disclaimerInformationForm;
         private bool inRaid;
+        private bool gameWatcherStarted;
 
         public MainBlazorUI()
         {
             InitializeComponent();
+            Shown += MainBlazorUI_Shown;
             if (Properties.Settings.Default.upgradeRequired)
             {
                 Properties.Settings.Default.Upgrade();
@@ -149,6 +151,12 @@ namespace TarkovMonitor
 
             eft.InitialReadComplete += (object? sender, ProfileEventArgs e) =>
             {
+                if (e.Profile.Type == ProfileType.Unknown)
+                {
+                    TarkovTracker.ResetActiveState();
+                    return;
+                }
+
                 // Update tarkov.dev API data
 
                 UpdateTarkovDevApiData();
@@ -170,15 +178,6 @@ namespace TarkovMonitor
                 InitializeProgress();
             };
 
-            try
-            {
-                eft.Start();
-            }
-            catch (Exception ex)
-            {
-                RecordException("Game log monitoring could not start.", "TM-WATCHER-001", "StartGameWatcher", ex, "GameWatcher", "Startup");
-            }
-
             Properties.Settings.Default.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
                 if (e.PropertyName == "stayOnTop")
                 {
@@ -187,6 +186,7 @@ namespace TarkovMonitor
                 if (e.PropertyName == "customLogsPath")
                 {
                     eft.LogsPath = Properties.Settings.Default.customLogsPath;
+                    StartGameWatcher();
                 }
             };
 
@@ -369,6 +369,12 @@ namespace TarkovMonitor
 
         private async void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
+            if (e.Profile.Type == ProfileType.Unknown)
+            {
+                TarkovTracker.ResetActiveState();
+                return;
+            }
+
             if (e.Profile.Id == TarkovTracker.CurrentProfileId)
             {
                 return;
@@ -652,6 +658,28 @@ namespace TarkovMonitor
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
         }
 
+        private void MainBlazorUI_Shown(object? sender, EventArgs e)
+        {
+            StartGameWatcher();
+        }
+
+        private void StartGameWatcher()
+        {
+            if (gameWatcherStarted)
+            {
+                return;
+            }
+
+            try
+            {
+                gameWatcherStarted = eft.Start();
+            }
+            catch (Exception ex)
+            {
+                RecordException("Game log monitoring could not start.", "TM-WATCHER-001", "StartGameWatcher", ex, "GameWatcher", "Startup");
+            }
+        }
+
         private async Task UpdateTarkovDevApiData()
         {
             try
@@ -667,6 +695,12 @@ namespace TarkovMonitor
 
         private async Task InitializeProgress()
         {
+            if (GameWatcher.CurrentProfile.Type == ProfileType.Unknown)
+            {
+                TarkovTracker.ResetActiveState();
+                return;
+            }
+
             try
             {
                 await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
