@@ -264,11 +264,11 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.StatusCode}.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
+                throw new Exception("TarkovTracker API error.", ex);
             }
             return "success";
         }
@@ -285,7 +285,7 @@ namespace TarkovMonitor
                         {
                             continue;
                         }
-                        if (failCondition.task == questId && failCondition.status.Contains("complete"))
+                        if (failCondition.task == questId && failCondition.status?.Contains("complete") == true)
                         {
                             foreach (var taskStatus in Progress.data.tasksProgress)
                             {
@@ -300,9 +300,9 @@ namespace TarkovMonitor
                     }
                 });
             } 
-            catch (Exception)
+            catch (Exception ex)
             {
-                // do something?
+                throw new Exception("TarkovTracker local task state update failed.", ex);
             }
             return "success";
         }
@@ -360,11 +360,11 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
+				throw new Exception($"Invalid TarkovTracker API response code: {ex.StatusCode}.", ex);
 			}
 			catch (Exception ex)
 			{
-				throw new Exception($"TarkovTracker API error: {ex.Message}");
+				throw new Exception("TarkovTracker API error.", ex);
 			}
 			return "success";
 		}
@@ -396,11 +396,11 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                throw new Exception($"Invalid TarkovTracker response code: {ex.Message}");
+                throw new Exception($"Invalid TarkovTracker response code: {ex.StatusCode}.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
+                throw new Exception("TarkovTracker API error.", ex);
             }
         }
 
@@ -424,7 +424,7 @@ namespace TarkovMonitor
             }
             catch (HttpRequestException ex)
             {
-                throw new Exception($"TarkovTracker API connection error: {ex.Message}");
+                throw new Exception("TarkovTracker API connection error.", ex);
             }
 
             using (httpResponse)
