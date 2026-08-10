@@ -1,28 +1,61 @@
 ﻿@using Humanizer;
 @using System.Diagnostics;
 @using System.Threading
+@implements IDisposable
 @inject MessageLog messageLog
 @inject IDialogService DialogService
 @inject LocalizationService LocalizationService
+@inject NavigationManager NavManager
 <MudPaper Class="app-surface dashboard-notification-surface" Elevation="3">
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="pa-3">
-    @if (messageLog.Messages.Count == 0)
+    @if (messages.Count == 0)
     {
         <MudAlert Severity="Severity.Info">@LocalizationService.GetString("ThereArentAnyMessagesYet")</MudAlert>
     }else{
-        @foreach (MonitorMessage message in messageLog.Messages.ToList())
+        @foreach (MonitorMessage message in messages)
         {
-            <div class="">
-                <div class="d-block">
-                    <MudPaper Class="align-center py-2 px-3 mud-theme-secondary" Elevation="3">
-                        <div class="d-flex align-center">
+            <div class="dashboard-message">
+                <div class="d-block dashboard-message__paper">
+                    <MudPaper Class="align-center py-2 px-3 mud-theme-secondary dashboard-message__paper" Elevation="3">
+                        <div class="d-flex align-start dashboard-message__row">
                             <MudIcon Icon="@GetTypeIcon(message.Type)" Title="@GetTypeTitle(message.Type)" Class="mr-2"/>
-                            <span class="" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">
-                                @message.Message
-                            </span>
+                            <div class="dashboard-message__content">
+                                @if (string.IsNullOrWhiteSpace(message.LinkText))
+                                {
+                                    <span class="dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.Message</span>
+                                }
+                                else if (message.Message.Contains(message.LinkText, StringComparison.Ordinal))
+                                {
+                                    var linkStart = message.Message.IndexOf(message.LinkText, StringComparison.Ordinal);
+                                    var linkEnd = linkStart + message.LinkText.Length;
+                                    <span class="dashboard-message__text">@(message.Message[..linkStart])<span @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>@(message.Message[linkEnd..])</span>
+                                }
+                                else
+                                {
+                                    <span class="dashboard-message__text">@message.Message</span>
+                                    <span class="ml-1 dashboard-message__text" @onclick="() => OpenURL(message.Url)" style="@GetMessageStyle(message.Url)">@message.LinkText</span>
+                                }
+                                @if (message.ProtectedValues.Count > 0)
+                                {
+                                    <div class="dashboard-message__protected-values">
+                                        @foreach (var protectedValue in message.ProtectedValues)
+                                        {
+                                            <span class="dashboard-message__protected-detail">
+                                                <span class="dashboard-message__protected-label">@protectedValue.Label</span>
+                                                 <span class="dashboard-message__protected-value"
+                                                       tabindex="0"
+                                                       aria-label="@($"{protectedValue.Label}: {protectedValue.Value}. Protected value revealed on focus.")">
+                                                     <span class="dashboard-message__protected-mask" aria-hidden="true">Hidden - hover to reveal</span>
+                                                     <span class="dashboard-message__protected-reveal" aria-hidden="true">@protectedValue.Value</span>
+                                                 </span>
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            </div>
                         </div>
                         <div class="d-flex align-center">
-                            @foreach (MonitorMessageSelect select in message.Selects)
+                            @foreach (MonitorMessageSelect select in message.Selects.GetSnapshot())
                             {
 
                                 <MudSelect T="MonitorMessageSelectOption" Placeholder="@select.Placeholder" SelectedValuesChanged="@((e) => MessageSelectChanged(select, e) )">
@@ -32,7 +65,7 @@
                                     }
                                 </MudSelect>
                             }
-                            @foreach (MonitorMessageButton button in message.Buttons)
+                            @foreach (MonitorMessageButton button in message.Buttons.GetSnapshot())
                             {
                                 <MudButton Variant="Variant.Filled" Color="@button.Color" StartIcon="@button.Icon" OnClick="@((e) => MessageButtonClick(button) )">@button.Text</MudButton>
                             }
@@ -50,14 +83,31 @@
 </MudPaper>
 
 @code {
-    // Force refresh every minute to update timestamps
+    // Refresh once per minute to update relative timestamps.
     Timer? timer;  
+    IReadOnlyList<MonitorMessage> messages = Array.Empty<MonitorMessage>();
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
 
-        timer = new Timer(RefreshCallback, null, 1000, 1000);
+        // Messages can arrive from EFT log watchers and API callbacks between the
+        // timestamp refreshes. Listen to the source directly so the card redraws
+        // as soon as a message is recorded.
+        messageLog.newMessage += MessageLog_NewMessage;
+        messages = messageLog.GetSnapshot();
+        timer = new Timer(RefreshCallback, null, 60000, 60000);
+    }
+
+    private void MessageLog_NewMessage(object source, NewLogMessageArgs e)
+    {
+        // Log callbacks are not guaranteed to run on Blazor's renderer thread.
+        // InvokeAsync safely schedules the redraw on the correct dispatcher.
+        _ = InvokeAsync(() =>
+        {
+            messages = messageLog.GetSnapshot();
+            StateHasChanged();
+        });
     }
 
     private string GetTypeIcon(string type)
@@ -101,12 +151,17 @@
     private string GetMessageStyle(string url)
     {
         if (url.Length == 0) return ""; 
-        return "cursor: pointer;";
+        return "cursor: pointer; text-decoration: underline;";
     }
 
     private void OpenURL(string url)
     {
         if (url.Length == 0) return;
+        if (url.StartsWith('/'))
+        {
+            NavManager.NavigateTo(url);
+            return;
+        }
         var psi = new ProcessStartInfo
 		{
             FileName = url,
@@ -156,5 +211,11 @@
         {
             messageLog.AddMessage($"Error in message select: ${ex.Message} {ex.StackTrace}", "exception");
         }
+    }
+
+    public void Dispose()
+    {
+        messageLog.newMessage -= MessageLog_NewMessage;
+        timer?.Dispose();
     }
 }

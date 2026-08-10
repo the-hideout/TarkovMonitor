@@ -130,6 +130,7 @@
                 Id = GameWatcher.CurrentProfile.Id,
                 Type = GameWatcher.CurrentProfile.Type,
                 AccountId = GameWatcher.CurrentProfile.AccountId,
+                SessionMode = GameWatcher.CurrentProfile.SessionMode,
             };
             customWatcher.ProcessLogsFromBreakpoint(selectedBreakpoint);
             GameWatcher.CurrentProfile = currentProfile;

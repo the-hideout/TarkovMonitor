@@ -27,29 +27,73 @@ namespace TarkovMonitor
 
     internal class MessageLog
     {
+        internal const int MaxMessageLength = 2048;
+        internal const int MaxMessages = 200;
+        private const string ShortenedMessageSuffix = "\n[Message shortened by Tarkov Monitor.]";
+        private readonly object messagesLock = new();
+        private readonly List<MonitorMessage> messages = new();
         public event NewLogMessage newMessage = delegate { };
 
-        public MessageLog()
+        public IReadOnlyList<MonitorMessage> GetSnapshot()
         {
-            Messages = new List<MonitorMessage>();
+            lock (messagesLock)
+            {
+                return messages.ToList();
+            }
         }
-        public List<MonitorMessage> Messages { get; set; }
-        
+
         public void AddMessage(MonitorMessage message)
         {
-            Messages.Add(message);
+            message.Message = LimitMessageLength(message.Message);
+            AddMessageCore(message);
+        }
 
-            // Throw event to let watchers know something has changed
+        public void AddMessage(string message, string? type = "", string? url = null, string? linkText = null)
+        {
+            var monMessage = new MonitorMessage(LimitMessageLength(message), type, url, linkText);
+            AddMessageCore(monMessage);
+        }
+
+        public void AddProtectedMessage(
+            string message,
+            string? type,
+            IEnumerable<MonitorMessageProtectedValue> protectedValues,
+            string? url = null,
+            string? linkText = null)
+        {
+            var monMessage = new MonitorMessage(LimitMessageLength(message), type, url, linkText);
+            foreach (var protectedValue in protectedValues
+                .Where(value => !string.IsNullOrWhiteSpace(value.Label)
+                    && !string.IsNullOrWhiteSpace(value.Value)))
+            {
+                monMessage.ProtectedValues.Add(protectedValue);
+            }
+            AddMessageCore(monMessage);
+        }
+
+        private void AddMessageCore(MonitorMessage message)
+        {
+            lock (messagesLock)
+            {
+                messages.Add(message);
+                if (messages.Count > MaxMessages)
+                {
+                    messages.RemoveRange(0, messages.Count - MaxMessages);
+                }
+            }
+
+            // Notify after releasing the lock so render callbacks can safely take a snapshot.
             newMessage(this, new NewLogMessageArgs(message));
         }
 
-        public void AddMessage(string message, string? type = "", string? url = null)
+        private static string LimitMessageLength(string message)
         {
-            var monMessage = new MonitorMessage(message, type, url);
-            Messages.Add(monMessage);
+            if (message.Length <= MaxMessageLength)
+            {
+                return message;
+            }
 
-            // Throw event to let watchers know something has changed
-            newMessage(this, new NewLogMessageArgs(monMessage));
+            return message[..(MaxMessageLength - ShortenedMessageSuffix.Length)] + ShortenedMessageSuffix;
         }
     }
 }
