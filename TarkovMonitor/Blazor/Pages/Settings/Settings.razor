@@ -135,7 +135,7 @@
             @if (!IsRetiredTrackerService)
             {
                 <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
-                <span>@LocalizationService.GetString("CurrentProfile"):</span>
+                <span>@LocalizationService.GetString("CurrentProfile"):&nbsp;</span>
                 @if (HasCurrentProfileRoute)
                 {
                     <MudLink Href="@CurrentProfileUrl" Class="tm-profile-link">@CurrentProfileName (@GetProfileTypeDisplayName(GameWatcher.CurrentProfile.Type))</MudLink>

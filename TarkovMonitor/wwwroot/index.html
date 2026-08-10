@@ -3,20 +3,74 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WinFormsBlazor</title>
+    <title>Tarkov Monitor</title>
     <base href="/" />
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
-    <link href="css/app.css" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link href="css/app.css?v=dropdown-resize-4" rel="stylesheet" />
     <link href="TarkovMonitor.styles.css" rel="stylesheet">
+    <style>
+        html, body, #app {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #1e1e1e;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: "Segoe UI", Roboto, sans-serif;
+        }
+
+        .tm-startup-shell {
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            place-content: center;
+            gap: 0.75rem;
+            background: #1e1e1e;
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+        }
+
+        .tm-startup-shell__spinner {
+            width: 1.5rem;
+            height: 1.5rem;
+            margin: 0 auto;
+            border: 0.2rem solid rgba(255, 255, 255, 0.22);
+            border-top-color: #5f9df7;
+            border-radius: 50%;
+            animation: tm-startup-spin 0.8s linear infinite;
+        }
+
+        .tm-startup-shell__title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .tm-startup-shell__status {
+            color: rgba(255, 255, 255, 0.62);
+            font-size: 0.82rem;
+        }
+
+        @keyframes tm-startup-spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 
 <body>
 
-    <div id="app">Loading...</div>
+    <div id="app">
+        <div class="tm-startup-shell" role="status" aria-live="polite">
+            <div class="tm-startup-shell__spinner" aria-hidden="true"></div>
+            <div class="tm-startup-shell__title">Tarkov Monitor</div>
+            <div class="tm-startup-shell__status">Starting the interface&hellip;</div>
+        </div>
+    </div>
 
     <div id="blazor-error-ui">
-        An unhandled error has occurred.
+        Tarkov Monitor encountered an error.
         <a href="" class="reload">Reload</a>
         <a class="dismiss">🗙</a>
     </div>
@@ -24,6 +78,870 @@
     <script src="_framework/blazor.webview.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="js/floating-timer-panel.js"></script>
+    <script>
+        (() => {
+            const viewportMargin = 8;
+            const activatorGap = 4;
+            let frame = 0;
+            let constraintCleanupTimer = 0;
+            const constrainedDropdowns = new Map();
+            const dropdownConstraintDefaultsById = new Map();
+
+            const hasOpenDropdown = () => document.querySelector(
+                '.mud-popover-open .tm-select-list, .mud-popover-open .tm-menu-list') !== null;
+
+            const findDropdownActivator = owner => {
+                if (!(owner instanceof Element)) return null;
+                return [...owner.querySelectorAll(
+                    '.mud-input.mud-select-input,'
+                    + ' .mud-input-slot[role="combobox"]:not([type="hidden"]),'
+                    + ' .mud-input-root[role="combobox"]:not([type="hidden"]),'
+                    + ' .mud-menu button, .mud-menu [role="button"], .tm-menu-activator')]
+                    .find(element => element.getClientRects().length) ?? null;
+            };
+
+            const findDropdownPopover = owner => {
+                if (!(owner instanceof Element)) return null;
+                const anchor = [...owner.querySelectorAll('[id^="popover-"]')]
+                    .find(element => element.id.length > 'popover-'.length);
+                if (!anchor) return null;
+                const suffix = anchor.id.substring('popover-'.length);
+                const popover = document.getElementById(`popovercontent-${suffix}`);
+                return popover?.matches('.tm-select-popover, .tm-menu-popover')
+                    ? popover
+                    : null;
+            };
+
+            const restoreDropdownConstraint = (popover, record) => {
+                if (!(popover instanceof HTMLElement)) return;
+                if (record.originalMaxHeight) {
+                    popover.style.setProperty(
+                        'max-height',
+                        record.originalMaxHeight,
+                        record.originalMaxHeightPriority);
+                } else {
+                    popover.style.removeProperty('max-height');
+                }
+            };
+
+            const restoreClosedDropdownConstraints = () => {
+                const now = performance.now();
+                for (const [popover, record] of constrainedDropdowns) {
+                    if (popover.isConnected && popover.classList.contains('mud-popover-open')) {
+                        record.opened = true;
+                        continue;
+                    }
+                    // MudBlazor opens asynchronously after the activator event.
+                    // Keep a newly prepared cap long enough for that first render;
+                    // otherwise the observer can restore 280px before the menu opens.
+                    if (!record.opened && now - record.preparedAt < 250) continue;
+                    restoreDropdownConstraint(popover, record);
+                    constrainedDropdowns.delete(popover);
+                }
+                if (constrainedDropdowns.size === 0 && constraintCleanupTimer) {
+                    window.clearTimeout(constraintCleanupTimer);
+                    constraintCleanupTimer = 0;
+                }
+            };
+
+            const constrainDropdown = owner => {
+                const activator = findDropdownActivator(owner);
+                const popover = findDropdownPopover(owner);
+                if (!(activator instanceof HTMLElement) || !(popover instanceof HTMLElement)) return;
+
+                let record = constrainedDropdowns.get(popover);
+                if (!record) {
+                    let originalConstraint = dropdownConstraintDefaultsById.get(popover.id);
+                    if (!originalConstraint) {
+                        originalConstraint = {
+                            maxHeight: popover.style.maxHeight,
+                            maxHeightPriority: popover.style.getPropertyPriority('max-height')
+                        };
+                        dropdownConstraintDefaultsById.set(popover.id, originalConstraint);
+                    }
+                    record = {
+                        activator,
+                        originalMaxHeight: originalConstraint.maxHeight,
+                        originalMaxHeightPriority: originalConstraint.maxHeightPriority,
+                        preparedAt: performance.now(),
+                        opened: false
+                    };
+                    constrainedDropdowns.set(popover, record);
+                } else {
+                    record.activator = activator;
+                    if (!record.opened) record.preparedAt = performance.now();
+                }
+
+                const popoverIsOpen = popover.classList.contains('mud-popover-open');
+                if (popoverIsOpen) record.opened = true;
+
+                const activatorBounds = activator.getBoundingClientRect();
+                const ownerBounds = owner.getBoundingClientRect();
+                const visualTop = window.visualViewport?.offsetTop ?? 0;
+                const visualBottom = visualTop
+                    + (window.visualViewport?.height ?? window.innerHeight);
+                const visualLeft = window.visualViewport?.offsetLeft ?? 0;
+                const visualRight = visualLeft
+                    + (window.visualViewport?.width ?? window.innerWidth);
+                const appBarBottom = document.querySelector('.window-app-bar')
+                    ?.getBoundingClientRect().bottom ?? visualTop;
+                const safeTop = Math.max(visualTop + viewportMargin, appBarBottom + viewportMargin);
+                const safeBottom = visualBottom - viewportMargin;
+                const activatorOutsideViewport = activatorBounds.bottom <= safeTop
+                    || activatorBounds.top >= safeBottom
+                    || activatorBounds.right <= visualLeft + viewportMargin
+                    || activatorBounds.left >= visualRight - viewportMargin;
+
+                if (popoverIsOpen && activatorOutsideViewport) {
+                    closeOpenDropdowns({
+                        preserveScroll: true,
+                        scrollPositions: captureScrollPositions(),
+                        releaseOwnerFocusAfterClose: true
+                    });
+                    return false;
+                }
+
+                const availableAbove = Math.max(
+                    0,
+                    ownerBounds.top - safeTop - activatorGap);
+                const availableBelow = Math.max(
+                    0,
+                    safeBottom - activatorBounds.bottom - activatorGap);
+                const availableHeight = Math.floor(Math.max(availableAbove, availableBelow));
+                const constrainedHeight = availableHeight;
+
+                if (constrainedHeight > 0) {
+                    const value = `${constrainedHeight}px`;
+                    if (popover.style.maxHeight !== value) {
+                        popover.style.setProperty(
+                            'max-height',
+                            value,
+                            record.originalMaxHeightPriority);
+                        if (popoverIsOpen) {
+                            const suffix = popover.id.substring('popovercontent-'.length);
+                            window.mudPopover?.schedulePopoverUpdate?.(suffix, true);
+                        }
+                    }
+                }
+
+                if (!record.opened) {
+                    if (constraintCleanupTimer) window.clearTimeout(constraintCleanupTimer);
+                    constraintCleanupTimer = window.setTimeout(() => {
+                        constraintCleanupTimer = 0;
+                        scheduleDropdownUpdate();
+                    }, 300);
+                }
+
+                return true;
+            };
+
+            const constrainOpenDropdowns = () => {
+                const visitedPopovers = new Set();
+                for (const owner of document.querySelectorAll('.tm-select, .mud-menu')) {
+                    const popover = findDropdownPopover(owner);
+                    if (popover?.classList.contains('mud-popover-open')
+                        && popover.querySelector('.tm-select-list, .tm-menu-list')) {
+                        if (visitedPopovers.has(popover)) continue;
+                        visitedPopovers.add(popover);
+                        if (constrainDropdown(owner) === false) return;
+                    }
+                }
+
+                for (const [popover, record] of constrainedDropdowns) {
+                    if (visitedPopovers.has(popover)) continue;
+                    if (!popover.isConnected || !popover.classList.contains('mud-popover-open')) {
+                        continue;
+                    }
+                    const owner = record.activator.closest('.mud-select, .mud-menu');
+                    if (owner && constrainDropdown(owner) === false) return;
+                }
+            };
+
+            const captureScrollPositions = () => [...document.querySelectorAll(
+                '.app-main-content, .mud-main-content, [data-tm-scroll-container]')]
+                .map((element, index) => ({
+                    selector: element.matches('.app-main-content')
+                        ? '.app-main-content'
+                        : element.matches('.mud-main-content')
+                            ? '.mud-main-content'
+                            : '[data-tm-scroll-container]',
+                    index,
+                    top: element.scrollTop,
+                    left: element.scrollLeft
+                }));
+
+            const restoreScrollPositions = positions => {
+                for (const position of positions) {
+                    const element = document.querySelectorAll(position.selector)[position.index];
+                    if (!element) continue;
+                    element.scrollTop = position.top;
+                    element.scrollLeft = position.left;
+                }
+            };
+
+            const closeOpenDropdowns = ({
+                preserveScroll = false,
+                scrollPositions = null,
+                releaseOwnerFocusAfterClose = false
+            } = {}) => {
+                if (!hasOpenDropdown() && !(preserveScroll && scrollPositions?.length)) {
+                    return;
+                }
+
+                const positions = scrollPositions ?? (preserveScroll ? captureScrollPositions() : []);
+                const focusReleaseTargets = releaseOwnerFocusAfterClose
+                    ? getOpenDropdownFocusReleaseTargets()
+                    : [];
+                if (focusReleaseTargets.length) {
+                    // Arm the existing owner-scoped observer before Escape can
+                    // synchronously close the popup and restore activator focus.
+                    schedulePointerDismissFocusRelease(focusReleaseTargets, {
+                        settleLateOwnerRefocus: true
+                    });
+                }
+
+                // A popover is rendered outside its component, but MudBlazor keeps a
+                // matching popover-{id} anchor next to the component. Resolve only the
+                // open dropdown's own activator; dispatching Escape to every select on
+                // the page makes an off-screen control reclaim focus and scroll the
+                // document unexpectedly.
+                document.querySelectorAll('.mud-popover-open').forEach(popover => {
+                    if (!popover.querySelector('.tm-select-list, .tm-menu-list')) return;
+
+                    const contentId = popover.id;
+                    const suffix = contentId.startsWith('popovercontent-')
+                        ? contentId.substring('popovercontent-'.length)
+                        : '';
+                    const anchor = suffix ? document.getElementById(`popover-${suffix}`) : null;
+                    const owner = anchor?.parentElement;
+                    const activator = owner?.querySelector(
+                        '.mud-select-input, .mud-input-slot, .mud-menu button, .mud-menu [role="button"], [role="button"]')
+                        ?? (contentId ? document.querySelector(
+                            `[aria-controls="${CSS.escape(contentId)}"], [aria-owns="${CSS.escape(contentId)}"]`) : null);
+
+                    const candidates = [];
+                    if (activator instanceof HTMLElement) candidates.push(activator);
+                    const focused = document.activeElement;
+                    if (focused instanceof HTMLElement && focused.closest('.mud-select, .mud-menu')) {
+                        candidates.push(focused);
+                    }
+
+                    for (const target of candidates) {
+                        if (!(target instanceof HTMLElement)) continue;
+                        target.dispatchEvent(new KeyboardEvent('keydown', {
+                            key: 'Escape',
+                            code: 'Escape',
+                            keyCode: 27,
+                            which: 27,
+                            bubbles: true,
+                            cancelable: true
+                        }));
+                        if (!hasOpenDropdown()) break;
+                    }
+                });
+
+                if (preserveScroll && positions.length) {
+                    // MudSelect may restore focus while handling Escape. That focus
+                    // restoration can call scrollIntoView on the off-screen input and
+                    // jump the settings page to the top. Restore the user's position
+                    // after MudBlazor completes its synchronous and queued work.
+                    restoreScrollPositions(positions);
+                    window.requestAnimationFrame(() => {
+                        restoreScrollPositions(positions);
+                        window.requestAnimationFrame(() => restoreScrollPositions(positions));
+                    });
+                }
+
+            };
+
+            let pendingWheelDismiss = null;
+            let pendingWheelDismissTimer = 0;
+
+            const clearPendingWheelDismiss = () => {
+                if (pendingWheelDismissTimer) {
+                    window.clearTimeout(pendingWheelDismissTimer);
+                    pendingWheelDismissTimer = 0;
+                }
+                pendingWheelDismiss = null;
+            };
+
+            const queueScrollDismiss = event => {
+                if (!hasOpenDropdown()) return;
+                const rawTarget = event.target;
+                const target = rawTarget instanceof Element
+                    ? rawTarget.closest('.app-main-content, .mud-main-content, [data-tm-scroll-container]')
+                    : null;
+                if (!(target instanceof HTMLElement)) return;
+
+                const selector = target.matches('.app-main-content')
+                    ? '.app-main-content'
+                    : target.matches('.mud-main-content')
+                        ? '.mud-main-content'
+                        : '[data-tm-scroll-container]';
+                const index = [...document.querySelectorAll(selector)].indexOf(target);
+                if (index < 0) return;
+
+                // Capture and arm owner-scoped focus release before the
+                // browser's native scroll (or MudBlazor) can close and remove
+                // the popup. The later close path may find no open node.
+                const focusReleaseTargets = getOpenDropdownFocusReleaseTargets();
+                if (focusReleaseTargets.length) {
+                    schedulePointerDismissFocusRelease(focusReleaseTargets, {
+                        settleLateOwnerRefocus: true
+                    });
+                }
+
+                // Do not predict or set the destination from deltaY here. The
+                // browser still has to apply the wheel's native scroll; writing
+                // a predicted position before that happens makes constrained
+                // popovers scroll twice. Close after the native scroll event and
+                // preserve the position that the browser actually reached.
+                pendingWheelDismiss = { target, selector, index };
+                if (pendingWheelDismissTimer) window.clearTimeout(pendingWheelDismissTimer);
+                pendingWheelDismissTimer = window.setTimeout(() => {
+                    pendingWheelDismissTimer = 0;
+                    if (!pendingWheelDismiss) return;
+                    const positions = captureScrollPositions();
+                    pendingWheelDismiss = null;
+                    if (hasOpenDropdown()) {
+                        closeOpenDropdowns({
+                            preserveScroll: true,
+                            scrollPositions: positions,
+                            releaseOwnerFocusAfterClose: true
+                        });
+                    }
+                }, 80);
+            };
+
+            const updateOpenDropdowns = () => {
+                frame = 0;
+                restoreClosedDropdownConstraints();
+                if (hasOpenDropdown()) {
+                    constrainOpenDropdowns();
+                }
+            };
+
+            const scheduleDropdownUpdate = () => {
+                if (!hasOpenDropdown()
+                    && constrainedDropdowns.size === 0) return;
+                if (frame) return;
+                frame = window.requestAnimationFrame(() => {
+                    frame = window.requestAnimationFrame(updateOpenDropdowns);
+                });
+            };
+
+            window.addEventListener('resize', scheduleDropdownUpdate, { passive: true });
+            document.addEventListener('wheel', event => {
+                const target = event.target instanceof Element
+                    ? event.target.closest('.mud-popover-open')
+                    : null;
+                if (target) return;
+                if (hasOpenDropdown()) event.stopPropagation();
+                queueScrollDismiss(event);
+            }, true);
+            document.addEventListener('scroll', event => {
+                const target = event.target;
+                if (target instanceof Element && target.closest('.mud-popover-open')) {
+                    scheduleDropdownUpdate();
+                    return;
+                }
+                if (pendingWheelDismiss) {
+                    const pendingTarget = pendingWheelDismiss.target;
+                    if (target === pendingTarget || !(target instanceof Element)) {
+                        const positions = captureScrollPositions();
+                        clearPendingWheelDismiss();
+                        closeOpenDropdowns({
+                            preserveScroll: true,
+                            scrollPositions: positions,
+                            releaseOwnerFocusAfterClose: true
+                        });
+                        return;
+                    }
+                }
+                closeOpenDropdowns({
+                    preserveScroll: true,
+                    releaseOwnerFocusAfterClose: true
+                });
+            }, true);
+
+            let neutralDismissTimer = 0;
+
+            const isDropdownActivator = target => target.closest(
+                '.mud-select-input, .mud-input-slot, .mud-select [role="combobox"], .mud-select input,'
+                + ' .mud-menu button, .mud-menu [role="button"], .tm-menu-activator');
+
+            const cancelNeutralDismiss = () => {
+                if (!neutralDismissTimer) return;
+                window.clearTimeout(neutralDismissTimer);
+                neutralDismissTimer = 0;
+            };
+
+            const pendingPointerFocusReleases = new WeakSet();
+
+            const getOpenDropdownFocusReleaseTargets = () =>
+                [...document.querySelectorAll('.mud-popover-open')]
+                    .map(popover => {
+                        if (!popover.querySelector('.tm-select-list, .tm-menu-list')) return null;
+                        const contentId = popover.id;
+                        const suffix = contentId.startsWith('popovercontent-')
+                            ? contentId.substring('popovercontent-'.length)
+                            : '';
+                        const anchor = suffix ? document.getElementById(`popover-${suffix}`) : null;
+                        const owner = anchor?.parentElement;
+                        return owner instanceof HTMLElement ? { popover, owner } : null;
+                    })
+                    .filter(Boolean);
+
+            const schedulePointerDismissFocusRelease = (
+                targets,
+                { settleLateOwnerRefocus = false } = {}) => {
+                targets.forEach(({ popover, owner }) => {
+                    if (pendingPointerFocusReleases.has(popover)) return;
+
+                    pendingPointerFocusReleases.add(popover);
+                    let observer = null;
+                    let cleanupTimer = 0;
+                    let releaseFrame = 0;
+                    let reconcileFrame = 0;
+                    let releaseQueued = false;
+                    let settlingLateOwnerFocus = false;
+                    let quietFrames = 0;
+                    let closeScrollPositions = null;
+                    let ownerFocusGeneration = 0;
+                    let pendingSettlementWheel = null;
+                    let pendingSettlementWheelTimer = 0;
+
+                    const ownerDropdownIsOpen = () =>
+                        findDropdownPopover(owner)?.classList.contains('mud-popover-open') ?? false;
+
+                    const cleanup = () => {
+                        observer?.disconnect();
+                        observer = null;
+                        if (cleanupTimer) window.clearTimeout(cleanupTimer);
+                        cleanupTimer = 0;
+                        if (releaseFrame) window.cancelAnimationFrame(releaseFrame);
+                        releaseFrame = 0;
+                        if (reconcileFrame) window.cancelAnimationFrame(reconcileFrame);
+                        reconcileFrame = 0;
+                        if (pendingSettlementWheelTimer) {
+                            window.clearTimeout(pendingSettlementWheelTimer);
+                        }
+                        pendingSettlementWheelTimer = 0;
+                        pendingSettlementWheel = null;
+                        document.removeEventListener('wheel', trackSettlementWheel, true);
+                        document.removeEventListener('scroll', trackSettlementScroll, true);
+                        document.removeEventListener('focusin', trackSettlementOwnerFocus, true);
+                        window.removeEventListener('pointerdown', cancelSettlementForNewIntent, true);
+                        window.removeEventListener('keydown', cancelSettlementForNewIntent, true);
+                        pendingPointerFocusReleases.delete(popover);
+                    };
+
+                    const scrollPositionsMatch = (left, right) =>
+                        left?.length === right?.length
+                        && left.every((position, index) => {
+                            const candidate = right[index];
+                            return position.selector === candidate?.selector
+                                && position.index === candidate.index
+                                && position.top === candidate.top
+                                && position.left === candidate.left;
+                        });
+
+                    function trackSettlementOwnerFocus(event) {
+                        if (!settlingLateOwnerFocus || ownerDropdownIsOpen()) return;
+                        const target = event.target;
+                        if (target instanceof HTMLElement && owner.contains(target)) {
+                            ownerFocusGeneration += 1;
+                            quietFrames = 0;
+                            target.blur();
+                            if (closeScrollPositions?.length) {
+                                restoreScrollPositions(closeScrollPositions);
+                            }
+                        }
+                    }
+
+                    function cancelSettlementForNewIntent() {
+                        if (settlingLateOwnerFocus) cleanup();
+                    }
+
+                    function trackSettlementWheel(event) {
+                        if (!settlingLateOwnerFocus || ownerDropdownIsOpen()) return;
+                        const rawTarget = event.target;
+                        if (!(rawTarget instanceof Element)
+                            || rawTarget.closest('.mud-popover-open')) return;
+                        const target = rawTarget.closest(
+                            '.app-main-content, .mud-main-content, [data-tm-scroll-container]');
+                        if (!(target instanceof HTMLElement)) return;
+
+                        const focused = document.activeElement;
+                        if (focused instanceof HTMLElement && owner.contains(focused)) {
+                            focused.blur();
+                            if (closeScrollPositions?.length) {
+                                restoreScrollPositions(closeScrollPositions);
+                            }
+                            quietFrames = 0;
+                        }
+                        const observedPositions = captureScrollPositions();
+
+                        if (!scrollPositionsMatch(observedPositions, closeScrollPositions)) {
+                            // Chromium may apply compositor scrolling before the
+                            // DOM wheel listener runs. Preserve that observed
+                            // user delta immediately when it is already visible.
+                            closeScrollPositions = observedPositions;
+                            pendingSettlementWheel = null;
+                        } else {
+                            pendingSettlementWheel = {
+                                target,
+                                ownerFocusGeneration
+                            };
+                        }
+
+                        if (pendingSettlementWheelTimer) {
+                            window.clearTimeout(pendingSettlementWheelTimer);
+                        }
+                        pendingSettlementWheelTimer = window.setTimeout(() => {
+                            pendingSettlementWheelTimer = 0;
+                            pendingSettlementWheel = null;
+                        }, 80);
+                    }
+
+                    function trackSettlementScroll(event) {
+                        const pending = pendingSettlementWheel;
+                        if (!pending || event.target !== pending.target) return;
+                        // A same-owner focus event identifies MudBlazor's
+                        // scrollIntoView side effect, not a second wheel delta.
+                        if (ownerFocusGeneration !== pending.ownerFocusGeneration) {
+                            pending.ownerFocusGeneration = ownerFocusGeneration;
+                            return;
+                        }
+                        const observedPositions = captureScrollPositions();
+                        if (scrollPositionsMatch(observedPositions, closeScrollPositions)) return;
+                        closeScrollPositions = observedPositions;
+                        pendingSettlementWheel = null;
+                        if (pendingSettlementWheelTimer) {
+                            window.clearTimeout(pendingSettlementWheelTimer);
+                            pendingSettlementWheelTimer = 0;
+                        }
+                    }
+
+                    const settleLateOwnerFocus = () => {
+                        releaseFrame = 0;
+                        if (ownerDropdownIsOpen()) {
+                            cleanup();
+                            return;
+                        }
+
+                        const focused = document.activeElement;
+                        if (focused instanceof HTMLElement && owner.contains(focused)) {
+                            focused.blur();
+                            if (closeScrollPositions?.length) {
+                                restoreScrollPositions(closeScrollPositions);
+                            }
+                            quietFrames = 0;
+                        } else {
+                            quietFrames += 1;
+                        }
+
+                        if (quietFrames >= 2) {
+                            cleanup();
+                            return;
+                        }
+
+                        releaseFrame = window.requestAnimationFrame(settleLateOwnerFocus);
+                    };
+
+                    const releaseAfterClose = () => {
+                        if (ownerDropdownIsOpen()) {
+                            if (settlingLateOwnerFocus) cleanup();
+                            return false;
+                        }
+                        if (releaseQueued) return true;
+
+                        releaseQueued = true;
+                        if (settleLateOwnerRefocus) {
+                            // External wheel dismissal can close the popup before
+                            // MudBlazor's queued .NET focus restoration reaches the
+                            // activator. Keep this owner-scoped session alive until
+                            // two quiet frames have passed, and only restore the
+                            // browser-applied scroll position when that late focus
+                            // actually has to be cleared.
+                            settlingLateOwnerFocus = true;
+                            closeScrollPositions = captureScrollPositions();
+                            document.addEventListener('wheel', trackSettlementWheel, true);
+                            document.addEventListener('scroll', trackSettlementScroll, true);
+                            document.addEventListener('focusin', trackSettlementOwnerFocus, true);
+                            window.addEventListener('pointerdown', cancelSettlementForNewIntent, true);
+                            window.addEventListener('keydown', cancelSettlementForNewIntent, true);
+                            releaseFrame = window.requestAnimationFrame(settleLateOwnerFocus);
+                            return true;
+                        }
+                        releaseFrame = window.requestAnimationFrame(() => {
+                            releaseFrame = 0;
+                            const focused = document.activeElement;
+                            if (!ownerDropdownIsOpen()
+                                && focused instanceof HTMLElement
+                                && owner.contains(focused)) {
+                                focused.blur();
+                            }
+                            cleanup();
+                        });
+                        return true;
+                    };
+
+                    const reconcileCloseState = () => {
+                        reconcileFrame = 0;
+                        if (releaseQueued || releaseAfterClose()) return;
+                        reconcileFrame = window.requestAnimationFrame(reconcileCloseState);
+                    };
+
+                    observer = new MutationObserver(releaseAfterClose);
+                    observer.observe(popover, { attributes: true, attributeFilter: ['class'] });
+                    // MudBlazor may replace or detach the popup node without
+                    // first mutating that node's class. Watch only while this
+                    // owner-scoped release is pending so removal is reconciled
+                    // in the close microtask instead of the fallback timeout.
+                    observer.observe(document.body, { childList: true, subtree: true });
+                    cleanupTimer = window.setTimeout(cleanup, 500);
+                    if (!releaseAfterClose()) {
+                        reconcileFrame = window.requestAnimationFrame(reconcileCloseState);
+                    }
+                });
+            };
+
+            const isDropdownLabelClick = (target, event) => {
+                if (target.closest('.mud-select .mud-input-label')) return true;
+
+                // The label has pointer-events disabled by MudBlazor, so a
+                // real mouse hit on its text lands on the input container.
+                // Use the label's bounds to distinguish that title area from
+                // the actual value/arrow activator below it.
+                const select = target.closest('.mud-select');
+                const label = select?.querySelector('.mud-input-label');
+                if (!(label instanceof HTMLElement)
+                    || !Number.isFinite(event.clientX)
+                    || !Number.isFinite(event.clientY)) return false;
+                const bounds = label.getBoundingClientRect();
+                return event.clientX >= bounds.left
+                    && event.clientX <= bounds.right
+                    && event.clientY >= bounds.top
+                    && event.clientY <= bounds.bottom;
+            };
+
+            let pendingPointerDismissFocusRelease = null;
+
+            const clearPendingPointerDismissFocusRelease = () => {
+                if (!pendingPointerDismissFocusRelease) return;
+                if (pendingPointerDismissFocusRelease.cleanupTimer) {
+                    window.clearTimeout(pendingPointerDismissFocusRelease.cleanupTimer);
+                }
+                pendingPointerDismissFocusRelease = null;
+            };
+
+            // Capture the exact open popup before MudBlazor's document-level
+            // outside-click handler can close it. Focus is not released until
+            // the same pointer sequence produces a click, so a held or
+            // cancelled press cannot change keyboard/scroll focus semantics.
+            const capturePointerDismissFocusRelease = event => {
+                if (event.button !== 0) return;
+                const rawTarget = event.target;
+                const target = rawTarget instanceof Element
+                    ? rawTarget
+                    : rawTarget?.parentElement instanceof Element ? rawTarget.parentElement : null;
+
+                clearPendingPointerDismissFocusRelease();
+                if (!target
+                    || target.closest('.mud-popover-open, .resize-zone')) return;
+
+                const activator = isDropdownActivator(target);
+                const activatorOwner = activator
+                    ? target.closest('.mud-select, .mud-menu')
+                    : null;
+                const activatorPopover = activatorOwner
+                    ? findDropdownPopover(activatorOwner)
+                    : null;
+                const isActivatorToggleClose = !!activator
+                    && activatorPopover?.classList.contains('mud-popover-open');
+                if (activator && !isActivatorToggleClose) return;
+
+                let targets = getOpenDropdownFocusReleaseTargets();
+                if (isActivatorToggleClose) {
+                    targets = targets.filter(target => target.popover === activatorPopover);
+                }
+                if (!targets.length) return;
+
+                const pending = {
+                    targets,
+                    pointerId: event.pointerId,
+                    kind: isActivatorToggleClose ? 'activator-toggle' : 'neutral',
+                    cleanupTimer: 0
+                };
+                pending.cleanupTimer = window.setTimeout(() => {
+                    if (pendingPointerDismissFocusRelease === pending) {
+                        clearPendingPointerDismissFocusRelease();
+                    }
+                }, 5000);
+                pendingPointerDismissFocusRelease = pending;
+            };
+
+            const confirmPointerDismissFocusRelease = event => {
+                const pending = pendingPointerDismissFocusRelease;
+                if (!pending) return;
+                if (event.pointerId !== pending.pointerId
+                    || event.button !== 0
+                    || event.detail <= 0) return;
+
+                const rawTarget = event.target;
+                const target = rawTarget instanceof Element
+                    ? rawTarget
+                    : rawTarget?.parentElement instanceof Element ? rawTarget.parentElement : null;
+                const activator = target ? isDropdownActivator(target) : null;
+                const confirmsDismiss = pending.kind === 'activator-toggle'
+                    ? !!activator && pending.targets.some(entry => entry.owner.contains(target))
+                    : target
+                        && !target.closest('.mud-popover-open, .resize-zone')
+                        && !activator;
+
+                const targets = pending.targets;
+                clearPendingPointerDismissFocusRelease();
+                if (confirmsDismiss) {
+                    schedulePointerDismissFocusRelease(targets, {
+                        settleLateOwnerRefocus: true
+                    });
+                }
+            };
+
+            const clearPointerDismissFocusReleaseForPointer = event => {
+                const pending = pendingPointerDismissFocusRelease;
+                if (pending && event.pointerId === pending.pointerId) {
+                    clearPendingPointerDismissFocusRelease();
+                }
+            };
+
+            const clearPointerDismissFocusReleaseAfterPointerUp = event => {
+                const pending = pendingPointerDismissFocusRelease;
+                if (!pending || event.pointerId !== pending.pointerId) return;
+                window.setTimeout(() => {
+                    if (pendingPointerDismissFocusRelease === pending) {
+                        clearPendingPointerDismissFocusRelease();
+                    }
+                }, 250);
+            };
+
+            const closeOnNeutralClick = event => {
+                const rawTarget = event.target;
+                const target = rawTarget instanceof Element
+                    ? rawTarget
+                    : rawTarget?.parentElement instanceof Element ? rawTarget.parentElement : null;
+                if (!target) return;
+
+                // Reconcile the per-popup cap after MudBlazor finishes the
+                // click's open, selection, or close work.
+                if (event.type === 'click') {
+                    window.setTimeout(scheduleDropdownUpdate, 0);
+                }
+
+                // The animated field label is associated with MudSelect's
+                // hidden input. Letting the browser activate that association
+                // makes a title click open the menu even though the user did
+                // not click the select control. Treat the label as neutral;
+                // prevent its default activation and let an already-open menu
+                // close only after the click completes.
+                if (isDropdownLabelClick(target, event)) {
+                    cancelNeutralDismiss();
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (event.type === 'click' && hasOpenDropdown()) {
+                        closeOpenDropdowns();
+                    }
+                    return;
+                }
+
+                const select = target.closest('.mud-select');
+                if (select) {
+                    const activator = findDropdownActivator(select);
+                    const bounds = activator?.getBoundingClientRect();
+                    const insideControl = bounds
+                        && Number.isFinite(event.clientX)
+                        && Number.isFinite(event.clientY)
+                        && event.clientX >= bounds.left
+                        && event.clientX <= bounds.right
+                        && event.clientY >= bounds.top
+                        && event.clientY <= bounds.bottom;
+                    if (!insideControl) {
+                        cancelNeutralDismiss();
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (event.type === 'click' && hasOpenDropdown()) {
+                            closeOpenDropdowns();
+                        }
+                        return;
+                    }
+                }
+
+                const activatorClicked = isDropdownActivator(target);
+                if (activatorClicked) {
+                    const owner = target.closest('.mud-select, .mud-menu');
+                    const popover = findDropdownPopover(owner);
+                    if (owner && !popover?.classList.contains('mud-popover-open')) {
+                        constrainDropdown(owner);
+                    }
+                }
+                if (!hasOpenDropdown()) return;
+                if (target.closest('.mud-popover-open, .resize-zone') || activatorClicked) {
+                    cancelNeutralDismiss();
+                    return;
+                }
+
+                // MudSelect can handle the same pointer sequence after this
+                // capture listener. Defer the neutral dismissal until that
+                // sequence has finished so a label/card click cannot reopen
+                // the menu after we close it.
+                cancelNeutralDismiss();
+                neutralDismissTimer = window.setTimeout(() => {
+                    neutralDismissTimer = 0;
+                    closeOpenDropdowns();
+                }, 0);
+            };
+
+            // There is intentionally no modal backdrop. Capture normal
+            // activation so a neutral area closes the open menu.
+            window.addEventListener('pointerdown', () => {
+                document.documentElement.classList.remove('tm-keyboard-input');
+            }, true);
+            window.addEventListener('pointerdown', capturePointerDismissFocusRelease, true);
+            window.addEventListener('click', confirmPointerDismissFocusRelease, true);
+            window.addEventListener('pointercancel', clearPointerDismissFocusReleaseForPointer, true);
+            window.addEventListener('pointerup', clearPointerDismissFocusReleaseAfterPointerUp, true);
+            document.addEventListener('pointerdown', closeOnNeutralClick, true);
+            document.addEventListener('mousedown', closeOnNeutralClick, true);
+            document.addEventListener('click', closeOnNeutralClick, true);
+            document.addEventListener('keydown', event => {
+                if (!['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
+                const target = event.target instanceof Element ? event.target : null;
+                if (!target || !isDropdownActivator(target)) return;
+                document.documentElement.classList.add('tm-keyboard-input');
+                const owner = target.closest('.mud-select, .mud-menu');
+                const popover = findDropdownPopover(owner);
+                if (owner && !popover?.classList.contains('mud-popover-open')) {
+                    constrainDropdown(owner);
+                }
+            }, true);
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', scheduleDropdownUpdate, { passive: true });
+                // A native window resize can emit a visual-viewport scroll as
+                // the WebView is re-laid out. Reposition the open popover here;
+                // the document scroll handler above still dismisses it when
+                // the user actually scrolls a page/card.
+                window.visualViewport.addEventListener('scroll', scheduleDropdownUpdate, { passive: true });
+            }
+            new MutationObserver(scheduleDropdownUpdate).observe(document.body, {
+                subtree: true,
+                childList: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'data-mudpopover-flip']
+            });
+        })();
+    </script>
 </body>
 
 </html>

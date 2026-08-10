@@ -8,8 +8,13 @@
     padding-top: 8px !important;
     overflow-x: hidden;
     overflow-y: auto;
-    scrollbar-color: #8f825f #252522;
+    scrollbar-color: auto;
+    scrollbar-gutter: stable;
     scrollbar-width: auto;
+}
+
+::deep .app-main-content--restored {
+    margin-right: 4px;
 }
 
 ::deep .app-main-content::-webkit-scrollbar {
