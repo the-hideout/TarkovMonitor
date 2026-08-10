@@ -17,7 +17,10 @@ class Splash : Form
         @"HKEY_CURRENT_USER\Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
     };
 
-    private System.Timers.Timer splashTimer = new System.Timers.Timer();
+    private System.Windows.Forms.Timer splashTimer = new System.Windows.Forms.Timer();
+    private readonly bool waitForReadiness;
+    private bool minimumTimeElapsed;
+    private bool readyToClose;
 
     [System.ComponentModel.Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
@@ -37,22 +40,21 @@ class Splash : Form
         }
     }
 
-    public Splash(Bitmap bitmap, int splashTime)
+    public Splash(Bitmap bitmap, int splashTime, bool waitForReadiness = false)
     {
+        this.waitForReadiness = waitForReadiness;
         // Window settings
         this.TopMost = true;
         this.ShowInTaskbar = false;
+        // Keep the branding window at the logo's native size. The splash is
+        // intentionally a separate window; it must not become a full-screen
+        // black canvas or cover the application while the UI is starting.
         this.Size = bitmap.Size;
         this.StartPosition = FormStartPosition.Manual;
-        this.Top = (Screen.PrimaryScreen.Bounds.Height - this.Height) / 2;
-        this.Left = (Screen.PrimaryScreen.Bounds.Width - this.Width) / 2;
-        if (splashTime > 1)
-		{
-			// Must be called before setting bitmap
-			this.BackgroundBitmap = bitmap;
-			this.SelectBitmap(BackgroundBitmap);
-		}
-		this.BackColor = Color.Red;
+		// Must be called before the splash is shown.
+		this.BackgroundBitmap = bitmap;
+		this.SelectBitmap(BackgroundBitmap);
+		this.BackColor = Color.Black;
 
 		// Set current working directory to executable location
 		Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
@@ -61,17 +63,58 @@ class Splash : Form
         var existing = _webview2RegKeys.Any(key => Registry.GetValue(key, "pv", null) != null);
         if (!existing) InstallWebview2Runtime();
 
-		splashTimer = new System.Timers.Timer(splashTime);
-		splashTimer.AutoReset = false;
-		splashTimer.Elapsed += (sender, e) =>
+		splashTimer = new System.Windows.Forms.Timer { Interval = splashTime };
+		splashTimer.Tick += (sender, e) =>
 		{
-			this.Invoke((MethodInvoker)delegate
+			minimumTimeElapsed = true;
+			splashTimer.Stop();
+			if (!waitForReadiness || readyToClose)
 			{
-				this.Close();
-			});
+				Close();
+			}
 		};
-		splashTimer.Start();
-	}
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+
+        // Start the minimum-display timer only after the splash is actually
+        // visible. Starting it in the constructor lets WebView startup work
+        // consume part of the interval and can make the splash flash away.
+        if (!minimumTimeElapsed && !splashTimer.Enabled)
+        {
+            splashTimer.Start();
+        }
+    }
+
+    public void CloseWhenReady()
+    {
+        readyToClose = true;
+        if (!minimumTimeElapsed || IsDisposed)
+        {
+            return;
+        }
+
+        if (InvokeRequired)
+        {
+            BeginInvoke((MethodInvoker)CloseWhenReady);
+            return;
+        }
+
+        Close();
+    }
+
+    public void SetStartupLocation(Point location)
+    {
+        Location = location;
+        if (BackgroundBitmap != null && IsHandleCreated)
+        {
+            // UpdateLayeredWindow receives the native location explicitly;
+            // refresh it after the launcher places the separate splash window.
+            SelectBitmap(BackgroundBitmap);
+        }
+    }
 
     private void InstallWebview2Runtime()
     {

@@ -21,11 +21,11 @@
 			</div>
 			<div class="window-controls" aria-label="Window controls">
 				<MudIconButton Class="window-control" Icon="@Icons.Material.Filled.Remove" Color="Color.Inherit" Size="Size.Small" OnClick="MinimizeWindow" aria-label="Minimize" />
-				<MudIconButton Class="window-control" Icon="@(WindowHost.IsMaximized ? Icons.Material.Filled.FilterNone : Icons.Material.Filled.CropSquare)" Color="Color.Inherit" Size="Size.Small" OnClick="ToggleMaximizeWindow" aria-label="@(WindowHost.IsMaximized ? "Restore" : "Maximize")" />
+				<MudIconButton Class="window-control" Icon="@(isWindowMaximized ? Icons.Material.Filled.FilterNone : Icons.Material.Filled.CropSquare)" Color="Color.Inherit" Size="Size.Small" OnClick="ToggleMaximizeWindow" aria-label="@(isWindowMaximized ? "Restore" : "Maximize")" />
 				<MudIconButton Class="window-control window-control-close" Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Size="Size.Small" OnClick="CloseWindow" aria-label="Close" />
 			</div>
 		</MudAppBar>
-		<MudDrawer Class="navigation-drawer" @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive">
+		<MudDrawer Class="navigation-drawer" @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive" Breakpoint="Breakpoint.None">
 			<MudDrawerHeader Class="navigation-drawer-header">
 				<button class="navigation-brand" type="button" @onclick="@ToggleDrawer" aria-label="Collapse navigation">
 					<div class="navigation-brand-copy">
@@ -44,7 +44,7 @@
 				<MudNavLink Href="/timers" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Timer">@LocalizationService.GetString("Timers")</MudNavLink>
 			</MudNavMenu>
 		</MudDrawer>
-		<MudMainContent Class="app-main-content" Style="box-sizing: border-box;">
+		<MudMainContent Class="@MainContentClass" Style="box-sizing: border-box;">
 			<CascadingValue Name="AppLayout" Value="this">
 				@Body
 			</CascadingValue>
@@ -62,11 +62,11 @@
 					{
 						<MudText Typo="Typo.subtitle2">Raid timers</MudText>
 						<MudIconButton Icon="@Icons.Material.Filled.Restore" Size="Size.Small" Color="Color.Inherit"
-							Title="Reset position" OnClick="ResetFloatingTimerPosition" />
+							Title="Reset timer position" OnClick="ResetFloatingTimerPosition" />
 					}
 					<MudIconButton Icon="@(floatingTimerPanelCollapsed ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
 						Size="Size.Small" Color="Color.Inherit"
-						Title="@(floatingTimerPanelCollapsed ? "Expand timer panel" : "Collapse timer panel")"
+						Title="@(floatingTimerPanelCollapsed ? "Expand the timer panel" : "Collapse the timer panel")"
 						OnClick="ToggleFloatingTimerPanel" />
 				</div>
 				@if (!floatingTimerPanelCollapsed)
@@ -75,7 +75,7 @@
 					@if (TimersManager.FloatingPanelShowTimeInRaid)
 					{
 						<div class="floating-timer-panel__timer">
-							<MudText Typo="Typo.caption">Elapsed Raid Time</MudText>
+						<MudText Typo="Typo.caption">Elapsed raid time</MudText>
 							<MudText Typo="Typo.h5" Class="floating-timer-panel__value">@FormatTimer(timeInRaid)</MudText>
 						</div>
 					}
@@ -106,13 +106,19 @@
 
 @code {
 
-	bool drawerOpen = true;
+	// Keep the drawer under explicit user control. Automatic responsive drawer
+	// transitions can reopen it when a resize crosses a card-layout breakpoint.
+	bool drawerOpen = false;
 
-	public string CurrentPageTitle = "TarkovMonitor";
+	public string CurrentPageTitle = "Tarkov Monitor";
+	private bool isWindowMaximized;
 	private TimeSpan timeInRaid;
 	private TimeSpan runThroughRemaining;
 	private bool isTimersPage;
 	private bool floatingTimerPanelCollapsed = true;
+	private string MainContentClass => isWindowMaximized
+		? "app-main-content"
+		: "app-main-content app-main-content--restored";
 
 	private bool ShowFloatingTimerPanel =>
 		TimersManager.FloatingPanelEnabled && TimersManager.IsRaidActive && !isTimersPage;
@@ -135,6 +141,7 @@
 		TimersManager.RunThroughTimerChanged += OnRunThroughTimerChanged;
 		TimersManager.RaidActiveChanged += OnFloatingTimerStateChanged;
 		TimersManager.FloatingPanelSettingChanged += OnFloatingTimerStateChanged;
+		isWindowMaximized = WindowHost.IsMaximized;
 		timeInRaid = TimersManager.TimeInRaid;
 		runThroughRemaining = TimersManager.RunThroughRemaining;
 		UpdateCurrentPage();
@@ -142,6 +149,11 @@
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
+		if (firstRender)
+		{
+			WindowHost.MarkUiReady();
+		}
+
 		if (ShowFloatingTimerPanel)
 			await JSRuntime.InvokeVoidAsync("floatingTimerPanel.initialize", "floating-timer-panel");
 	}
@@ -156,7 +168,21 @@
 		drawerOpen = !drawerOpen;
 	}
 
-	private void BeginWindowDrag() => WindowHost.BeginWindowDrag();
+	private void BeginWindowDrag(MouseEventArgs eventArgs)
+	{
+		if (eventArgs.Button != 0)
+		{
+			return;
+		}
+
+		if (eventArgs.Detail == 2)
+		{
+			ToggleMaximizeWindow();
+			return;
+		}
+
+		WindowHost.BeginWindowDrag();
+	}
 
 	private void BeginWindowResize(int hitTest) => WindowHost.BeginWindowResize(hitTest);
 
@@ -168,6 +194,13 @@
 
 	private void OnWindowStateChanged(object? sender, EventArgs e)
 	{
+		var nextMaximizedState = WindowHost.IsMaximized;
+		if (isWindowMaximized == nextMaximizedState)
+		{
+			return;
+		}
+
+		isWindowMaximized = nextMaximizedState;
 		InvokeAsync(StateHasChanged);
 	}
 
