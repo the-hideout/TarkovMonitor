@@ -553,7 +553,7 @@ namespace TarkovMonitor
                     //System.Diagnostics.Debug.WriteLine(eventLine);
                     if (eventLine.Contains("Session mode: "))
                     {
-                        var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>\w+)");
+                        var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>[^\s|]+)");
                         if (!modeMatch.Success)
                         {
                             continue;
@@ -938,7 +938,7 @@ namespace TarkovMonitor
             {
                 return logDetails;
             }
-            var profileTypeMatches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|Session mode: (?<profileType>\w+)", RegexOptions.Multiline);
+            var profileTypeMatches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|Session mode: (?<profileType>[^\s|]+)", RegexOptions.Multiline);
             for (var i = 0; i < matches.Count; i++)
             {
                 Match match = matches[i];
