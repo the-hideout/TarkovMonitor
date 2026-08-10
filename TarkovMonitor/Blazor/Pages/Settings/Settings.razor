@@ -204,6 +204,7 @@
 
     private Dictionary<int, string> PlaybackDevices;
     private List<(string Code, string Name)> AvailableLanguages = new();
+    private string resolvedCustomLogsFolder = "";
     private TarkovDev.Trader? TraderFence
     {
         get
@@ -237,6 +238,7 @@
         base.OnInitialized();
         PlaybackDevices = Sound.GetPlaybackDevices();
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
+        ResolveCustomLogsFolder();
         LocalizationService.LanguageChanged += OnLanguageChanged;
         UpdateProfileName();
     }
@@ -778,20 +780,36 @@
             {
                 return Properties.Settings.Default.customLogsPath;
             }
-            try
-            {
-                return GameWatcher.GetDefaultLogsFolder();
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddException("The default EFT logs folder could not be located.", "TM-FILES-002", "GetDefaultLogsFolder", ex, "Filesystem", "Settings");
-            }
-            return "";
+            return resolvedCustomLogsFolder;
         }
         set
         {
-            Properties.Settings.Default.customLogsPath = value;
+            Properties.Settings.Default.customLogsPath = value ?? "";
             Properties.Settings.Default.Save();
+            if (string.IsNullOrWhiteSpace(Properties.Settings.Default.customLogsPath))
+            {
+                ResolveCustomLogsFolder();
+            }
+        }
+    }
+
+    private void ResolveCustomLogsFolder()
+    {
+        if (!string.IsNullOrWhiteSpace(Properties.Settings.Default.customLogsPath))
+        {
+            resolvedCustomLogsFolder = Properties.Settings.Default.customLogsPath;
+            return;
+        }
+
+        var startedUtc = DateTime.UtcNow;
+        try
+        {
+            resolvedCustomLogsFolder = GameWatcher.GetDefaultLogsFolder();
+        }
+        catch (Exception ex)
+        {
+            resolvedCustomLogsFolder = "";
+            messageLog.AddException("The default EFT logs folder could not be located.", "TM-FILES-002", "GetDefaultLogsFolder", ex, "Filesystem", "Settings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 

@@ -177,12 +177,12 @@
 		{
 			try
 			{
-				StateHasChanged();
-
 				if (e.IsRepeat)
 				{
 					return;
 				}
+
+				StateHasChanged();
 
 				if (e.Message.Type == "quest" && GameWatcher.ReadingPastLogs)
 				{
