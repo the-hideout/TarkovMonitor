@@ -71,7 +71,7 @@ namespace TarkovMonitor
             string service,
             string stage,
             string? endpoint = null,
-            long durationMilliseconds = 0)
+            long? durationMilliseconds = null)
         {
             var snapshot = Diagnostics.Capture(
                 new DiagnosticContext(code, operation, service, stage, displayMessage, endpoint),

@@ -4,6 +4,7 @@
 @inject MessageLog messageLog
 @inject IDialogService DialogService
 @inject LocalizationService LocalizationService
+@inject ISnackbar Snackbar
 <MudPaper Class="app-surface dashboard-notification-surface" Elevation="3">
 <MudStack Reverse="true" Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Class="pa-3">
     @if (messageLog.Messages.Count == 0)
@@ -34,7 +35,7 @@
                             }
                             @foreach (MonitorMessageButton button in message.Buttons)
                             {
-                                <MudButton Variant="Variant.Filled" Color="@button.Color" StartIcon="@button.Icon" OnClick="@((e) => MessageButtonClick(button) )">@button.Text</MudButton>
+                                <MudButton Variant="Variant.Filled" Color="@button.Color" StartIcon="@button.Icon" Disabled="@button.Disabled" OnClick="@((e) => MessageButtonClick(button) )">@button.Text</MudButton>
                             }
                         </div>
                     </MudPaper>
@@ -122,8 +123,16 @@
 
     private async void MessageButtonClick(MonitorMessageButton button)
     {
+        var startedUtc = DateTime.UtcNow;
         try
         {
+            if (button.ResultAction != null)
+            {
+                var copyResult = button.ResultAction();
+                Snackbar.Add(copyResult.Message, copyResult.Succeeded ? Severity.Success : Severity.Error);
+                return;
+            }
+
             if (button.Confirm == null)
             {
                 button.OnClick?.Invoke();
@@ -142,19 +151,20 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddException("A notification action could not be completed.", "TM-UI-ACTION-001", "MessageButton", ex, "UI", "Action");
+            messageLog.AddException("A notification action could not be completed.", "TM-UI-ACTION-001", "MessageButton", ex, "UI", "Action", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 
     private async void MessageSelectChanged(MonitorMessageSelect select, IEnumerable<MonitorMessageSelectOption> selected)
     {
+        var startedUtc = DateTime.UtcNow;
         try
         {
             select.ChangeSelection(selected.First());
         }
         catch (Exception ex)
         {
-            messageLog.AddException("A notification selection could not be completed.", "TM-UI-ACTION-002", "MessageSelect", ex, "UI", "Action");
+            messageLog.AddException("A notification selection could not be completed.", "TM-UI-ACTION-002", "MessageSelect", ex, "UI", "Action", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 }

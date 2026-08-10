@@ -6,6 +6,8 @@ using System.Timers;
 
 namespace TarkovMonitor
 {
+    public readonly record struct MonitorMessageActionResult(bool Succeeded, string Message);
+
     public class MonitorMessage
     {
         public string Message { get; set; }
@@ -53,7 +55,10 @@ namespace TarkovMonitor
             DiagnosticText = diagnosticText;
             if (Type == "exception")
             {
-                Buttons.Add(new("Copy diagnostics", CopyDiagnostics, Icons.Material.Filled.CopyAll));
+                Buttons.Add(new MonitorMessageButton("Copy diagnostics", CopyDiagnostics, Icons.Material.Filled.CopyAll)
+                {
+                    Color = MudBlazor.Color.Info,
+                });
                 Buttons.Add(new("Report", () => {
                     var psi = new ProcessStartInfo
                     {
@@ -65,16 +70,16 @@ namespace TarkovMonitor
             }
         }
 
-        private void CopyDiagnostics()
+        private MonitorMessageActionResult CopyDiagnostics()
         {
             try
             {
                 Clipboard.SetText(DiagnosticText ?? Message);
+                return new(true, "Sanitized diagnostics copied to the clipboard.");
             }
             catch
             {
-                // Clipboard ownership can be transient on Windows. A copy failure
-                // must not create another diagnostic or crash the notification UI.
+                return new(false, "Diagnostics could not be copied to the clipboard. Try again.");
             }
         }
 
@@ -94,6 +99,7 @@ namespace TarkovMonitor
         public string Icon { get; set; } = "";
         public MudBlazor.Color Color { get; set; } = MudBlazor.Color.Default;
         public Action? OnClick { get; set; }
+        public Func<MonitorMessageActionResult>? ResultAction { get; set; }
         public bool Disabled { get; set; } = false;
         public MonitorMessageButtonConfirm? Confirm { get; set; }
         private System.Timers.Timer? buttonTimer;
@@ -135,6 +141,13 @@ namespace TarkovMonitor
             Text = text;
             Icon = icon;
             OnClick = onClick;
+        }
+
+        public MonitorMessageButton(string text, Func<MonitorMessageActionResult> resultAction, string icon = "")
+        {
+            Text = text;
+            Icon = icon;
+            ResultAction = resultAction;
         }
         public MonitorMessageButton(string text, string icon = "") : this(text, null, icon) { }
         public void Expire()

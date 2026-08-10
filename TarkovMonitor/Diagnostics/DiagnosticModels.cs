@@ -28,7 +28,7 @@ public sealed class DiagnosticSnapshot
     public string DisplayMessage { get; init; } = "";
     public string? Endpoint { get; init; }
     public DateTime TimestampUtc { get; init; }
-    public long DurationMilliseconds { get; init; }
+    public long? DurationMilliseconds { get; init; }
     public string ApplicationVersion { get; init; } = "";
     public string Runtime { get; init; } = "";
     public string OperatingSystem { get; init; } = "";
@@ -58,8 +58,8 @@ public static class DiagnosticRedactor
         @"(?i)\bBearer\s+[^\s,;}""]+",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    private static readonly Regex UserPath = new(
-        @"(?i)(?<prefix>(?:[A-Z]:\\Users\\|\\\\[^\\]+\\Users\\))(?<user>[^\\]+)",
+    private static readonly Regex LocalPath = new(
+        @"(?ix)(?<![a-z0-9])(?:(?:file:///+)?[a-z]:[\\/]|\\\\[^\\/\s]+[\\/])[^<>\r\n""'`|]*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex QueryString = new(
@@ -86,13 +86,17 @@ public static class DiagnosticRedactor
         }
 
         var sanitized = value.Replace("%USERPROFILE%", "<user-profile>", StringComparison.OrdinalIgnoreCase);
+        sanitized = sanitized.Replace("%LOCALAPPDATA%", "<local-app-data>", StringComparison.OrdinalIgnoreCase);
+        sanitized = sanitized.Replace("%APPDATA%", "<app-data>", StringComparison.OrdinalIgnoreCase);
+        sanitized = sanitized.Replace("%TEMP%", "<temp>", StringComparison.OrdinalIgnoreCase);
+        sanitized = sanitized.Replace("%TMP%", "<temp>", StringComparison.OrdinalIgnoreCase);
         sanitized = ApiKey.Replace(sanitized, "[REDACTED_API_KEY]");
         sanitized = SensitiveKeyValue.Replace(sanitized, match => $"{match.Groups["key"].Value}[REDACTED]");
         sanitized = JsonSensitiveKeyValue.Replace(sanitized, match => $"{match.Groups["key"].Value}\"[REDACTED]\"");
         sanitized = BearerToken.Replace(sanitized, "Bearer [REDACTED]");
         sanitized = QueryString.Replace(sanitized, "$url?[REDACTED_QUERY]");
         sanitized = SensitivePathSegment.Replace(sanitized, "${prefix}[REDACTED_ID]");
-        sanitized = UserPath.Replace(sanitized, "$prefix<user>");
+        sanitized = LocalPath.Replace(sanitized, "[REDACTED_LOCAL_PATH]");
         sanitized = IPv4.Replace(sanitized, match =>
         {
             var precedingText = sanitized[..match.Index];
@@ -150,7 +154,13 @@ public sealed class DiagnosticsService
 
     public string DiagnosticsDirectory { get; }
 
-    public DiagnosticSnapshot Capture(DiagnosticContext context, Exception? exception = null, long durationMilliseconds = 0)
+    public static long ElapsedMilliseconds(DateTime startedUtc)
+    {
+        var elapsed = (DateTime.UtcNow - startedUtc).TotalMilliseconds;
+        return elapsed <= 0 ? 0 : (long)elapsed;
+    }
+
+    public DiagnosticSnapshot Capture(DiagnosticContext context, Exception? exception = null, long? durationMilliseconds = null)
     {
         var timestamp = DateTime.UtcNow;
         var eventId = Guid.NewGuid().ToString("N")[..12];
@@ -180,7 +190,9 @@ public sealed class DiagnosticsService
             DisplayMessage = DiagnosticRedactor.Sanitize(context.DisplayMessage, 512),
             Endpoint = DiagnosticRedactor.SanitizeEndpoint(context.Endpoint),
             TimestampUtc = timestamp,
-            DurationMilliseconds = Math.Max(0, durationMilliseconds),
+            DurationMilliseconds = durationMilliseconds is long measuredDuration
+                ? Math.Max(0, measuredDuration)
+                : null,
             ApplicationVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString()
                 ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString()
                 ?? "unknown",
@@ -235,7 +247,7 @@ public sealed class DiagnosticsService
         string eventId,
         DiagnosticContext context,
         DateTime timestamp,
-        long durationMilliseconds,
+        long? durationMilliseconds,
         IReadOnlyList<ExceptionDetail> details,
         int occurrenceCount)
     {
@@ -249,7 +261,10 @@ public sealed class DiagnosticsService
         builder.AppendLine($"Outcome: {DiagnosticRedactor.Sanitize(context.Outcome, 64)}");
         builder.AppendLine($"Endpoint: {DiagnosticRedactor.SanitizeEndpoint(context.Endpoint)}");
         builder.AppendLine($"Occurred (UTC): {timestamp:O}");
-        builder.AppendLine($"Duration (ms): {Math.Max(0, durationMilliseconds)}");
+        var durationText = durationMilliseconds is long measuredDuration
+            ? Math.Max(0, measuredDuration).ToString()
+            : "[NOT_MEASURED]";
+        builder.AppendLine($"Duration (ms): {durationText}");
         builder.AppendLine($"Occurrences: {occurrenceCount}");
         builder.AppendLine($"Application version: {Assembly.GetEntryAssembly()?.GetName().Version ?? Assembly.GetExecutingAssembly().GetName().Version}");
         builder.AppendLine($"Runtime: {DiagnosticRedactor.Sanitize(RuntimeInformation.FrameworkDescription, 128)}");

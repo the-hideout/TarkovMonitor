@@ -121,6 +121,7 @@
         TaskStatuses.Clear();
         var totalTasks = 0;
         Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
+        var startedUtc = DateTime.UtcNow;
         try
         {
             //eft.ProcessLogs(selectedPath);
@@ -173,13 +174,14 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddException("Past-log task updates could not be compiled.", "TM-LOG-001", "CompileTaskUpdates", ex, "LogParser", "PastLogs");
+            messageLog.AddException("Past-log task updates could not be compiled.", "TM-LOG-001", "CompileTaskUpdates", ex, "LogParser", "PastLogs", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             return;
         }
         finally
         {
             GameWatcher.ReadingPastLogs = false;
         }
+        var updateStartedUtc = DateTime.UtcNow;
         try
         {
             if (updateTasks.Count > 0)
@@ -191,7 +193,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddException("Past-log task updates could not be sent.", "TM-API-TRACKER-007", "UpdatePastLogTasks", ex, "TarkovTracker", "PastLogs", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+            messageLog.AddException("Past-log task updates could not be sent.", "TM-API-TRACKER-007", "UpdatePastLogTasks", ex, "TarkovTracker", "PastLogs", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(updateStartedUtc));
         }
     }
 

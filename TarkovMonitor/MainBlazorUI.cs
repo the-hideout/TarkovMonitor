@@ -61,7 +61,6 @@ namespace TarkovMonitor
         private readonly System.Timers.Timer runthroughTimer;
         private readonly System.Timers.Timer scavCooldownTimer;
         private LocalizationService localizationService;
-        private DisclaimerInformationForm? disclaimerInformationForm;
         private bool inRaid;
         private bool gameWatcherStarted;
 
@@ -166,10 +165,11 @@ namespace TarkovMonitor
                 // Update Tarkov Tracker
                 if (Properties.Settings.Default.tarkovTrackerToken != "" && e.Profile.Id != "")
                 {
+                    var startedUtc = DateTime.UtcNow;
                     try {
                         TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
                     } catch (Exception ex) {
-                        RecordException("Saved tracker settings could not be applied.", "TM-SETTINGS-001", "SetSavedTrackerToken", ex, "Settings", "Startup");
+                        RecordException("Saved tracker settings could not be applied.", "TM-SETTINGS-001", "SetSavedTrackerToken", ex, "Settings", "Startup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
                     }
 
                     Properties.Settings.Default.tarkovTrackerToken = "";
@@ -234,23 +234,10 @@ namespace TarkovMonitor
             Exception exception,
             string service,
             string stage,
-            string? endpoint = null)
+            string? endpoint = null,
+            long? durationMilliseconds = null)
         {
-            messageLog.AddException(displayMessage, code, operation, exception, service, stage, endpoint);
-        }
-
-        public void ShowDisclaimerInformation()
-        {
-            if (disclaimerInformationForm is { IsDisposed: false })
-            {
-                disclaimerInformationForm.WindowState = FormWindowState.Normal;
-                disclaimerInformationForm.Activate();
-                return;
-            }
-
-            disclaimerInformationForm = new DisclaimerInformationForm(this);
-            disclaimerInformationForm.FormClosed += (_, _) => disclaimerInformationForm = null;
-            disclaimerInformationForm.Show(this);
+            messageLog.AddException(displayMessage, code, operation, exception, service, stage, endpoint, durationMilliseconds);
         }
 
         public void BeginWindowDrag()
@@ -340,6 +327,7 @@ namespace TarkovMonitor
 
         private void Eft_ControlSettings(object? sender, ControlSettingsEventArgs e)
         {
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 JsonArray keyBindings = e.ControlSettings["keyBindings"].AsArray();
@@ -363,7 +351,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("EFT screenshot keybind could not be checked.", "TM-WATCHER-002", "ReadControlSettings", ex, "GameWatcher", "ControlSettings");
+                RecordException("EFT screenshot keybind could not be checked.", "TM-WATCHER-002", "ReadControlSettings", ex, "GameWatcher", "ControlSettings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -380,13 +368,14 @@ namespace TarkovMonitor
                 return;
             }
             messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), e.Profile.Type));
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await TarkovTracker.SetProfile(e.Profile.Id);
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker profile switching failed.", "TM-API-TRACKER-008", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+                RecordException("Tarkov Tracker profile switching failed.", "TM-API-TRACKER-008", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -422,6 +411,7 @@ namespace TarkovMonitor
 
         private void Delete_Screenshots(RaidInfoEventArgs e, MonitorMessage? monMessage = null, MonitorMessageButton? screenshotButton = null)
         {
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 foreach (var filename in e.RaidInfo.Screenshots)
@@ -432,7 +422,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Raid screenshots could not be deleted.", "TM-FILES-001", "DeleteRaidScreenshots", ex, "Filesystem", "ScreenshotCleanup");
+                RecordException("Raid screenshots could not be deleted.", "TM-FILES-001", "DeleteRaidScreenshots", ex, "Filesystem", "ScreenshotCleanup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
 
             if (monMessage is null || screenshotButton is null)
@@ -498,6 +488,7 @@ namespace TarkovMonitor
         {
             base.OnShown(e);
 
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 if (Properties.Settings.Default.minimizeAtStartup)
@@ -508,7 +499,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("The window could not minimize at startup.", "TM-UI-001", "MinimizeAtStartup", ex, "UI", "Startup");
+                RecordException("The window could not minimize at startup.", "TM-UI-001", "MinimizeAtStartup", ex, "UI", "Startup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -527,13 +518,14 @@ namespace TarkovMonitor
                 //SocketClient.NavigateToMap(map);
                 socketMessages.Add(SocketClient.GetNavigateToMapMessage(e.RaidInfo.Map));
             }
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await SocketClient.Send(socketMessages);
             }
             catch (Exception ex)
             {
-                RecordException("Player position could not be sent to Tarkov.dev.", "TM-SOCKET-002", "SendPlayerPosition", ex, "WebSocket", "PlayerPosition");
+                RecordException("Player position could not be sent to Tarkov.dev.", "TM-SOCKET-002", "SendPlayerPosition", ex, "WebSocket", "PlayerPosition", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -561,6 +553,7 @@ namespace TarkovMonitor
             {
                 return;
             }
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 //await AllDataLoaded();
@@ -604,7 +597,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Raid-start processing failed.", "TM-WATCHER-003", "RaidStartProcessing", ex, "GameWatcher", "RaidStart");
+                RecordException("Raid-start processing failed.", "TM-WATCHER-003", "RaidStartProcessing", ex, "GameWatcher", "RaidStart", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -682,6 +675,7 @@ namespace TarkovMonitor
 
         private async Task UpdateTarkovDevApiData()
         {
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await TarkovDev.UpdateApiData();
@@ -689,7 +683,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov.dev data update failed; copy diagnostics for details.", "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev");
+                RecordException("Tarkov.dev data update failed; copy diagnostics for details.", "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -701,13 +695,14 @@ namespace TarkovMonitor
                 return;
             }
 
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker profile retrieval failed; copy diagnostics for details.", "TM-API-TRACKER-001", "GetProfile", ex, "TarkovTracker", "Profile", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+                RecordException("Tarkov Tracker profile retrieval failed; copy diagnostics for details.", "TM-API-TRACKER-001", "GetProfile", ex, "TarkovTracker", "Profile", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
                 return;
             }
             messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), GameWatcher.CurrentProfile.Type));
@@ -753,13 +748,14 @@ namespace TarkovMonitor
         private void Eft_NewLogData(object? sender, NewLogDataEventArgs e)
         {
             TarkovDev.LastActivity = DateTime.Now;
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 //Debug.WriteLine($"MainBlazorUI {e.Type} NewLogData");
                 logRepository.AddLog(e.Data, e.Type.ToString());
             } catch (Exception ex)
             {
-                RecordException("A game log event could not be stored.", "TM-DATA-001", "AddLog", ex, "LogRepository", "Persistence");
+                RecordException("A game log event could not be stored.", "TM-DATA-001", "AddLog", ex, "LogRepository", "Persistence", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -786,6 +782,7 @@ namespace TarkovMonitor
             {
                 return;
             }
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await TarkovTracker.SetTaskComplete(task.id);
@@ -793,7 +790,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-002", "SetTaskComplete", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-002", "SetTaskComplete", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -811,6 +808,7 @@ namespace TarkovMonitor
             {
                 return;
             }
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await TarkovTracker.SetTaskFailed(task.id);
@@ -818,7 +816,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-003", "SetTaskFailed", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-003", "SetTaskFailed", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -835,13 +833,14 @@ namespace TarkovMonitor
             {
                 return;
             }
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await TarkovTracker.SetTaskStarted(e.LogContent.TaskId);
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-004", "SetTaskStarted", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-004", "SetTaskStarted", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -925,6 +924,7 @@ namespace TarkovMonitor
         {
             if (!Properties.Settings.Default.pauseMediaOnRaid) return;
 
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 int pausedSessions = await MediaController.PauseAsync();
@@ -932,7 +932,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Media could not be paused for the raid.", "TM-MEDIA-001", "PauseMedia", ex, "Media", "RaidStart");
+                RecordException("Media could not be paused for the raid.", "TM-MEDIA-001", "PauseMedia", ex, "Media", "RaidStart", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -945,6 +945,7 @@ namespace TarkovMonitor
         {
             if (!Properties.Settings.Default.pauseMediaOnRaid) return;
 
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 int resumedSessions = await MediaController.ResumeAsync();
@@ -955,7 +956,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Media could not be resumed after the raid.", "TM-MEDIA-002", "ResumeMedia", ex, "Media", "RaidEnd");
+                RecordException("Media could not be resumed after the raid.", "TM-MEDIA-002", "ResumeMedia", ex, "Media", "RaidEnd", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1047,6 +1048,7 @@ namespace TarkovMonitor
             {
                 MonitorMessageButton goonsButton = new($"Report Goons", Icons.Material.Filled.Groups);
                 goonsButton.OnClick = async () => {
+                    var startedUtc = DateTime.UtcNow;
                     try
                     {
                         await TarkovDev.PostGoonsSighting(raidInfo.Map?.nameId, (DateTime)raidInfo.StartedTime, Int32.Parse(raidInfo.Profile.AccountId), GameWatcher.CurrentProfile.Type);
@@ -1054,7 +1056,7 @@ namespace TarkovMonitor
                     }
                     catch (Exception ex)
                     {
-                        RecordException("The Goons report could not be submitted.", "TM-API-GOONS-001", "SubmitGoonsReport", ex, "TarkovDev", "Report", "https://manager.tarkov.dev/api");
+                        RecordException("The Goons report could not be submitted.", "TM-API-GOONS-001", "SubmitGoonsReport", ex, "TarkovDev", "Report", "https://manager.tarkov.dev/api", DiagnosticsService.ElapsedMilliseconds(startedUtc));
                     }
                     monMessage.Buttons.Remove(goonsButton);
                 };
@@ -1074,7 +1076,7 @@ namespace TarkovMonitor
             runthroughTimer.Stop();
             inRaid = false;
             await ResumeMediaAfterRaid();
-            
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 var mapName = e.Map;
@@ -1084,13 +1086,14 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Raid-exit processing failed.", "TM-WATCHER-005", "RaidExited", ex, "GameWatcher", "RaidExit");
+                RecordException("Raid-exit processing failed.", "TM-WATCHER-005", "RaidExited", ex, "GameWatcher", "RaidExit", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
         private void MainBlazorUI_Resize(object sender, EventArgs e)
         {
             WindowStateChanged?.Invoke(this, EventArgs.Empty);
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 if (this.WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
@@ -1101,12 +1104,13 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("The application could not minimize to the tray.", "TM-UI-002", "MinimizeToTray", ex, "UI", "WindowState");
+                RecordException("The application could not minimize to the tray.", "TM-UI-002", "MinimizeToTray", ex, "UI", "WindowState", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
         private void notifyIconTarkovMonitor_MouseDoubleClick(object sender, MouseEventArgs e)
         {
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 Show();
@@ -1115,7 +1119,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("The application could not restore from the tray.", "TM-UI-003", "RestoreFromTray", ex, "UI", "WindowState");
+                RecordException("The application could not restore from the tray.", "TM-UI-003", "RestoreFromTray", ex, "UI", "WindowState", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 

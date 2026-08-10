@@ -258,13 +258,14 @@
         }
         else
         {
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 Sound.RemoveCustomSound(key);
             }
             catch (Exception ex)
             {
-                messageLog.AddException("The custom sound could not be removed.", "TM-FILES-003", "RemoveCustomSound", ex, "Filesystem", "Sounds");
+                messageLog.AddException("The custom sound could not be removed.", "TM-FILES-003", "RemoveCustomSound", ex, "Filesystem", "Sounds", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
     }

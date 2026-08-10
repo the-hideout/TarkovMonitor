@@ -7,7 +7,6 @@
 @inject IDialogService DialogService
 @inject LocalizationService LocalizationService
 @inject TimersManager timersManager
-@inject MainBlazorUI WindowHost
 @layout AppLayout
 @implements IDisposable
 
@@ -188,13 +187,6 @@
         </MudPaper>
     </MudItem>
 
-    <MudItem xs="12">
-        <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
-            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.PrivacyTip" Class="mr-2" />Diagnostics and privacy</MudText>
-            <MudText Typo="Typo.body2" Class="mt-2">Review what TarkovMonitor copies into diagnostics and which sensitive values are excluded or redacted before sharing.</MudText>
-            <MudButton @onclick="OpenDisclaimerInformation" Variant="Variant.Outlined" Color="Color.Info" Class="mt-3">Disclaimer</MudButton>
-        </MudPaper>
-    </MudItem>
 </MudGrid>
 
 @code {
@@ -238,8 +230,8 @@
         base.OnInitialized();
         PlaybackDevices = Sound.GetPlaybackDevices();
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
-        ResolveCustomLogsFolder();
         LocalizationService.LanguageChanged += OnLanguageChanged;
+        ResolveCustomLogsFolder();
         UpdateProfileName();
     }
 
@@ -266,11 +258,6 @@
     {
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
         InvokeAsync(StateHasChanged);
-    }
-
-    private void OpenDisclaimerInformation()
-    {
-        WindowHost.ShowDisclaimerInformation();
     }
 
     public string SelectedLanguage
@@ -620,13 +607,14 @@
             return;
         }
 
+        var startedUtc = DateTime.UtcNow;
         try
         {
             await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
         }
         catch (Exception ex)
         {
-            messageLog.AddException("Tarkov Tracker profile could not be loaded.", "TM-API-TRACKER-005", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{TarkovTrackerDomain}");
+            messageLog.AddException("Tarkov Tracker profile could not be loaded.", "TM-API-TRACKER-005", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{TarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 
@@ -661,6 +649,7 @@
             messageLog.AddMessage("Enter a PVE_, PVP_, or SZN_ TarkovTracker.org key followed by its 18-character hexadecimal identifier.", "warning");
             return;
         } else {
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 var tokenResponse = await TarkovTracker.TestToken(TarkovTrackerToken);
@@ -672,7 +661,7 @@
             }
             catch (Exception ex)
             {
-                messageLog.AddException("The Tarkov Tracker key test failed.", "TM-API-TRACKER-006", "TestToken", ex, "TarkovTracker", "TokenTest", $"https://{TarkovTrackerDomain}");
+                messageLog.AddException("The Tarkov Tracker key test failed.", "TM-API-TRACKER-006", "TestToken", ex, "TarkovTracker", "TokenTest", $"https://{TarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
 
             }
         }
@@ -815,6 +804,7 @@
 
     void CustomLogsFolderClick()
     {
+        var startedUtc = DateTime.UtcNow;
         try
         {
             var currentFolder = CustomLogsFolder;
@@ -833,7 +823,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddException("The EFT logs folder picker could not be opened.", "TM-UI-004", "OpenLogsFolderPicker", ex, "UI", "Settings");
+            messageLog.AddException("The EFT logs folder picker could not be opened.", "TM-UI-004", "OpenLogsFolderPicker", ex, "UI", "Settings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 
