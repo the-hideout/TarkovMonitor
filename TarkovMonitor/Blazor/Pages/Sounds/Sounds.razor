@@ -264,7 +264,7 @@
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex);
+                messageLog.AddException("The custom sound could not be removed.", "TM-FILES-003", "RemoveCustomSound", ex, "Filesystem", "Sounds");
             }
         }
     }

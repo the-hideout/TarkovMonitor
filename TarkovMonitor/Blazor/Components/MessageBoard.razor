@@ -142,7 +142,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error in message button: ${ex.Message} {ex.StackTrace}", "exception");
+            messageLog.AddException("A notification action could not be completed.", "TM-UI-ACTION-001", "MessageButton", ex, "UI", "Action");
         }
     }
 
@@ -154,7 +154,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error in message select: ${ex.Message} {ex.StackTrace}", "exception");
+            messageLog.AddException("A notification selection could not be completed.", "TM-UI-ACTION-002", "MessageSelect", ex, "UI", "Action");
         }
     }
 }

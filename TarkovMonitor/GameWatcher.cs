@@ -71,6 +71,7 @@ namespace TarkovMonitor
             }
         }
         private readonly Dictionary<string, RaidInfo> Raids = new();
+        private bool matchingStatusPublished;
         public string ScreenshotsPath
         {
             get
@@ -92,7 +93,7 @@ namespace TarkovMonitor
         public event EventHandler? GroupDisbanded;
         public event EventHandler<LogContentEventArgs<GroupMatchUserLeaveLogContent>>? GroupUserLeave;
         public event EventHandler<RaidInfoEventArgs>? MapLoading;
-        //public event EventHandler<RaidInfoEventArgs>? MatchingStarted;
+        public event EventHandler<RaidInfoEventArgs>? MatchingStarted;
         public event EventHandler<RaidInfoEventArgs>? MatchFound; // only fires on initial load into a raid
         public event EventHandler<RaidInfoEventArgs>? MapLoaded; // fires on initial and subsequent loads into a raid
         public event EventHandler<RaidInfoEventArgs>? MatchingAborted;
@@ -456,6 +457,7 @@ namespace TarkovMonitor
                         {
                             Profile = CurrentProfile,
                         };
+                        matchingStatusPublished = false;
                         var scenePathMatch = Regex.Match(eventLine, @"scene preset path:(?<scenePath>maps\/[a-zA-Z0-9_]+\.bundle)");
                         if (scenePathMatch.Success)
                         {
@@ -472,7 +474,7 @@ namespace TarkovMonitor
                     {
                         // The map has been loaded and the game is searching for a match
                         raidInfo.MapLoadTime = float.Parse(Regex.Match(eventLine, @"LocationLoaded:[0-9.,]+ real:(?<loadTime>[0-9.,]+)").Groups["loadTime"].Value.Replace(",", "."), CultureInfo.InvariantCulture);
-						//MatchingStarted?.Invoke(this, new(raidInfo, CurrentProfile));
+                        PublishMatchingStarted(e.InitialRead);
 					}
 					if (eventLine.Contains("application|MatchingCompleted"))
 					{
@@ -503,6 +505,7 @@ namespace TarkovMonitor
                         if (!raidInfo.Reconnected && raidInfo.Online && raidInfo.QueueTime > 0)
                         {
                             // Raise the MatchFound event only if we queued; not if we are re-loading back into a raid
+                            PublishMatchingStarted(e.InitialRead, allowCompletedFallback: true);
                             MatchFound?.Invoke(this, new(raidInfo, CurrentProfile));
                         }
                         if (mapUnknown)
@@ -535,6 +538,7 @@ namespace TarkovMonitor
                     {
                         // User cancelled matching
                         MatchingAborted?.Invoke(this, new(raidInfo, CurrentProfile));
+                        matchingStatusPublished = false;
                         raidInfo = new()
                         {
                             Profile = CurrentProfile,
@@ -602,7 +606,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing {e.Type} log data {e.Data}"));
+                ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, $"parsing {e.Type} log data"));
             }
         }
 
@@ -857,6 +861,24 @@ namespace TarkovMonitor
             return latestLogFolder ?? "";
         }
 
+        private void PublishMatchingStarted(bool initialRead, bool allowCompletedFallback = false)
+        {
+            if (!MatchingNotificationPolicy.ShouldPublish(
+                    initialRead,
+                    ReadingPastLogs,
+                    matchingStatusPublished,
+                    raidInfo.MapLoadTime,
+                    raidInfo.QueueTime,
+                    raidInfo.StartingTime,
+                    allowCompletedFallback))
+            {
+                return;
+            }
+
+            matchingStatusPublished = true;
+            MatchingStarted?.Invoke(this, new(raidInfo, CurrentProfile));
+        }
+
         private void WatchLogsFolder(string folderPath)
         {
             var files = System.IO.Directory.GetFiles(folderPath);
@@ -884,6 +906,7 @@ namespace TarkovMonitor
                         if (monitorsCompletedInitialRead == monitorsStarted)
                         {
                             InitialLogsRead = true;
+                            PublishMatchingStarted(false);
                             InitialReadComplete?.Invoke(this, new(CurrentProfile));
                         }
                     };

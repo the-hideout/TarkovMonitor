@@ -12,6 +12,9 @@ namespace TarkovMonitor
         public DateTime Time { get; set; } = DateTime.Now;
         public string Type { get; set; } = "";
         public string Url { get; set; } = "";
+        public string? DiagnosticText { get; set; }
+        public string? DiagnosticKey { get; set; }
+        public int DiagnosticOccurrenceCount { get; set; } = 1;
         public Action? OnClick { get; set; } = null;
         public ObservableCollection<MonitorMessageButton> Buttons { get; set; } = new();
         public ObservableCollection<MonitorMessageSelect> Selects { get; set; } = new();
@@ -43,15 +46,14 @@ namespace TarkovMonitor
                 }
             };
         }
-        public MonitorMessage(string message, string? type = "", string? url = "") : this(message)
+        public MonitorMessage(string message, string? type = "", string? url = "", string? diagnosticText = null) : this(message)
         {
             Type = type ?? "";
             Url = url ?? "";
+            DiagnosticText = diagnosticText;
             if (Type == "exception")
             {
-                Buttons.Add(new("Copy", () => {
-                    Clipboard.SetText(Message);
-                }, Icons.Material.Filled.CopyAll));
+                Buttons.Add(new("Copy diagnostics", CopyDiagnostics, Icons.Material.Filled.CopyAll));
                 Buttons.Add(new("Report", () => {
                     var psi = new ProcessStartInfo
                     {
@@ -60,6 +62,19 @@ namespace TarkovMonitor
                     };
                     Process.Start(psi);
                 }, Icons.Material.Filled.BugReport));
+            }
+        }
+
+        private void CopyDiagnostics()
+        {
+            try
+            {
+                Clipboard.SetText(DiagnosticText ?? Message);
+            }
+            catch
+            {
+                // Clipboard ownership can be transient on Windows. A copy failure
+                // must not create another diagnostic or crash the notification UI.
             }
         }
 

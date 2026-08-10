@@ -50,11 +50,11 @@ namespace TarkovMonitor
             }
             catch (ApiException ex)
             {
-                Error?.Invoke(null, new(new Exception($"Invalid GitHub API response code: {ex.Message}"), "checking for new version"));
+                Error?.Invoke(null, new(new Exception($"Invalid GitHub API response code: {ex.StatusCode}.", ex), "checking for new version"));
             }
             catch (Exception ex)
             {
-                Error?.Invoke(null, new(new Exception($"GitHub API error: {ex.Message}"), "checking for new version"));
+                Error?.Invoke(null, new(new Exception("GitHub API error.", ex), "checking for new version"));
             }
         }
 

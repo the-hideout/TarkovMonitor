@@ -173,7 +173,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error compiling task updates: {ex.Message}", "exception");
+            messageLog.AddException("Past-log task updates could not be compiled.", "TM-LOG-001", "CompileTaskUpdates", ex, "LogParser", "PastLogs");
             return;
         }
         finally
@@ -191,7 +191,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error updating tasks: {ex.Message}", "exception");
+            messageLog.AddException("Past-log task updates could not be sent.", "TM-API-TRACKER-007", "UpdatePastLogTasks", ex, "TarkovTracker", "PastLogs", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
         }
     }
 
