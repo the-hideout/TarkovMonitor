@@ -1,0 +1,218 @@
+.tracker-profile-scan-state {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 5rem;
+    justify-content: center;
+}
+
+.tracker-inline-scan-action {
+    appearance: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: var(--mud-palette-info);
+    background: transparent;
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+    cursor: pointer;
+}
+
+.tracker-inline-scan-action:hover {
+    text-decoration-thickness: 2px;
+}
+
+.tracker-inline-scan-action:focus-visible {
+    border-radius: 2px;
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+}
+
+.tracker-profile-picker {
+    display: flex;
+    max-height: clamp(12rem, 46vh, 21rem);
+    flex-direction: column;
+    gap: 0.45rem;
+    overflow-y: auto;
+    padding: 0.2rem 0.35rem 0.2rem 0.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 11px;
+    background: rgba(0, 0, 0, 0.12);
+    scrollbar-color: rgba(120, 174, 251, 0.72) rgba(255, 255, 255, 0.04);
+    scrollbar-width: thin;
+}
+
+.tracker-profile-guidance {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.42rem;
+    margin-bottom: 0.65rem;
+}
+
+.tracker-profile-guidance-item {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.02rem;
+    padding: 0.38rem 0.52rem;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.67rem;
+    line-height: 1.25;
+}
+
+.tracker-profile-guidance-item b {
+    color: rgba(255, 255, 255, 0.83);
+    font-size: 0.7rem;
+}
+
+.tracker-profile-confirm {
+    padding: 0.25rem 0;
+}
+
+.tracker-profile-confirm-title {
+    margin-bottom: 0.65rem;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.tracker-profile-confirm-grid {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.34rem 0.75rem;
+    margin: 0;
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.tracker-profile-confirm-grid dt {
+    color: rgba(255, 255, 255, 0.57);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tracker-profile-confirm-grid dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8rem;
+    font-weight: 650;
+}
+
+.tracker-profile-choice {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 10px;
+    color: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.tracker-profile-choice:not(:disabled):hover,
+.tracker-profile-choice:not(:disabled):focus-visible {
+    border-color: rgba(104, 164, 255, 0.6);
+    background-color: rgba(104, 164, 255, 0.08);
+    outline: none;
+}
+
+.tracker-profile-choice--disabled {
+    cursor: not-allowed;
+    opacity: 0.64;
+}
+
+.tracker-profile-choice-main {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.tracker-profile-choice-title {
+    overflow: hidden;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker-profile-choice-id,
+.tracker-profile-choice-meta {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.72rem;
+}
+
+.tracker-profile-choice-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.65rem;
+    margin-top: 0.16rem;
+}
+
+.tracker-profile-mode {
+    color: #acd0ff;
+    font-weight: 700;
+}
+
+.tracker-profile-choice-state {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.tracker-profile-state {
+    padding: 0.08rem 0.38rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.tracker-profile-state--current {
+    border-color: rgba(87, 194, 142, 0.46);
+    color: #8ce0b8;
+    background: rgba(48, 146, 99, 0.14);
+}
+
+.tracker-profile-state--bound {
+    border-color: rgba(212, 148, 255, 0.4);
+    color: #deb0ff;
+    background: rgba(139, 74, 180, 0.14);
+}
+
+.tracker-profile-state--available {
+    border-color: rgba(111, 166, 255, 0.42);
+    color: #a9cbff;
+    background: rgba(61, 112, 194, 0.13);
+}
+
+@media (max-width: 500px) {
+    .tracker-profile-guidance {
+        grid-template-columns: 1fr;
+    }
+
+    .tracker-profile-choice {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .tracker-profile-choice-state {
+        flex-direction: row;
+    }
+
+    .tracker-profile-confirm-grid {
+        grid-template-columns: 5.5rem minmax(0, 1fr);
+    }
+}

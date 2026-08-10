@@ -1,0 +1,246 @@
+@inject GameWatcher eft
+
+<MudDialog Class="tracker-assignment-dialog">
+    <DialogContent>
+        <div class="tracker-dialog-note @(RequiresVerification ? "tracker-dialog-note--warning" : "")" role="note">
+            <MudIcon Icon="@(RequiresVerification ? Icons.Material.Filled.GppMaybe : Icons.Material.Filled.AccountTree)" Size="Size.Small" Class="tracker-dialog-note__icon" />
+            <span class="tracker-dialog-note__copy">
+                <strong>@(IsReassign ? "Choose another EFT profile." : "Choose an EFT profile.")</strong>
+                <span>@(RequiresVerification
+                    ? "This recovered key must be verified before you can assign it."
+                    : "Only saved profiles for this key's game mode are shown.")</span>
+            </span>
+        </div>
+
+        <div class="tracker-profile-guidance" role="note">
+            @if (IsReassign)
+            {
+                <span class="tracker-profile-guidance-item"><b>Move key</b><span>No key assigned</span></span>
+                <span class="tracker-profile-guidance-item"><b>Swap keys</b><span>Key already assigned</span></span>
+            }
+            else
+            {
+                <span class="tracker-profile-guidance-item"><b>Available</b><span>No key assigned</span></span>
+                <span class="tracker-profile-guidance-item"><b>Unavailable</b><span>Key already assigned</span></span>
+            }
+        </div>
+
+        @if (selectedProfile != null)
+        {
+            <div class="tracker-profile-confirm">
+                <MudText Typo="Typo.subtitle2" Class="tracker-profile-confirm-title">Review assignment</MudText>
+                <dl class="tracker-profile-confirm-grid">
+                    <dt>Account</dt>
+                    <dd>@AccountLabel(selectedProfile)</dd>
+                    <dt>Account ID</dt>
+                    <dd>@selectedProfile.AccountId</dd>
+                    <dt>Mode</dt>
+                    <dd>@selectedProfile.DisplayName</dd>
+                    <dt>Last played</dt>
+                    <dd>@LastPlayedValue(selectedProfile)</dd>
+                    <dt>Profile</dt>
+                    <dd>@ShortProfileId(selectedProfile.ProfileId)</dd>
+                </dl>
+                <MudAlert Severity="@(WillSwap ? Severity.Warning : Severity.Info)" Dense="true" Class="mt-3">
+                    @(WillSwap
+                        ? "This profile already has a key. Confirming will swap the two keys; neither key will become unassigned. Profile nicknames move with their keys."
+                        : IsReassign
+                            ? $"This key will move to the selected profile.{(string.IsNullOrWhiteSpace(ProfileNickname) ? "" : " Its profile nickname will move with it.")}"
+                            : "This key will be assigned to the selected profile.")
+                </MudAlert>
+            </div>
+        }
+        else if (scanning)
+        {
+            <div class="tracker-profile-scan-state">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                <MudText Typo="Typo.body2">Scanning past EFT logs...</MudText>
+            </div>
+        }
+        else if (MatchingProfiles.Count == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true">
+                @NoMatchingProfilesLead Select
+                <button type="button"
+                        class="tracker-inline-scan-action"
+                        aria-label="Scan profiles from past EFT logs"
+                        @onclick="ScanProfiles">Scan profiles</button>
+                to check past EFT logs, or launch EFT with the profile you want to use.
+            </MudAlert>
+        }
+        else
+        {
+            <div class="tracker-profile-picker">
+                @foreach (var profile in MatchingProfiles)
+                {
+                    var disabled = !IsReassign && profile.HasBoundKey;
+                    var stateLabel = disabled
+                        ? "Already assigned"
+                        : profile.HasBoundKey
+                            ? "Swap"
+                            : IsReassign
+                                ? "Move"
+                                : "Select";
+                    <button type="button"
+                            class="tracker-profile-choice @(disabled ? "tracker-profile-choice--disabled" : "")"
+                            disabled="@disabled"
+                            aria-label="@($"{AccountLabel(profile)}, Account ID {profile.AccountId}, {profile.DisplayName}, {stateLabel}")"
+                            @onclick="@(() => Select(profile))">
+                        <span class="tracker-profile-choice-main">
+                            <span class="tracker-profile-choice-title">@AccountLabel(profile)</span>
+                            <span class="tracker-profile-choice-id">Account ID: @profile.AccountId</span>
+                            <span class="tracker-profile-choice-meta">
+                                <span class="tracker-profile-mode">@profile.DisplayName</span>
+                                <span>@LastPlayed(profile)</span>
+                                <span>@ShortProfileId(profile.ProfileId)</span>
+                            </span>
+                        </span>
+                        <span class="tracker-profile-choice-state">
+                            @if (profile.IsCurrent)
+                            {
+                                <span class="tracker-profile-state tracker-profile-state--current">Current</span>
+                            }
+                            <span class="tracker-profile-state @(profile.HasBoundKey ? "tracker-profile-state--bound" : "tracker-profile-state--available")">@stateLabel</span>
+                        </span>
+                    </button>
+                }
+            </div>
+        }
+
+        @if (selectedProfile == null && !string.IsNullOrWhiteSpace(scanMessage))
+        {
+            <MudText Typo="Typo.caption" Class="mt-2">@scanMessage</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (selectedProfile == null)
+        {
+            <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
+            <MudTooltip Text="Reads account, profile, mode, and last-played details from past EFT logs. It does not replay tasks.">
+                <span><MudButton Color="Color.Info" Variant="Variant.Outlined" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search" Class="tracker-dialog-footer-button">
+                    Scan profiles
+                </MudButton></span>
+            </MudTooltip>
+        }
+        else
+        {
+            <MudButton OnClick="Back" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="tracker-dialog-footer-button">Back</MudButton>
+            <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Confirm" StartIcon="@Icons.Material.Filled.CheckCircle" Class="tracker-dialog-footer-button">@ActionLabel</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string KeyPrefix { get; set; } = "";
+    [Parameter] public string KeyDisplayName { get; set; } = "";
+    [Parameter] public bool KeyIsBound { get; set; }
+    [Parameter] public bool RequiresVerification { get; set; }
+    [Parameter] public string BoundAccountId { get; set; } = "";
+    [Parameter] public string BoundProfileId { get; set; } = "";
+    [Parameter] public EftSessionMode BoundSessionMode { get; set; }
+    [Parameter] public string ProfileNickname { get; set; } = "";
+    [Parameter] public bool IsReassign { get; set; }
+
+    private bool scanning;
+    private string scanMessage = "";
+    private TarkovTracker.OrgProfileSummary? selectedProfile;
+    private IReadOnlyList<TarkovTracker.OrgProfileSummary> profiles = Array.Empty<TarkovTracker.OrgProfileSummary>();
+
+    private List<TarkovTracker.OrgProfileSummary> MatchingProfiles => profiles
+        .Where(profile => string.Equals(
+            KeyPrefix,
+            TarkovTracker.GetPrefixForSessionMode(profile.SessionMode),
+            StringComparison.OrdinalIgnoreCase))
+        .Where(profile => !IsReassign
+            || !KeyIsBound
+            || !string.Equals(profile.AccountId, BoundAccountId, StringComparison.Ordinal)
+            || !string.Equals(profile.ProfileId, BoundProfileId, StringComparison.Ordinal)
+            || profile.SessionMode != BoundSessionMode)
+        .OrderByDescending(profile => profile.IsCurrent)
+        .ThenByDescending(profile => profile.LastSeenUtc)
+        .ToList();
+
+    protected override void OnInitialized()
+    {
+        ReloadProfiles();
+    }
+
+    private void ReloadProfiles()
+    {
+        profiles = TarkovTracker.GetKnownOrgProfiles();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Select(TarkovTracker.OrgProfileSummary profile)
+    {
+        selectedProfile = profile;
+    }
+
+    private void Back() => selectedProfile = null;
+
+    private void Confirm()
+    {
+        if (selectedProfile != null)
+        {
+            MudDialog.Close(DialogResult.Ok(selectedProfile));
+        }
+    }
+
+    private bool WillSwap => IsReassign && selectedProfile?.HasBoundKey == true;
+
+    private string NoMatchingProfilesLead =>
+        $"{(IsReassign ? "No other" : "No")} saved {KeyDisplayName} profiles are available.";
+
+    private string ActionLabel => WillSwap ? "Swap" : IsReassign ? "Reassign" : "Assign";
+
+    private async Task ScanProfiles()
+    {
+        scanning = true;
+        scanMessage = "";
+        try
+        {
+            var discovered = await Task.Run(eft.DiscoverProfiles);
+            var changed = TarkovTracker.SaveDiscoveredOrgProfiles(discovered);
+            ReloadProfiles();
+            scanMessage = discovered.Count == 0
+                ? "No EFT profiles were found in past logs."
+                : $"Found {discovered.Count} profile{(discovered.Count == 1 ? "" : "s")} and updated {changed} saved entr{(changed == 1 ? "y" : "ies")}.";
+        }
+        catch (Exception ex)
+        {
+            scanMessage = $"Could not scan profiles: {ex.Message}";
+        }
+        finally
+        {
+            scanning = false;
+        }
+    }
+
+    private static string AccountLabel(TarkovTracker.OrgProfileSummary profile)
+    {
+        return string.IsNullOrWhiteSpace(profile.AccountNickname)
+            ? $"Account {profile.AccountId}"
+            : profile.AccountNickname;
+    }
+
+    private static string LastPlayed(TarkovTracker.OrgProfileSummary profile)
+    {
+        return $"Last played: {LastPlayedValue(profile)}";
+    }
+
+    private static string LastPlayedValue(TarkovTracker.OrgProfileSummary profile)
+    {
+        return profile.LastSeenUtc is { } lastSeen
+            ? lastSeen.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+            : "Unknown";
+    }
+
+    private static string ShortProfileId(string profileId)
+    {
+        var suffix = profileId.Length <= 6 ? profileId : profileId[^6..];
+        return $"Profile …{suffix}";
+    }
+}

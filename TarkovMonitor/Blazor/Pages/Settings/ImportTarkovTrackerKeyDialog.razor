@@ -1,0 +1,165 @@
+@implements IDisposable
+@inject MessageLog MessageLog
+
+<MudDialog Class="tracker-settings-dialog">
+    <DialogContent>
+        <div class="tracker-dialog-note" role="note">
+            <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" Class="tracker-dialog-note__icon" />
+            <span class="tracker-dialog-note__copy">
+                <strong>Add a TarkovTracker.org API key.</strong>
+                <span>Tarkov Monitor verifies the key and identifies its game mode before saving it as Unassigned.</span>
+            </span>
+        </div>
+
+        <div class="tracker-dialog-section-heading">
+            <MudIcon Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" />
+            <span>API key</span>
+        </div>
+        <div class="tracker-dialog-form-card">
+            <MudTextField @bind-Value="apiKey"
+                          Immediate="true"
+                          Label="TarkovTracker.org API key"
+                          InputType="@passwordInput"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Disabled="@(saving || cooldownSeconds > 0)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@passwordIcon"
+                          OnAdornmentClick="ToggleKeyVisibility" />
+            <span class="tracker-dialog-field-help">Paste the full key exactly as copied from TarkovTracker.org.</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="@messageSeverity" Dense="true" Class="mt-2">@errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="@saving" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
+        <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Save" Disabled="@(saving || cooldownSeconds > 0 || string.IsNullOrWhiteSpace(apiKey))" StartIcon="@Icons.Material.Filled.Verified" Class="tracker-dialog-footer-button">
+            @if (saving)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                <span>Verifying</span>
+            }
+            else if (cooldownSeconds > 0)
+            {
+                <span>@($"Try again in {cooldownSeconds}s")</span>
+            }
+            else
+            {
+                <span>Verify and save</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string InitialApiKey { get; set; } = "";
+
+    private string apiKey = "";
+    private string errorMessage = "";
+    private Severity messageSeverity = Severity.Error;
+    private bool saving;
+    private int cooldownSeconds;
+    private CancellationTokenSource? cooldownCancellation;
+    private bool showKey;
+    private InputType passwordInput = InputType.Password;
+    private string passwordIcon = Icons.Material.Filled.VisibilityOff;
+
+    protected override void OnInitialized()
+    {
+        apiKey = InitialApiKey;
+        StartCooldownCountdown();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void ToggleKeyVisibility()
+    {
+        showKey = !showKey;
+        passwordInput = showKey ? InputType.Text : InputType.Password;
+        passwordIcon = showKey ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff;
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        errorMessage = "";
+        messageSeverity = Severity.Error;
+        try
+        {
+            var importedToken = await TarkovTracker.ImportOrgToken(apiKey);
+            MudDialog.Close(DialogResult.Ok(importedToken));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            messageSeverity = ex is TarkovTracker.DuplicateImportedTokenException
+                ? Severity.Info
+                : Severity.Error;
+            StartCooldownCountdown();
+            if (cooldownSeconds > 0)
+            {
+                var report = string.Join(Environment.NewLine,
+                    "TarkovTracker.org API key validation failed.",
+                    $"UTC time: {DateTimeOffset.UtcNow:O}",
+                    $"Tarkov Monitor version: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}",
+                    "Operation: Verify and save TarkovTracker.org API key",
+                    "Endpoint: GET https://api.tarkovtracker.org/token",
+                    $"Key type: {TarkovTracker.GetPrefixDisplayName(TarkovTracker.GetTokenPrefix(apiKey))}",
+                    $"Error type: {ex.GetType().Name}",
+                    $"Error: {ex.Message}",
+                    "The API key was intentionally excluded from this report.");
+                MessageLog.AddMessage(report, "exception");
+                errorMessage += " A sanitized error report was added to Messages so you can copy it when reporting the problem.";
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void StartCooldownCountdown()
+    {
+        cooldownSeconds = TarkovTracker.GetImportValidationCooldownSeconds();
+        if (cooldownSeconds <= 0 || cooldownCancellation is { IsCancellationRequested: false })
+        {
+            return;
+        }
+
+        cooldownCancellation = new CancellationTokenSource();
+        _ = RunCooldownCountdown(cooldownCancellation.Token);
+    }
+
+    private async Task RunCooldownCountdown(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                cooldownSeconds = TarkovTracker.GetImportValidationCooldownSeconds();
+                await InvokeAsync(StateHasChanged);
+                if (cooldownSeconds <= 0)
+                {
+                    break;
+                }
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            cooldownCancellation?.Dispose();
+            cooldownCancellation = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        cooldownCancellation?.Cancel();
+    }
+}
