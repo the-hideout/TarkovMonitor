@@ -1286,23 +1286,23 @@ namespace TarkovMonitor
         private static GameLogType? GetLogType(string path)
         {
             var filename = Path.GetFileName(path);
-            if (filename.Equals("application.log", StringComparison.OrdinalIgnoreCase)
-                || filename.Equals("application_000.log", StringComparison.OrdinalIgnoreCase))
+            if (filename.EndsWith("application.log", StringComparison.OrdinalIgnoreCase)
+                || filename.EndsWith("application_000.log", StringComparison.OrdinalIgnoreCase))
             {
                 return GameLogType.Application;
             }
-            if (filename.Equals("notifications.log", StringComparison.OrdinalIgnoreCase)
-                || filename.Equals("notifications_000.log", StringComparison.OrdinalIgnoreCase))
+            if (filename.EndsWith("notifications.log", StringComparison.OrdinalIgnoreCase)
+                || filename.EndsWith("notifications_000.log", StringComparison.OrdinalIgnoreCase))
             {
                 return GameLogType.Notifications;
             }
-            if (filename.Equals("output.log", StringComparison.OrdinalIgnoreCase)
-                || filename.Equals("output_000.log", StringComparison.OrdinalIgnoreCase))
+            if (filename.EndsWith("output.log", StringComparison.OrdinalIgnoreCase)
+                || filename.EndsWith("output_000.log", StringComparison.OrdinalIgnoreCase))
             {
                 return GameLogType.Output;
             }
-            if (filename.Equals("traces.log", StringComparison.OrdinalIgnoreCase)
-                || filename.Equals("traces_000.log", StringComparison.OrdinalIgnoreCase))
+            if (filename.EndsWith("traces.log", StringComparison.OrdinalIgnoreCase)
+                || filename.EndsWith("traces_000.log", StringComparison.OrdinalIgnoreCase))
             {
                 return GameLogType.Traces;
             }

@@ -136,7 +136,14 @@
                 <MudButton @onclick="OpenTrackerSettings" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("GetAToken")</MudButton>
                 <MudButton @onclick="TestToken" Disabled="@TestTokenButtonDisabled" Variant="Variant.Text" Color="Color.Info">@LocalizationService.GetString("TestToken")</MudButton>
                 <span>@LocalizationService.GetString("CurrentProfile"):</span>
-                <MudLink Href="@CurrentProfileUrl">@CurrentProfileName (@GameWatcher.CurrentProfile.Type)</MudLink>
+                @if (HasCurrentProfileRoute)
+                {
+                    <MudLink Href="@CurrentProfileUrl">@CurrentProfileName (@GameWatcher.CurrentProfile.Type)</MudLink>
+                }
+                else
+                {
+                    <span>No EFT profile detected.</span>
+                }
                 <MudTextField @bind-Value="@TarkovTrackerToken" Immediate="true" Label="@LocalizationService.GetString("APIToken")" InputType="@PasswordInput" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@PasswordInputIcon" OnAdornmentClick="TokenShowClick"></MudTextField>
             }
         </MudPaper>
@@ -205,7 +212,7 @@
         }
     }
 
-    private string currentProfileName = GameWatcher.CurrentProfile.AccountId;
+    private string currentProfileName = "";
     private string CurrentProfileName {
         get
         {
@@ -213,16 +220,42 @@
         }
     }
 
-    private Task UpdateProfileName()
+    private bool HasCurrentProfileRoute =>
+        !string.IsNullOrWhiteSpace(GameWatcher.CurrentProfile.Id)
+        && !string.IsNullOrWhiteSpace(GameWatcher.CurrentProfile.AccountId)
+        && GameWatcher.CurrentProfile.Type != ProfileType.Unknown;
+
+    private async Task UpdateProfileName()
     {
-        return TarkovDev.GetPlayerName(GameWatcher.CurrentProfile).ContinueWith(t =>
+        if (!HasCurrentProfileRoute)
         {
-            if (!t.IsCompletedSuccessfully)
-            {
-                return;
-            }
-            currentProfileName = t.Result;
-        });
+            currentProfileName = "";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var profile = new Profile
+        {
+            Id = GameWatcher.CurrentProfile.Id,
+            AccountId = GameWatcher.CurrentProfile.AccountId,
+            Type = GameWatcher.CurrentProfile.Type,
+        };
+        currentProfileName = profile.AccountId;
+        var profileName = await TarkovDev.GetPlayerName(profile);
+        if (HasCurrentProfileRoute
+            && string.Equals(GameWatcher.CurrentProfile.Id, profile.Id, StringComparison.Ordinal)
+            && string.Equals(GameWatcher.CurrentProfile.AccountId, profile.AccountId, StringComparison.Ordinal)
+            && GameWatcher.CurrentProfile.Type == profile.Type)
+        {
+            currentProfileName = profileName;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnProfileChanged(object? sender, ProfileEventArgs e)
+    {
+        await UpdateProfileName();
     }
 
     protected override void OnInitialized()
@@ -231,8 +264,9 @@
         PlaybackDevices = Sound.GetPlaybackDevices();
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
         LocalizationService.LanguageChanged += OnLanguageChanged;
+        eft.ProfileChanged += OnProfileChanged;
         ResolveCustomLogsFolder();
-        UpdateProfileName();
+        _ = UpdateProfileName();
     }
 
     protected override void OnParametersSet()
@@ -252,6 +286,7 @@
     public void Dispose()
     {
         LocalizationService.LanguageChanged -= OnLanguageChanged;
+        eft.ProfileChanged -= OnProfileChanged;
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)
@@ -623,8 +658,9 @@
         "tarkovtracker.io",
         StringComparison.OrdinalIgnoreCase);
 
-    private string CurrentProfileUrl =>
-        $"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}";
+    private string CurrentProfileUrl => HasCurrentProfileRoute
+        ? $"https://tarkov.dev/players/{GameWatcher.CurrentProfile.Type.ToString().ToLower()}/{GameWatcher.CurrentProfile.AccountId}"
+        : "#";
 
     void TokenShowClick()
     {
