@@ -1036,7 +1036,7 @@ namespace TarkovMonitor
                 catch (Exception ex)
                 {
 #if DEBUG
-                    RecordException("Queue-time submission failed.", "TM-API-QUEUE-001", "SubmitQueueTime", ex, "TarkovDev", "Report", "https://manager.tarkov.dev/api");
+                    messageLog.AddMessage($"Error submitting queue time: {ex.Message}", "exception");
 #endif
                 }
             }
