@@ -17,6 +17,10 @@ namespace TarkovMonitor
         private readonly FileSystemWatcher logFileCreateWatcher;
         private readonly FileSystemWatcher screenshotWatcher;
         private string _logsPath = "";
+        // Start() has run; log monitoring may still be waiting on a usable logs folder.
+        private bool watcherStarted = false;
+        // The log folder watcher is live and pointed at an existing folder.
+        private bool logWatcherStarted = false;
         public static Profile CurrentProfile { get; set; } = new();
         public static bool ReadingPastLogs = false;
         public bool InitialLogsRead { get; private set; } = false;
@@ -45,12 +49,32 @@ namespace TarkovMonitor
             set
             {
                 _logsPath = value;
-                if (logFileCreateWatcher.EnableRaisingEvents)
+                if (!watcherStarted)
                 {
-                    logFileCreateWatcher.Path = LogsPath;
-                    WatchLogsFolder(GetLatestLogFolder());
+                    return;
                 }
-
+                try
+                {
+                    if (!logWatcherStarted)
+                    {
+                        // Log monitoring was deferred because no usable folder was available at
+                        // startup; the new path may be the one we were waiting for.
+                        StartLogWatcher();
+                        return;
+                    }
+                    var logsPath = LogsPath;
+                    if (!Directory.Exists(logsPath))
+                    {
+                        ReportMissingLogsPath();
+                        return;
+                    }
+                    logFileCreateWatcher.Path = logsPath;
+                    WatchLatestLogFolder();
+                }
+                catch (Exception ex)
+                {
+                    ExceptionThrown?.Invoke(this, new ExceptionEventArgs(ex, "changing the logs folder"));
+                }
             }
         }
         public string CurrentLogsFolder {
@@ -116,35 +140,185 @@ namespace TarkovMonitor
         private static string logPatternPrefix = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?<tzoffset> [+-]\d{2}:\d{2})?\|";
         private static string logPattern = @$"{logPatternPrefix}(?<message>.+$)\s*(?<json>^{{[\s\S]+?^}})?";
 
+        private const string SteamAppId = "3932890";
+        // Steam writes some of its keys through the 32-bit view (SOFTWARE\WOW6432Node\...), so every
+        // registry lookup below checks both views rather than assuming the process bitness.
+        private static readonly RegistryView[] RegistryViews = { RegistryView.Registry64, RegistryView.Registry32 };
+
+        /// <summary>
+        /// Locates the EFT logs folder, first from an uninstall registry entry and then by walking
+        /// the Steam libraries. Returns an empty string when no install can be found; callers treat
+        /// that as recoverable and let the user pick the folder manually in Settings.
+        /// </summary>
         public static string GetDefaultLogsFolder()
         {
-            string[] paths = {
-                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov",
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 3932890"
-            };
-            foreach (var path in paths)
+            var logsPath = GetRegistryLogsFolder();
+            if (logsPath != "")
             {
-                using RegistryKey? regKey = Registry.LocalMachine.OpenSubKey(path);
-                if (regKey == null)
+                return logsPath;
+            }
+            return GetSteamLogsFolder();
+        }
+
+        private static string GetRegistryLogsFolder()
+        {
+            string[] paths = {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App " + SteamAppId
+            };
+            RegistryHive[] hives = { RegistryHive.LocalMachine, RegistryHive.CurrentUser };
+            foreach (var hive in hives)
+            {
+                foreach (var view in RegistryViews)
                 {
-                    continue;
-                }
-                var installPath = regKey.GetValue("InstallLocation")?.ToString();
-                if (installPath == null)
-                {
-                    continue;
-                }
-                var logsPath = Path.Combine(installPath, "Logs");
-                if (!Directory.Exists(logsPath))
-                {
-                    logsPath = Path.Combine(installPath, "build", "Logs");
-                }
-                if (Directory.Exists(logsPath))
-                {
-                    return logsPath;
+                    foreach (var path in paths)
+                    {
+                        // Steam often leaves InstallLocation blank or writes the key with no values
+                        // at all, so an entry that exists is not enough on its own.
+                        var installPath = ReadRegistryValue(hive, view, path, "InstallLocation");
+                        var logsPath = GetLogsFolderForInstall(installPath);
+                        if (logsPath != "")
+                        {
+                            return logsPath;
+                        }
+                    }
                 }
             }
-		    throw new Exception("No Tarkov install path found");
+            return "";
+        }
+
+        /// <summary>
+        /// Finds a Steam install of EFT by reading the app manifest in each Steam library, which
+        /// stays accurate for non-default libraries even when the uninstall entry has no path.
+        /// </summary>
+        private static string GetSteamLogsFolder()
+        {
+            foreach (var library in GetSteamLibraryFolders())
+            {
+                var steamApps = Path.Combine(library, "steamapps");
+                List<string> installDirs = new();
+                var manifestDir = GetSteamInstallDir(Path.Combine(steamApps, $"appmanifest_{SteamAppId}.acf"));
+                if (manifestDir != "")
+                {
+                    installDirs.Add(manifestDir);
+                }
+                // Fall back to the conventional folder name if the manifest is missing or unreadable.
+                installDirs.Add("Escape from Tarkov");
+                foreach (var installDir in installDirs)
+                {
+                    var logsPath = GetLogsFolderForInstall(Path.Combine(steamApps, "common", installDir));
+                    if (logsPath != "")
+                    {
+                        return logsPath;
+                    }
+                }
+            }
+            return "";
+        }
+
+        private static List<string> GetSteamLibraryFolders()
+        {
+            List<string> libraries = new();
+            var steamPath = GetSteamPath();
+            if (steamPath == "")
+            {
+                return libraries;
+            }
+            libraries.Add(steamPath);
+            var libraryFolders = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
+            if (!File.Exists(libraryFolders))
+            {
+                return libraries;
+            }
+            try
+            {
+                foreach (Match match in Regex.Matches(File.ReadAllText(libraryFolders), @"""path""\s+""(?<path>[^""]+)"""))
+                {
+                    // Paths in a .vdf are backslash-escaped.
+                    var path = match.Groups["path"].Value.Replace(@"\\", @"\");
+                    if (path != "" && !libraries.Contains(path, StringComparer.OrdinalIgnoreCase))
+                    {
+                        libraries.Add(path);
+                    }
+                }
+            }
+            catch { }
+            return libraries;
+        }
+
+        private static string GetSteamInstallDir(string manifestPath)
+        {
+            if (!File.Exists(manifestPath))
+            {
+                return "";
+            }
+            try
+            {
+                var match = Regex.Match(File.ReadAllText(manifestPath), @"""installdir""\s+""(?<dir>[^""]+)""");
+                if (match.Success)
+                {
+                    return match.Groups["dir"].Value.Replace(@"\\", @"\");
+                }
+            }
+            catch { }
+            return "";
+        }
+
+        private static string GetSteamPath()
+        {
+            // HKCU stores SteamPath with forward slashes; HKLM\SOFTWARE\Valve is a 32-bit key.
+            (RegistryHive Hive, string Key, string Value)[] locations = {
+                (RegistryHive.CurrentUser, @"SOFTWARE\Valve\Steam", "SteamPath"),
+                (RegistryHive.LocalMachine, @"SOFTWARE\Valve\Steam", "InstallPath"),
+            };
+            foreach (var location in locations)
+            {
+                foreach (var view in RegistryViews)
+                {
+                    var path = ReadRegistryValue(location.Hive, view, location.Key, location.Value);
+                    if (path == "")
+                    {
+                        continue;
+                    }
+                    try
+                    {
+                        return Path.GetFullPath(path);
+                    }
+                    catch { }
+                }
+            }
+            return "";
+        }
+
+        private static string ReadRegistryValue(RegistryHive hive, RegistryView view, string key, string valueName)
+        {
+            try
+            {
+                using RegistryKey baseKey = RegistryKey.OpenBaseKey(hive, view);
+                using RegistryKey? regKey = baseKey.OpenSubKey(key);
+                return regKey?.GetValue(valueName)?.ToString() ?? "";
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        private static string GetLogsFolderForInstall(string installPath)
+        {
+            if (string.IsNullOrEmpty(installPath))
+            {
+                return "";
+            }
+            string[] candidates = { Path.Combine(installPath, "Logs"), Path.Combine(installPath, "build", "Logs") };
+            foreach (var candidate in candidates)
+            {
+                if (Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+            return "";
 		}
 
         public GameWatcher()
@@ -281,22 +455,58 @@ namespace TarkovMonitor
         {
 			try
 			{
-                logFileCreateWatcher.Path = LogsPath;
-                logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
-				logFileCreateWatcher.EnableRaisingEvents = true;
+                watcherStarted = true;
 				processTimer.Elapsed += ProcessTimer_Elapsed;
 				UpdateProcess();
 				SetupScreenshotWatcher();
 				processTimer.Enabled = true;
-				if (Monitors.Count == 0)
-				{
-					WatchLogsFolder(GetLatestLogFolder());
-				}
+				StartLogWatcher();
 			}
 			catch (Exception ex)
 			{
                 ExceptionThrown?.Invoke(this, new(ex, "starting game watcher"));
 			}
+        }
+
+        /// <summary>
+        /// Brings up log monitoring for the current <see cref="LogsPath"/>. When no usable folder is
+        /// available this reports a single actionable message and leaves the process and screenshot
+        /// watchers running, so the user can recover by choosing a folder in Settings.
+        /// </summary>
+        private void StartLogWatcher()
+        {
+            var logsPath = LogsPath;
+            if (!Directory.Exists(logsPath))
+            {
+                ReportMissingLogsPath();
+                return;
+            }
+            logFileCreateWatcher.Path = logsPath;
+            logFileCreateWatcher.Created -= LogFileCreateWatcher_Created;
+            logFileCreateWatcher.Created += LogFileCreateWatcher_Created;
+            logFileCreateWatcher.EnableRaisingEvents = true;
+            logWatcherStarted = true;
+            if (Monitors.Count == 0)
+            {
+                WatchLatestLogFolder();
+            }
+        }
+
+        private void ReportMissingLogsPath()
+        {
+            ExceptionThrown?.Invoke(this, new(new Exception("Could not find the Escape from Tarkov logs folder. Choose it under Settings > Logs Folder to start monitoring."), "finding the logs folder"));
+        }
+
+        private void WatchLatestLogFolder()
+        {
+            var latestLogFolder = GetLatestLogFolder();
+            if (latestLogFolder == "")
+            {
+                // The logs folder exists but has no session folders yet; the create watcher picks
+                // up the next one EFT writes.
+                return;
+            }
+            WatchLogsFolder(latestLogFolder);
         }
 
         private void LogFileCreateWatcher_Created(object sender, FileSystemEventArgs e)
@@ -836,6 +1046,10 @@ namespace TarkovMonitor
         private string GetLatestLogFolder()
         {
             var logFolders = System.IO.Directory.GetDirectories(LogsPath);
+            if (logFolders.Length == 0)
+            {
+                return "";
+            }
             var latestDate = new DateTime(0);
             var latestLogFolder = logFolders.Last();
             foreach (var logFolder in logFolders)
