@@ -173,39 +173,56 @@
 
 	private void OnMessageAdded(object? sender, NewLogMessageArgs e)
 	{
-		InvokeAsync(StateHasChanged);
-
-		if (e.Message.Type == "quest" && GameWatcher.ReadingPastLogs)
+		_ = InvokeAsync(() =>
 		{
-			return;
-		}
-
-		var severity = e.Message.Type switch
-		{
-			"exception" => Severity.Error,
-			"warning" => Severity.Warning,
-			"update" => Severity.Success,
-			_ => Severity.Info
-		};
-
-		var path = NavigationManager.ToBaseRelativePath(NavigationManager.Uri)
-			.Split('?', '#')[0]
-			.Trim('/');
-		var messagesAreVisible = string.IsNullOrEmpty(path) || path.Equals("app", StringComparison.OrdinalIgnoreCase);
-		var requiresImmediateAttention = severity is Severity.Error or Severity.Warning;
-
-		if (messagesAreVisible && !requiresImmediateAttention)
-		{
-			return;
-		}
-
-		Snackbar.Add(e.Message.Message, severity, configuration =>
-		{
-			configuration.OnClick = snackbar =>
+			try
 			{
-				NavigationManager.NavigateTo("/");
-				return Task.CompletedTask;
-			};
+				if (e.IsRepeat)
+				{
+					return;
+				}
+
+				StateHasChanged();
+
+				if (e.Message.Type == "quest" && GameWatcher.ReadingPastLogs)
+				{
+					return;
+				}
+
+				var severity = e.Message.Type switch
+				{
+					"exception" => Severity.Error,
+					"warning" => Severity.Warning,
+					"update" => Severity.Success,
+					_ => Severity.Info
+				};
+
+				var path = NavigationManager.ToBaseRelativePath(NavigationManager.Uri)
+					.Split('?', '#')[0]
+					.Trim('/');
+				var messagesAreVisible = string.IsNullOrEmpty(path) || path.Equals("app", StringComparison.OrdinalIgnoreCase);
+				var requiresImmediateAttention = severity is Severity.Error or Severity.Warning;
+
+				if (messagesAreVisible && !requiresImmediateAttention)
+				{
+					return;
+				}
+
+				Snackbar.Add(e.Message.Message, severity, configuration =>
+				{
+					configuration.OnClick = snackbar =>
+					{
+						NavigationManager.NavigateTo("/");
+						return Task.CompletedTask;
+					};
+				});
+			}
+			catch (Exception exception)
+			{
+				MessageLog.Diagnostics.Capture(
+					new DiagnosticContext("TM-UI-006", "SnackbarNotification", "UI", "Notification", "A snackbar notification could not be shown."),
+					exception);
+			}
 		});
 	}
 

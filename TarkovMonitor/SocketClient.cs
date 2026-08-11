@@ -20,7 +20,7 @@ namespace TarkovMonitor
 
         static SocketClient()
         {
-            idleTimer.Elapsed += (sender, e) => {
+            idleTimer.Elapsed += async (sender, e) => {
                 if (socket == null)
                 {
                     return;
@@ -29,10 +29,19 @@ namespace TarkovMonitor
                 {
                     return;
                 }
-                socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Idle", CancellationToken.None).ContinueWith(t => {
+                try
+                {
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Idle", CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    ExceptionThrown?.Invoke(null, new(ex, "closing idle socket"));
+                }
+                finally
+                {
                     socket.Dispose();
                     socket = null;
-                });
+                }
             };
         }
 
@@ -66,32 +75,42 @@ namespace TarkovMonitor
 
             receiveTask = Task.Run(async () =>
             {
-                byte[] buffer = new byte[1024];
-                while (socket != null && socket.State == WebSocketState.Open)
+                try
                 {
-                    var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken.Token);
-
-                    if (result.MessageType == WebSocketMessageType.Close)
+                    byte[] buffer = new byte[1024];
+                    while (socket != null && socket.State == WebSocketState.Open)
                     {
-                        if (socket.State == WebSocketState.Open)
+                        var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken.Token);
+
+                        if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                            if (socket.State == WebSocketState.Open)
+                            {
+                                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                            }
+                            break;
                         }
-                        break;
-                    }
 
-                    JsonNode message = JsonNode.Parse(Encoding.UTF8.GetString(buffer, 0, result.Count));
-                    if (message == null)
-                    {
-                        return;
-                    }
-                    if (message["type"]?.ToString() == "ping")
-                    {
-                        SendSocketMessage(new JsonObject
+                        JsonNode? message = JsonNode.Parse(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                        if (message == null)
                         {
-                            ["type"] = "pong"
-                        });
+                            return;
+                        }
+                        if (message["type"]?.ToString() == "ping")
+                        {
+                            await SendSocketMessage(new JsonObject
+                            {
+                                ["type"] = "pong"
+                            });
+                        }
                     }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                }
+                catch (Exception ex)
+                {
+                    ExceptionThrown?.Invoke(null, new(ex, "receiving socket data"));
                 }
             }, cancellationToken.Token);
         }

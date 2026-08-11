@@ -186,6 +186,7 @@
             </div>
         </MudPaper>
     </MudItem>
+
 </MudGrid>
 
 @code {
@@ -195,6 +196,7 @@
 
     private Dictionary<int, string> PlaybackDevices;
     private List<(string Code, string Name)> AvailableLanguages = new();
+    private string resolvedCustomLogsFolder = "";
     private TarkovDev.Trader? TraderFence
     {
         get
@@ -229,6 +231,7 @@
         PlaybackDevices = Sound.GetPlaybackDevices();
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
         LocalizationService.LanguageChanged += OnLanguageChanged;
+        ResolveCustomLogsFolder();
         UpdateProfileName();
     }
 
@@ -604,13 +607,14 @@
             return;
         }
 
+        var startedUtc = DateTime.UtcNow;
         try
         {
             await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage(ex.Message, "exception");
+            messageLog.AddException("Tarkov Tracker profile could not be loaded.", "TM-API-TRACKER-005", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{TarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 
@@ -645,6 +649,7 @@
             messageLog.AddMessage("Enter a PVE_, PVP_, or SZN_ TarkovTracker.org key followed by its 18-character hexadecimal identifier.", "warning");
             return;
         } else {
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 var tokenResponse = await TarkovTracker.TestToken(TarkovTrackerToken);
@@ -656,7 +661,7 @@
             }
             catch (Exception ex)
             {
-                messageLog.AddMessage(ex.Message, "exception");
+                messageLog.AddException("The Tarkov Tracker key test failed.", "TM-API-TRACKER-006", "TestToken", ex, "TarkovTracker", "TokenTest", $"https://{TarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
 
             }
         }
@@ -764,25 +769,42 @@
             {
                 return Properties.Settings.Default.customLogsPath;
             }
-            try
-            {
-                return GameWatcher.GetDefaultLogsFolder();
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Error getting default logs folder: {ex.Message}", "exception");
-            }
-            return "";
+            return resolvedCustomLogsFolder;
         }
         set
         {
-            Properties.Settings.Default.customLogsPath = value;
+            Properties.Settings.Default.customLogsPath = value ?? "";
             Properties.Settings.Default.Save();
+            if (string.IsNullOrWhiteSpace(Properties.Settings.Default.customLogsPath))
+            {
+                ResolveCustomLogsFolder();
+            }
+        }
+    }
+
+    private void ResolveCustomLogsFolder()
+    {
+        if (!string.IsNullOrWhiteSpace(Properties.Settings.Default.customLogsPath))
+        {
+            resolvedCustomLogsFolder = Properties.Settings.Default.customLogsPath;
+            return;
+        }
+
+        var startedUtc = DateTime.UtcNow;
+        try
+        {
+            resolvedCustomLogsFolder = GameWatcher.GetDefaultLogsFolder();
+        }
+        catch (Exception ex)
+        {
+            resolvedCustomLogsFolder = "";
+            messageLog.AddException("The default EFT logs folder could not be located.", "TM-FILES-002", "GetDefaultLogsFolder", ex, "Filesystem", "Settings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 
     void CustomLogsFolderClick()
     {
+        var startedUtc = DateTime.UtcNow;
         try
         {
             var currentFolder = CustomLogsFolder;
@@ -801,7 +823,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error opening logs folder picker: {ex.Message}", "exception");
+            messageLog.AddException("The EFT logs folder picker could not be opened.", "TM-UI-004", "OpenLogsFolderPicker", ex, "UI", "Settings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 

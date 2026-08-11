@@ -35,7 +35,6 @@ namespace TarkovMonitor
                     catch (Exception ex)
                     {
                         Exception?.Invoke(this, new(ex, $"getting initial {this.Type} log data size"));
-                        //System.Diagnostics.Debug.WriteLine($"Error getting initial size of {Path}: {ex.Message}");
                         Thread.Sleep(5000);
                         Start();
                         return;

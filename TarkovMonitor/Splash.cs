@@ -18,6 +18,7 @@ class Splash : Form
     };
 
     private System.Timers.Timer splashTimer = new System.Timers.Timer();
+    private readonly DiagnosticsService diagnostics;
 
     [System.ComponentModel.Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
@@ -37,8 +38,9 @@ class Splash : Form
         }
     }
 
-    public Splash(Bitmap bitmap, int splashTime)
+    public Splash(Bitmap bitmap, int splashTime, DiagnosticsService diagnostics)
     {
+        this.diagnostics = diagnostics;
         // Window settings
         this.TopMost = true;
         this.ShowInTaskbar = false;
@@ -75,26 +77,28 @@ class Splash : Form
 
     private void InstallWebview2Runtime()
     {
-        using var client = new WebClient();
-        client.DownloadFile("https://go.microsoft.com/fwlink/p/?LinkId=2124703", "MicrosoftEdgeWebview2Setup.exe");
-
-        var startInfo = new ProcessStartInfo();
-        startInfo.CreateNoWindow = false;
-        startInfo.UseShellExecute = false;
-        startInfo.FileName = "MicrosoftEdgeWebview2Setup.exe";
-        startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-        startInfo.Arguments = "/install";
-
         try
         {
+            using var client = new WebClient();
+            client.DownloadFile("https://go.microsoft.com/fwlink/p/?LinkId=2124703", "MicrosoftEdgeWebview2Setup.exe");
+
+            var startInfo = new ProcessStartInfo();
+            startInfo.CreateNoWindow = false;
+            startInfo.UseShellExecute = false;
+            startInfo.FileName = "MicrosoftEdgeWebview2Setup.exe";
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            startInfo.Arguments = "/install";
+
             // Start the process with the info we specified.
             // Call WaitForExit and then the using statement will close.
             var exeProcess = Process.Start(startInfo);
             exeProcess?.WaitForExit();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            Debug.WriteLine("Could not install WebView");
+            diagnostics.Capture(
+                new DiagnosticContext("TM-STARTUP-WEBVIEW-001", "InstallWebView2Runtime", "Startup", "WebView2", "The embedded web view runtime could not be installed."),
+                ex);
         }
 
         try

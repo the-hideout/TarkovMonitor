@@ -1,12 +1,18 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using Refit;
-using System.Diagnostics;
+using Newtonsoft.Json;
 
 namespace TarkovMonitor
 {
     public class TarkovDev
     {
-        private static readonly HttpClient jsonClient = new()
+        public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
+        private static readonly HttpClient jsonClient = new(new HttpClientHandler
+        {
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip
+                | System.Net.DecompressionMethods.Deflate
+                | System.Net.DecompressionMethods.Brotli,
+        })
         {
             BaseAddress = new Uri("https://json.tarkov.dev"),
             DefaultRequestHeaders = {
@@ -84,57 +90,74 @@ namespace TarkovMonitor
             }
         }
 
-        private async static Task<JObject> GetJObject(string path) {
-            var response = await jsonClient.GetAsync(path);
+        private static readonly JsonSerializerSettings jsonSerializerSettings = new()
+        {
+            MissingMemberHandling = MissingMemberHandling.Ignore,
+            NullValueHandling = NullValueHandling.Ignore,
+        };
+
+        private async static Task<T> GetJson<T>(string path)
+        {
+            using var response = await jsonClient.GetAsync(path, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
-            string responseBody = await response.Content.ReadAsStringAsync();
-            return JObject.Parse(responseBody);
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            using var reader = new StreamReader(stream);
+            using var jsonReader = new JsonTextReader(reader);
+            var serializer = JsonSerializer.Create(jsonSerializerSettings);
+            return serializer.Deserialize<T>(jsonReader)
+                ?? throw new InvalidDataException($"The tarkov.dev response for '{path}' was empty.");
         }
 
-        private async static Task<T> JsonApiRequest<T>(string path, string lang = null)
+        private async static Task<T> JsonApiRequest<T>(string path, string? lang = null) where T : class
         {
-            JObject data = null;
-            Dictionary<string, string> langData = new();
-            Dictionary<string, string> langDataFallback = new();
-            var dataTask = GetJObject(path);
-            var langDataTask = System.Threading.Tasks.Task.FromResult(new JObject());
-            var langDataFallbackTask = System.Threading.Tasks.Task.FromResult(new JObject());
-            if (lang != null)
+            if (string.IsNullOrWhiteSpace(lang))
             {
-                langDataTask = GetJObject($"{path}_{lang}");
-                if (lang != "en")
-                {
-                    langDataFallbackTask = GetJObject($"{path}_en");
-                }
+                lang = null;
             }
+
+            var dataTask = GetJson<JsonApiEnvelope<T>>(path);
+            if (lang == null)
+            {
+                var response = await dataTask;
+                return RequireApiData(response.data, path);
+            }
+
+            var langDataTask = GetJson<JsonApiEnvelope<Dictionary<string, string>>>($"{path}_{lang}");
+            var langDataFallbackTask = lang != "en"
+                ? GetJson<JsonApiEnvelope<Dictionary<string, string>>>($"{path}_en")
+                : System.Threading.Tasks.Task.FromResult<JsonApiEnvelope<Dictionary<string, string>>>(null!);
             await System.Threading.Tasks.Task.WhenAll(dataTask, langDataTask, langDataFallbackTask);
-            if (dataTask.IsFaulted)
+
+            var data = dataTask.Result;
+            var baseData = RequireApiData(data.data, path);
+            var langData = langDataTask.Result.data ?? new();
+            var langDataFallback = langDataFallbackTask.Result?.data ?? new();
+            return ApplyTranslations(baseData, data.translations, langData, langDataFallback);
+        }
+
+        internal static T ApplyTranslations<T>(T data, List<string>? paths,
+            Dictionary<string, string> langData, Dictionary<string, string> langDataFallback)
+            where T : class
+        {
+            if (data == null || paths == null || paths.Count == 0)
             {
-                throw dataTask.Exception.InnerException;
+                return data;
             }
-            data = dataTask.Result;
-            if (lang == null || !data.ContainsKey("translations"))
+
+            // Materialize only the already-projected model, not the full response.
+            var projected = JObject.FromObject(data);
+            foreach (var jPath in paths)
             {
-                return data.ToObject<T>();
-            }
-            if (langDataTask.IsFaulted)
-            {
-                throw langDataTask.Exception.InnerException;
-            }
-            langData = langDataTask.Result.ToObject<LocalizationResponse>().data;
-            if (lang != "en")
-            {
-                if (langDataFallbackTask.IsFaulted)
-                {
-                    throw langDataFallbackTask.Exception.InnerException;
-                }
-                langDataFallback = langDataFallbackTask.Result.ToObject<LocalizationResponse>().data;
-            }
-            foreach (var jPath in data["translations"].ToObject<string[]>())
-            {
-                foreach (JValue translationTarget in data.SelectTokens(jPath))
+                var projectedPath = jPath.StartsWith("$.data.", StringComparison.Ordinal)
+                    ? "$." + jPath[7..]
+                    : jPath;
+                foreach (JValue translationTarget in projected.SelectTokens(projectedPath))
                 {
                     var translatedValue = translationTarget.Value<string>();
+                    if (string.IsNullOrWhiteSpace(translatedValue))
+                    {
+                        continue;
+                    }
                     if (langData.ContainsKey(translatedValue))
                     {
                         translatedValue = langData[translatedValue];
@@ -150,29 +173,29 @@ namespace TarkovMonitor
                     translationTarget.Value = translatedValue;
                 }
             }
-            return data.ToObject<T>();
+            return projected.ToObject<T>() ?? data;
         }
 
         public async static Task<List<Task>> GetTasks()
         {
             var response = await JsonApiRequest<TasksResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/tasks", Properties.Settings.Default.language);
-            Tasks = response.data.tasks.Values.ToList();
+            Tasks = response.tasks.Values.ToList();
             return Tasks;
         }
 
         public async static Task<List<Map>> GetMaps()
         {
             var response = await JsonApiRequest<MapsResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/maps", Properties.Settings.Default.language);
-            Maps = response.data.maps.Values.ToList();
+            Maps = response.maps.Values.ToList();
             return Maps;
         }
         public async static Task<List<Item>> GetItems()
         {
             var response = await JsonApiRequest<ItemsResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/items", Properties.Settings.Default.language);
-            Items = response.data.items.Values.ToList();
+            Items = response.items.Values.ToList();
             foreach (var item in Items)
             {
-                if (item.types.Contains("gun"))
+                if (item.types?.Contains("gun") == true)
                 {
                     if (item.properties?.defaultPreset != null)
                     {
@@ -188,20 +211,20 @@ namespace TarkovMonitor
                     }
                 }
             }
-            PlayerLevels = response.data.playerLevels;
-            ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type] = response.data.settings.scavCooldownSeconds;
+            PlayerLevels = response.playerLevels;
+            ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type] = response.settings.scavCooldownSeconds;
             return Items;
         }
         public async static Task<List<Trader>> GetTraders()
         {
-            var response = await JsonApiRequest<TradersResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/traders", Properties.Settings.Default.language);
-            Traders = response.data.Values.ToList();
+            var response = await JsonApiRequest<Dictionary<string, Trader>>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/traders", Properties.Settings.Default.language);
+            Traders = response.Values.ToList();
             return Traders;
         }
         public async static Task<List<HideoutStation>> GetHideout()
         {
-            var response = await JsonApiRequest<HideoutResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/hideout", Properties.Settings.Default.language);
-            Stations = response.data.Values.ToList();
+            var response = await JsonApiRequest<Dictionary<string, HideoutStation>>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/hideout", Properties.Settings.Default.language);
+            Stations = response.Values.ToList();
             return Stations;
         }
         public async static System.Threading.Tasks.Task UpdateApiData()
@@ -226,13 +249,13 @@ namespace TarkovMonitor
             {
                 if (ex.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    throw new Exception($"Invalid Queue API response code ({ex.StatusCode}): {ex.Message}");
+                    throw new Exception($"Invalid Queue API response code ({ex.StatusCode}).", ex);
                 }
-                throw new Exception($"Queue API exception: {ex.Message}");
+                throw new Exception("Queue API exception.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Queue API error: {ex.Message}");
+                throw new Exception("Queue API error.", ex);
             }
         }
 
@@ -246,13 +269,13 @@ namespace TarkovMonitor
             {
                 if (ex.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    throw new Exception($"Invalid Goons API response code ({ex.StatusCode}): {ex.Content}");
+                    throw new Exception($"Invalid Goons API response code ({ex.StatusCode}).", ex);
                 }
-                throw new Exception($"Goons API exception: {ex.Message}");
+                throw new Exception("Goons API exception.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Goons API error: {ex.Message}");
+                throw new Exception("Goons API error.", ex);
             }
         }
 
@@ -267,9 +290,10 @@ namespace TarkovMonitor
                 var p = await playerJsonApi.GetPlayerProfile(profile.Type.ToPlayersApiString(), profile.AccountId);
                 PlayerNames[profile.Type].Add(profile.AccountId, p.info.nickname);
                 return p.info.nickname;
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
-                Debug.WriteLine(ex.Message);
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "player profile lookup"));
             }
             return profile.AccountId;
         }
@@ -293,26 +317,37 @@ namespace TarkovMonitor
             {
                 if (ex.StatusCode != System.Net.HttpStatusCode.OK)
                 {
-                    throw new Exception($"Invalid Players API response code ({ex.StatusCode}): {ex.Message}");
+                    throw new Exception($"Invalid Players API response code ({ex.StatusCode}).", ex);
                 }
-                throw new Exception($"Players API exception: {ex.Message}");
+                throw new Exception("Players API exception.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Players API error: {ex.Message}");
+                throw new Exception("Players API error.", ex);
             }
         }*/
 
         public static int GetLevel(int experience)
         {
+            return GetLevel(PlayerLevels, experience);
+        }
+
+        internal static int GetLevel(IReadOnlyList<PlayerLevel> playerLevels, int experience)
+        {
             if (experience == 0)
             {
                 return 0;
             }
-            var totalExp = 0;
-            for (var i = 0; i < PlayerLevels.Count; i++)
+
+            if (playerLevels.Count == 0)
             {
-                var levelData = PlayerLevels[i];
+                return 0;
+            }
+
+            var totalExp = 0;
+            for (var i = 0; i < playerLevels.Count; i++)
+            {
+                var levelData = playerLevels[i];
                 totalExp += levelData.exp;
                 if (totalExp == experience)
                 {
@@ -320,10 +355,10 @@ namespace TarkovMonitor
                 }
                 if (totalExp > experience)
                 {
-                    return PlayerLevels[i - 1].level;
+                    return i == 0 ? levelData.level : playerLevels[i - 1].level;
                 }
             }
-            return PlayerLevels[PlayerLevels.Count - 1].level;
+            return playerLevels[^1].level;
         }
 
         public static void StartAutoUpdates()
@@ -332,34 +367,37 @@ namespace TarkovMonitor
             updateTimer.Elapsed += UpdateTimer_Elapsed;
         }
 
-        private static void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        private static async void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
             if (DateTime.Now.Subtract(LastActivity).TotalMinutes > 5)
             {
                 return;
             }
-            UpdateApiData();
+            try
+            {
+                await UpdateApiData();
+            }
+            catch (Exception ex)
+            {
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "auto-updating tarkov.dev data"));
+            }
         }
 
-        public class JsonApiResponse
+        internal static T RequireApiData<T>(T? data, string path) where T : class
         {
-            public object data { get; set; }
+            return data
+                ?? throw new InvalidDataException($"The tarkov.dev response for '{path}' did not contain data.");
+        }
+
+        internal class JsonApiEnvelope<T>
+        {
+            public T? data { get; set; }
             public List<string>? translations { get; set; }
         }
 
-        public class LocalizationResponse : JsonApiResponse
+        public class TasksResponse
         {
-            public Dictionary<string, string> data { get; set; }
-        }
-
-        public class TasksResponse : JsonApiResponse
-        {
-            public TasksJsonContent data {  get; set; }
-        }
-
-        public class TasksJsonContent
-        {
-            public Dictionary<string, Task> tasks { get; set; }
+            public Dictionary<string, Task> tasks { get; set; } = new();
         }
 
         public class Task
@@ -369,7 +407,7 @@ namespace TarkovMonitor
             public string normalizedName { get; set; }
             public string? wikiLink { get; set; }
             public bool restartable { get; set; }
-            public List<TaskFailCondition> failConditions { get; set; }
+            public List<TaskFailCondition> failConditions { get; set; } = new();
         }
 
         public class TaskFailCondition
@@ -378,14 +416,9 @@ namespace TarkovMonitor
             public List<string>? status { get; set; }
         }
 
-        public class MapsResponse : JsonApiResponse
+        public class MapsResponse
         {
-            public MapsJsonContent data { get; set; }
-        }
-
-        public class MapsJsonContent
-        {
-            public Dictionary<string, Map> maps { get; set; }
+            public Dictionary<string, Map> maps { get; set; } = new();
         }
 
         public class Map
@@ -395,11 +428,12 @@ namespace TarkovMonitor
             public string nameId { get; set; }
             public string normalizedName { get; set; }
             public string scenePath { get; set; }
-            public List<BossSpawn> bosses { get; set; }
+            public List<BossSpawn> bosses { get; set; } = new();
             public bool HasGoons()
             {
                 List<string> goons = new() { "bossKnight", "followerBigPipe", "followerBirdEye" };
-                return bosses.Any(spawn => goons.Contains(spawn.mob) || spawn.escorts.Any(e => goons.Contains(e.mob)));
+                return bosses.Any(spawn => goons.Contains(spawn.mob)
+                    || (spawn.escorts?.Any(e => goons.Contains(e.mob)) == true));
             }
         }
         public class BossEscort
@@ -409,18 +443,13 @@ namespace TarkovMonitor
         public class BossSpawn
         {
             public string mob { get; set; }
-            public List<BossEscort> escorts { get; set; }
+            public List<BossEscort> escorts { get; set; } = new();
         }
-        public class ItemsResponse : JsonApiResponse
+        public class ItemsResponse
         {
-            public ItemsJsonContent data { get; set; }
-        }
-
-        public class ItemsJsonContent
-        {
-            public Dictionary<string, Item> items { get; set; }
-            public List<PlayerLevel> playerLevels { get; set; }
-            public GameSettings settings { get; set; }
+            public Dictionary<string, Item> items { get; set; } = new();
+            public List<PlayerLevel> playerLevels { get; set; } = new();
+            public GameSettings settings { get; set; } = new();
         }
         public class Item
         {
@@ -432,7 +461,7 @@ namespace TarkovMonitor
 			public string iconLink { get; set; }
             public string gridImageLink { get; set; }
             public string image512pxLink { get; set; }
-            public List<string> types { get; set; }
+            public List<string> types { get; set; } = new();
             public ItemProperties? properties { get; set; }
         }
         public class ItemProperties
@@ -445,16 +474,12 @@ namespace TarkovMonitor
             public int scavCooldownSeconds { get; set; }
         }
 
-        public class TradersResponse : JsonApiResponse
-        {
-            public Dictionary<string, Trader> data { get; set; }
-        }
         public class Trader
         {
             public string id { get; set; }
             public string name { get; set; }
             public string normalizedName { get; set; }
-            public List<TraderReputationLevel> reputationLevels { get; set; }
+            public List<TraderReputationLevel> reputationLevels { get; set; } = new();
         }
         public class TraderReputationLevel
         {
@@ -462,22 +487,18 @@ namespace TarkovMonitor
             public decimal scavCooldownModifier { get; set; }
         }
 
-        public class HideoutResponse : JsonApiResponse
-        {
-            public Dictionary<string, HideoutStation> data { get; set; }
-        }
         public class HideoutStation
         {
             public string id { get; set; }
             public string name { get; set; }
             public string normalizedName { get; set; }
-            public List<StationLevel> levels { get; set; }
+            public List<StationLevel> levels { get; set; } = new();
         }
         public class StationLevel
         {
             public string id { get; set; }
             public int level { get; set; }
-            public List<StationBonus> bonuses { get; set; }
+            public List<StationBonus> bonuses { get; set; } = new();
         }
         public class StationBonus
         {
