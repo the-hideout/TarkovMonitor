@@ -285,11 +285,28 @@ namespace TarkovMonitor
             {
                 return PlayerNames[profile.Type][profile.AccountId];
             }
+            if (profile.Type == ProfileType.Unknown)
+            {
+                return profile.AccountId;
+            }
+            if (string.IsNullOrWhiteSpace(profile.AccountId))
+            {
+                return profile.AccountId;
+            }
             try
             {
                 var p = await playerJsonApi.GetPlayerProfile(profile.Type.ToPlayersApiString(), profile.AccountId);
                 PlayerNames[profile.Type].Add(profile.AccountId, p.info.nickname);
                 return p.info.nickname;
+            }
+            catch (Refit.ApiException ex)
+            {
+                // don't throw an error if the profile isn't available
+                if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    return profile.AccountId;
+                }
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "player profile lookup"));
             }
             catch (Exception ex)
             {
