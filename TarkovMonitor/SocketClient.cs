@@ -69,6 +69,7 @@ namespace TarkovMonitor
             var remoteid = Properties.Settings.Default.remoteId;
             socket = new();
             socket.Options.SetRequestHeader("User-Agent", $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            socket.Options.SetRequestHeader("origin", $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}/{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
             await socket.ConnectAsync(new Uri(wsUrl + $"?sessionid={remoteid}-tm"), new());
             idleTimer.Stop();
             idleTimer.Start();
