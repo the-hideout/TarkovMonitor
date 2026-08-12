@@ -357,13 +357,13 @@ namespace TarkovMonitor
 
         private async void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
-            if (e.Profile.Type == ProfileType.Unknown)
+            if (e.Profile.Type == ProfileType.Unknown || string.IsNullOrWhiteSpace(e.Profile.Id))
             {
                 TarkovTracker.ResetActiveState();
                 return;
             }
 
-            if (e.Profile.Id == TarkovTracker.CurrentProfileId)
+            if (TarkovTracker.TryAuthorizeWrite(e.Profile, out _))
             {
                 return;
             }
@@ -371,7 +371,7 @@ namespace TarkovMonitor
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetProfile(e.Profile.Id);
+                await TarkovTracker.SetProfile(e.Profile);
             }
             catch (Exception ex)
             {
@@ -698,7 +698,7 @@ namespace TarkovMonitor
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
+                await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Snapshot());
             }
             catch (Exception ex)
             {
@@ -778,14 +778,14 @@ namespace TarkovMonitor
 
             messageLog.AddMessage($"Completed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
-            if (!TarkovTracker.CanWriteForProfile(e.Profile))
+            if (!TarkovTracker.TryAuthorizeWrite(e.Profile, out var authorization))
             {
                 return;
             }
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetTaskComplete(task.id);
+                await TarkovTracker.SetTaskComplete(authorization, task.id);
                 //messageLog.AddMessage(response, "quest");
             }
             catch (Exception ex)
@@ -804,14 +804,14 @@ namespace TarkovMonitor
 
             messageLog.AddMessage($"Failed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
-            if (!TarkovTracker.CanWriteForProfile(e.Profile))
+            if (!TarkovTracker.TryAuthorizeWrite(e.Profile, out var authorization))
             {
                 return;
             }
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetTaskFailed(task.id);
+                await TarkovTracker.SetTaskFailed(authorization, task.id);
                 //messageLog.AddMessage(response, "quest");
             }
             catch (Exception ex)
@@ -829,14 +829,14 @@ namespace TarkovMonitor
             }
             messageLog.AddMessage($"Started task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
-            if (!TarkovTracker.CanWriteForProfile(e.Profile))
+            if (!TarkovTracker.TryAuthorizeWrite(e.Profile, out var authorization))
             {
                 return;
             }
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetTaskStarted(e.LogContent.TaskId);
+                await TarkovTracker.SetTaskStarted(authorization, e.LogContent.TaskId);
             }
             catch (TrackerActiveStateCompatibilityException ex)
             {

@@ -42,7 +42,7 @@ namespace TarkovMonitor
         private static readonly Regex LogMessagePattern = new(
             @$"{TimestampPattern}(?<message>.+$)\s*(?<json>^{{[\s\S]+?^}})?",
             RegexOptions.Multiline | RegexOptions.Compiled);
-        private static readonly Regex ModePattern = new(@"Session mode: (?<mode>[^\s|]+)", RegexOptions.Compiled);
+        private static readonly Regex ModePattern = new(@"Session mode:\s*(?<mode>[^\s|]+)", RegexOptions.Compiled);
         private static readonly Regex ProfilePattern = new(
             @"(?:SelectProfile|SelectedProfile|PrepareSelectedProfileLocally|CompleteSelectedProfile) ProfileId:(?<profileId>\w+) AccountId:(?<accountId>\d+)",
             RegexOptions.Compiled);
@@ -59,7 +59,7 @@ namespace TarkovMonitor
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unsupported task lifecycle state."),
         };
 
-        internal static void ApplyToCache(TarkovTracker.ProgressResponseTask storedStatus, TaskStatus status)
+        internal static void ApplyToCache(TrackerTaskProgress storedStatus, TaskStatus status)
         {
             switch (status)
             {
@@ -93,7 +93,7 @@ namespace TarkovMonitor
             }
         }
 
-        internal static bool CacheMatches(TarkovTracker.ProgressResponseTask? storedStatus, TaskStatus status)
+        internal static bool CacheMatches(TrackerTaskProgress? storedStatus, TaskStatus status)
         {
             if (storedStatus == null)
             {
@@ -112,18 +112,11 @@ namespace TarkovMonitor
         internal static bool ShouldDispatch(Profile profile, bool validToken, string currentProfileId, string token)
         {
             if (!validToken || string.IsNullOrWhiteSpace(profile.Id)
-                || profile.Id != currentProfileId || !TarkovTracker.IsSupportedOrgToken(token))
+                || profile.Id != currentProfileId || !TrackerTokenFormat.IsSupportedOrgToken(token))
             {
                 return false;
             }
-            var prefix = profile.Type switch
-            {
-                ProfileType.PVE => "PVE",
-                ProfileType.Regular => "PVP",
-                ProfileType.PvpSeason => "SZN",
-                _ => null,
-            };
-            return prefix != null && token.StartsWith(prefix + "_", StringComparison.OrdinalIgnoreCase);
+            return TrackerTokenFormat.MatchesMode(token, profile.Type);
         }
 
         internal static TaskLifecycleReplayResult Replay(IEnumerable<TaskLifecycleLogSource> sources, DateTimeOffset notBefore)
@@ -253,10 +246,10 @@ namespace TarkovMonitor
                     }
                     var message = match.Groups["message"].Value.TrimEnd('\r');
                     var version = ParseVersion(message);
-                    var modeMatch = ModePattern.Match(message);
-                    if (modeMatch.Success)
+                    if (message.Contains("Session mode:", StringComparison.Ordinal))
                     {
-                        var rawMode = modeMatch.Groups["mode"].Value;
+                        var modeMatch = ModePattern.Match(message);
+                        var rawMode = modeMatch.Success ? modeMatch.Groups["mode"].Value : "(missing)";
                         Add(new RawRecord(timestamp, source.Folder, source.Path, ordinal, RecordKind.Mode,
                             ParseMode(rawMode), string.Empty, string.Empty, string.Empty, TaskStatus.None, version,
                             StableHash($"mode|{source.Folder}|{timestamp.UtcTicks}|{rawMode}")));
@@ -408,11 +401,7 @@ namespace TarkovMonitor
         }
 
         private static ProfileType ParseMode(string rawMode) =>
-            Enum.TryParse<ProfileType>(rawMode, true, out var mode)
-                && Enum.IsDefined(mode)
-                && mode != ProfileType.Unknown
-                    ? mode
-                    : ProfileType.Unknown;
+            ProfileIdentity.TryParseMode(rawMode, out var mode) ? mode : ProfileType.Unknown;
 
         private static (long Timestamp, int Kind, string Task, int Status, string Identity, string Source, int Ordinal)
             SortKey(RawRecord record) =>

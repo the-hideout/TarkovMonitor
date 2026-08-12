@@ -27,30 +27,32 @@ namespace TarkovMonitor
             HttpClient Client { get; }
 
             [Get("/progress")]
-            [Headers("Authorization: Bearer")]
-            Task<ProgressResponse> GetProgress();
+            Task<ProgressResponse> GetProgress([Header("Authorization")] string authorization);
 
             [Post("/progress/task/{id}")]
-            [Headers("Authorization: Bearer")]
-            Task<string> SetTaskStatus(string id, [Body] TaskStatusBody body);
+            Task<string> SetTaskStatus(
+                string id,
+                [Body] TaskStatusBody body,
+                [Header("Authorization")] string authorization);
 
             [Post("/progress/tasks")]
-            [Headers("Authorization: Bearer")]
-            Task<string> SetTaskStatuses([Body] List<TaskStatusBody> body);
+            Task<string> SetTaskStatuses(
+                [Body] List<TaskStatusBody> body,
+                [Header("Authorization")] string authorization);
         }
 
         private static readonly HttpClient tokenInspectionClient = new();
         private static ITarkovTrackerAPI api = InitAPI();
+        private static readonly TrackerAuthorizationState<ProgressResponse> authorizationState = new(() => new());
 
-        public static ProgressResponse Progress { get; private set; } = new();
-        public static bool ValidToken { get; private set; } = false;
+        public static ProgressResponse Progress => authorizationState.Progress;
+        public static bool ValidToken => authorizationState.Valid;
         public static bool IsLegacyService => string.Equals(
             Properties.Settings.Default.tarkovTrackerDomain,
             "tarkovtracker.io",
             StringComparison.OrdinalIgnoreCase);
         private static Dictionary<string, string> tokens = new();
-        private static string currentProfile = "";
-        public static string CurrentProfileId { get { return currentProfile; } }
+        public static string CurrentProfileId => authorizationState.CurrentProfileId;
 
         public static event EventHandler<EventArgs>? TokenValidated;
         public static event EventHandler<EventArgs>? TokenInvalid;
@@ -76,30 +78,7 @@ namespace TarkovMonitor
 
         public static bool IsSupportedOrgToken(string? token)
         {
-            var value = token?.Trim() ?? string.Empty;
-            if (value.Length != 22 || value[3] != '_')
-            {
-                return false;
-            }
-
-            var prefix = value[..3].ToUpperInvariant();
-            if (prefix is not ("PVE" or "PVP" or "SZN"))
-            {
-                return false;
-            }
-
-            for (var index = 4; index < value.Length; index++)
-            {
-                var character = value[index];
-                if (!((character >= '0' && character <= '9')
-                    || (character >= 'a' && character <= 'f')
-                    || (character >= 'A' && character <= 'F')))
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            return TrackerTokenFormat.IsSupportedOrgToken(token);
         }
 
         private static string GetOrgTokenPrefix(string token)
@@ -148,24 +127,15 @@ namespace TarkovMonitor
 
         public static ITarkovTrackerAPI InitAPI()
         {
-            api = RestService.For<ITarkovTrackerAPI>(GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain),
-                new RefitSettings {
-                    AuthorizationHeaderValueGetter = (rq, cr) => {
-                        return new ValueTask<string>(Task.Run<string>(() => {
-                            return GetToken(currentProfile ?? "");
-                        }));
-                    },
-                }
-            );
+            api = RestService.For<ITarkovTrackerAPI>(
+                GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain));
             api.Client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
             return api;
         }
 
         public static void ResetActiveState()
         {
-            currentProfile = "";
-            ValidToken = false;
-            Progress = new();
+            authorizationState.Reset();
         }
 
         public static string GetToken(string profileId)
@@ -187,40 +157,56 @@ namespace TarkovMonitor
             {
                 throw new Exception("No PVP or PVE profile initialized, please launch Escape from Tarkov first");
             }
+            if (profileId == CurrentProfileId)
+            {
+                ResetActiveState();
+            }
             tokens[profileId] = token;
             Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
             Properties.Settings.Default.Save();
         }
 
-        public static async Task<ProgressResponse> SetProfile(string profileId)
+        public static async Task<ProgressResponse> SetProfile(Profile profile)
         {
             if (IsLegacyService)
             {
                 ResetActiveState();
                 return Progress;
             }
-            if (profileId == "") {
-                throw new Exception("Can't set PVP or PVE profile, please launch Escape from Tarkov and then restart this application");
+            if (authorizationState.TryAuthorize(profile, out _))
+            {
+                return Progress;
             }
 
-            if (currentProfile == profileId)
+            var profileSnapshot = profile.Snapshot();
+            var newToken = GetToken(profileSnapshot.Id);
+            var profileSwitch = authorizationState.BeginSwitch(profileSnapshot, newToken);
+            if (profileSnapshot.Id == "" || profileSnapshot.Type == ProfileType.Unknown)
+            {
+                throw new Exception("Can't set PVP or PVE profile, please launch Escape from Tarkov and then restart this application");
+            }
+            if (!TrackerTokenFormat.MatchesMode(newToken, profileSnapshot.Type))
             {
                 return Progress;
             }
-            var newToken = GetToken(profileId);
-            var oldToken = GetToken(currentProfile);
-            currentProfile = profileId;
-            if (oldToken == newToken)
+
+            var tokenResponse = await TestToken(newToken);
+            if (!authorizationState.IsCurrent(profileSwitch))
             {
                 return Progress;
             }
-            if (newToken == "" || newToken.Length != 22)
+            if (!tokenResponse.permissions.Contains("WP"))
             {
-                ValidToken = false;
-                Progress = new();
+                TokenInvalid?.Invoke(null, EventArgs.Empty);
                 return Progress;
             }
-            await TestToken(newToken);
+
+            var loadedProgress = await GetProgress(newToken);
+            if (authorizationState.TryActivate(profileSwitch, loadedProgress, out _))
+            {
+                ProgressRetrieved?.Invoke(null, EventArgs.Empty);
+                TokenValidated?.Invoke(null, EventArgs.Empty);
+            }
             return Progress;
         }
 
@@ -238,34 +224,43 @@ namespace TarkovMonitor
             TaskLifecycle.ApplyToCache(storedStatus, status);
         }
 
-        private static void SyncStoredStatus(string questId, TaskStatus status) =>
-            SyncStoredStatus(Progress, questId, status);
+        public static bool TryAuthorizeWrite(
+            Profile profile,
+            out TrackerWriteAuthorization authorization) =>
+            !IsLegacyService && authorizationState.TryAuthorize(profile, out authorization);
 
-        public static bool CanWriteForProfile(Profile profile) =>
-            TaskLifecycle.ShouldDispatch(profile, ValidToken, currentProfile, GetToken(currentProfile));
-
-        public static async Task<string> SetTaskStatus(string questId, TaskStatus status)
+        public static async Task<string> SetTaskStatus(
+            TrackerWriteAuthorization authorization,
+            string questId,
+            TaskStatus status)
         {
-            if (IsLegacyService || !ValidToken)
+            if (IsLegacyService || !authorizationState.IsCurrent(authorization))
             {
-                throw new Exception("Invalid token");
+                throw new InvalidOperationException(
+                    "The TarkovTracker write authorization is no longer current for this profile and mode.");
             }
             try
             {
-                await api.SetTaskStatus(questId, TaskStatusBody.From(status));
-                SyncStoredStatus(questId, status);
+                await api.SetTaskStatus(
+                    questId,
+                    TaskStatusBody.From(status),
+                    authorization.AuthorizationHeader);
+                authorizationState.UpdateIfCurrent(
+                    authorization,
+                    progress => SyncStoredStatus(progress, questId, status));
             }
             catch (ApiException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    InvalidTokenException();
+                    InvalidateAuthorization(authorization);
                 }
                 if (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                if (status == TaskStatus.Started && IsCompatibilityRejection(ex.StatusCode))
+                if (status == TaskStatus.Started
+                    && TrackerCompatibility.IsUnsupportedActiveState(ex.StatusCode, ex.Content))
                 {
                     throw new TrackerActiveStateCompatibilityException(ex.StatusCode, ex);
                 }
@@ -278,31 +273,37 @@ namespace TarkovMonitor
             return "success";
         }
 
-        public static async Task<string> SetTaskComplete(string questId)
+        public static async Task<string> SetTaskComplete(
+            TrackerWriteAuthorization authorization,
+            string questId)
         {
-            await SetTaskStatus(questId, TaskStatus.Finished);
+            await SetTaskStatus(authorization, questId, TaskStatus.Finished);
             try
             {
-                TarkovDev.Tasks.ForEach(task => {
-                    foreach (var failCondition in task.failConditions)
+                authorizationState.UpdateIfCurrent(authorization, progress =>
+                {
+                    TarkovDev.Tasks.ForEach(task =>
                     {
-                        if (failCondition.task == null)
+                        foreach (var failCondition in task.failConditions)
                         {
-                            continue;
-                        }
-                        if (failCondition.task == questId && failCondition.status?.Contains("complete") == true)
-                        {
-                            foreach (var taskStatus in Progress.data.tasksProgress)
+                            if (failCondition.task == null)
                             {
-                                if (taskStatus.id == failCondition.task)
-                                {
-                                    taskStatus.failed = true;
-                                    break;
-                                }
+                                continue;
                             }
-                            break;
+                            if (failCondition.task == questId && failCondition.status?.Contains("complete") == true)
+                            {
+                                foreach (var taskStatus in progress.data.tasksProgress)
+                                {
+                                    if (taskStatus.id == failCondition.task)
+                                    {
+                                        taskStatus.failed = true;
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
                         }
-                    }
+                    });
                 });
             } 
             catch (Exception ex)
@@ -312,21 +313,28 @@ namespace TarkovMonitor
             return "success";
         }
 
-        public static async Task<string> SetTaskFailed(string questId)
+        public static async Task<string> SetTaskFailed(
+            TrackerWriteAuthorization authorization,
+            string questId)
         {
-            return await SetTaskStatus(questId, TaskStatus.Failed);
+            return await SetTaskStatus(authorization, questId, TaskStatus.Failed);
         }
 
-        public static async Task<string> SetTaskStarted(string questId)
+        public static async Task<string> SetTaskStarted(
+            TrackerWriteAuthorization authorization,
+            string questId)
         {
-            return await SetTaskStatus(questId, TaskStatus.Started);
+            return await SetTaskStatus(authorization, questId, TaskStatus.Started);
         }
 
-        public static async Task<string> SetTaskStatuses(Dictionary<string, TaskStatus> statuses)
+        public static async Task<string> SetTaskStatuses(
+            TrackerWriteAuthorization authorization,
+            Dictionary<string, TaskStatus> statuses)
         {
-			if (IsLegacyService || !ValidToken)
+			if (IsLegacyService || !authorizationState.IsCurrent(authorization))
 			{
-				throw new Exception("Invalid token");
+				throw new InvalidOperationException(
+                    "The TarkovTracker write authorization is no longer current for this profile and mode.");
 			}
             List<TaskStatusBody> body = new();
             foreach (var kvp in statuses)
@@ -337,23 +345,27 @@ namespace TarkovMonitor
             }
 			try
 			{
-				await api.SetTaskStatuses(body);
-                foreach( var kvp in statuses)
+				await api.SetTaskStatuses(body, authorization.AuthorizationHeader);
+                authorizationState.UpdateIfCurrent(authorization, progress =>
                 {
-                    SyncStoredStatus(kvp.Key, kvp.Value);
-                }
+                    foreach (var kvp in statuses)
+                    {
+                        SyncStoredStatus(progress, kvp.Key, kvp.Value);
+                    }
+                });
 			}
 			catch (ApiException ex)
 			{
 				if (ex.StatusCode == HttpStatusCode.Unauthorized)
 				{
-					InvalidTokenException();
+					InvalidateAuthorization(authorization);
                 }
                 if (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-				if (statuses.Values.Contains(TaskStatus.Started) && IsCompatibilityRejection(ex.StatusCode))
+				if (statuses.Values.Contains(TaskStatus.Started)
+                    && TrackerCompatibility.IsUnsupportedActiveState(ex.StatusCode, ex.Content))
 				{
 					throw new TrackerActiveStateCompatibilityException(ex.StatusCode, ex);
 				}
@@ -366,28 +378,17 @@ namespace TarkovMonitor
 			return "success";
 		}
 
-        public static async Task<ProgressResponse> GetProgress()
+        private static async Task<ProgressResponse> GetProgress(string token)
 		{
-			if (IsLegacyService)
-			{
-				ResetActiveState();
-				return Progress;
-			}
-			if (!ValidToken)
-			{
-				throw new Exception("Invalid token");
-			}
             try
             {
-                Progress = await api.GetProgress();
-                ProgressRetrieved?.Invoke(null, new EventArgs());
-                return Progress;
+                return await api.GetProgress($"Bearer {token}");
             }
             catch (ApiException ex)
             {
                 if (ex.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    InvalidTokenException();
+                    throw new Exception("Tarkov Tracker API token is invalid", ex);
                 }
                 if (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
@@ -428,7 +429,7 @@ namespace TarkovMonitor
             {
                 if (httpResponse.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    InvalidTokenException();
+                    throw new Exception("Tarkov Tracker API token is invalid");
                 }
                 if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
                 {
@@ -443,37 +444,17 @@ namespace TarkovMonitor
                 var response = JsonSerializer.Deserialize<TokenResponse>(responseBody)
                     ?? throw new Exception("TarkovTracker returned an empty token response.");
                 VerifyOrgTokenResponse(apiToken, response);
-                if (response.permissions.Contains("WP"))
-                {
-                    ValidToken = true;
-                    await GetProgress();
-                    TokenValidated?.Invoke(null, new EventArgs());
-                }
-                else
-                {
-                    Progress = new();
-                    ValidToken = false;
-                    TokenInvalid?.Invoke(null, new EventArgs());
-                }
                 return response;
             }
         }
 
-        private static void InvalidTokenException()
+        private static void InvalidateAuthorization(TrackerWriteAuthorization authorization)
         {
-            Progress = new();
-            ValidToken = false;
-            TokenInvalid?.Invoke(null, new EventArgs());
+            if (authorizationState.InvalidateIfCurrent(authorization))
+            {
+                TokenInvalid?.Invoke(null, EventArgs.Empty);
+            }
             throw new Exception("Tarkov Tracker API token is invalid");
-        }
-
-        private static bool IsCompatibilityRejection(HttpStatusCode statusCode)
-        {
-            var numericStatus = (int)statusCode;
-            return numericStatus >= 400
-                && numericStatus < 500
-                && statusCode != HttpStatusCode.Unauthorized
-                && statusCode != HttpStatusCode.TooManyRequests;
         }
 
         public static bool HasAirFilter()
@@ -512,7 +493,7 @@ namespace TarkovMonitor
 
         public class ProgressResponseData
         {
-            public List<ProgressResponseTask> tasksProgress { get; set; } = new();
+            public List<TrackerTaskProgress> tasksProgress { get; set; } = new();
             public List<ProgressResponseHideoutModules> hideoutModulesProgress { get; set; } = new();
             public string? displayName { get; set; }
             public string userId { get; set; }
@@ -521,14 +502,6 @@ namespace TarkovMonitor
             public string pmcFaction { get; set; }
         }
 
-        public class ProgressResponseTask
-        {
-            public string id { get; set; }
-            public bool complete { get; set; }
-            public bool invalid { get; set; }
-            public bool failed { get; set; }
-            public bool? active { get; set; }
-        }
         public class ProgressResponseHideoutModules    
         {
             public string id { get; set; }

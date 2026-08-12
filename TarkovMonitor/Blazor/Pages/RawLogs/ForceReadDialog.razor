@@ -113,11 +113,6 @@
         {
             return;
         }
-        if (!TarkovTracker.ValidToken)
-        {
-            messageLog.AddMessage("You must have a valid Tarkov Tracker API token to read past logs.", "exception");
-            return;
-        }
         SubmitDisabled = true;
         GameWatcher.ReadingPastLogs = true;
         var totalTasks = 0;
@@ -128,12 +123,13 @@
             Type = GameWatcher.CurrentProfile.Type,
             AccountId = GameWatcher.CurrentProfile.AccountId,
         };
+        TrackerWriteAuthorization authorization;
         var startedUtc = DateTime.UtcNow;
         try
         {
             if (selectedBreakpoint.Profile.Id != currentProfile.Id
                 || selectedBreakpoint.Profile.Type != currentProfile.Type
-                || !TarkovTracker.CanWriteForProfile(currentProfile))
+                || !TarkovTracker.TryAuthorizeWrite(currentProfile, out authorization))
             {
                 messageLog.AddMessage(
                     "The selected logs do not match the active TarkovTracker profile and mode.",
@@ -186,7 +182,8 @@
         {
             if (GameWatcher.CurrentProfile.Id != currentProfile.Id
                 || GameWatcher.CurrentProfile.Type != currentProfile.Type
-                || !TarkovTracker.CanWriteForProfile(currentProfile))
+                || !TarkovTracker.TryAuthorizeWrite(currentProfile, out var currentAuthorization)
+                || currentAuthorization != authorization)
             {
                 messageLog.AddMessage(
                     "The TarkovTracker profile or mode changed before past-log updates could be sent.",
@@ -195,7 +192,7 @@
             }
             if (updateTasks.Count > 0)
             {
-                await TarkovTracker.SetTaskStatuses(updateTasks);
+                await TarkovTracker.SetTaskStatuses(authorization, updateTasks);
             }
             messageLog.AddMessage($"Of {totalTasks} tasks found in logs, {updateTasks.Count} require status updates in Tarkov Tracker.", "info");
             MudDialog.Close(DialogResult.Ok(true));

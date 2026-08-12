@@ -657,28 +657,22 @@ namespace TarkovMonitor
                     DateTime.TryParseExact(logMessage.Groups["date"].Value + " " + logMessage.Groups["time"].Value.Split(" ")[0], "yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out eventDate);
                     var eventLine = logMessage.Groups["message"].Value;
                     //System.Diagnostics.Debug.WriteLine(eventLine);
-                    if (eventLine.Contains("Session mode: "))
+                    if (eventLine.Contains("Session mode:", StringComparison.Ordinal))
                     {
-                        var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>[^\s|]+)");
-                        if (!modeMatch.Success)
+                        var modeMatch = Regex.Match(eventLine, @"Session mode:\s*(?<mode>[^\s|]+)");
+                        var rawSessionMode = modeMatch.Success
+                            ? modeMatch.Groups["mode"].Value
+                            : "(missing)";
+                        var transition = ProfileIdentity.ApplyMode(CurrentProfile, rawSessionMode);
+                        raidInfo.Profile = CurrentProfile.Snapshot();
+                        if (!transition.Recognized)
                         {
-                            continue;
-                        }
-                        var rawSessionMode = modeMatch.Groups["mode"].Value;
-                        if (!Enum.TryParse<ProfileType>(rawSessionMode, true, out var profileType)
-                            || !Enum.IsDefined(profileType)
-                            || profileType == ProfileType.Unknown)
-                        {
-                            CurrentProfile.Id = "";
-                            CurrentProfile.AccountId = "";
-                            CurrentProfile.Type = ProfileType.Unknown;
-                            raidInfo.Profile = CurrentProfile;
                             ReportUnsupportedSessionMode(rawSessionMode);
-                            ProfileChanged?.Invoke(this, new(CurrentProfile));
-                            continue;
                         }
-                        CurrentProfile.Type = profileType;
-                        raidInfo.Profile = CurrentProfile;
+                        if (!e.InitialRead && transition.Changed)
+                        {
+                            ProfileChanged?.Invoke(this, new(CurrentProfile.Snapshot()));
+                        }
                         continue;
                     }
                     // Profile selection messages have changed names across EFT versions.
@@ -700,11 +694,8 @@ namespace TarkovMonitor
                                 raidInfo.EndedTime = eventDate;
                                 RaidEnded?.Invoke(this, new(raidInfo, CurrentProfile));
                             }
-                            else
-                            {
-                                System.Diagnostics.Debug.WriteLine("PROFILE CHANGED");
-                                ProfileChanged?.Invoke(this, new(CurrentProfile));
-                            }
+                            System.Diagnostics.Debug.WriteLine("PROFILE CHANGED");
+                            ProfileChanged?.Invoke(this, new(CurrentProfile.Snapshot()));
                         }
                         continue;
                     }
@@ -902,18 +893,19 @@ namespace TarkovMonitor
                         if (systemMessageEvent.message.type >= MessageType.TaskStarted && systemMessageEvent.message.type <= MessageType.TaskFinished)
                         {
                             var args = jsonNode?.AsObject().Deserialize<TaskStatusMessageLogContent>() ?? throw new Exception("Error parsing TaskStatusMessageLogContent");
-                            TaskModified?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                            var eventProfile = CurrentProfile.Snapshot();
+                            TaskModified?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             if (args.Status == TaskStatus.Started)
                             {
-                                TaskStarted?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskStarted?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             }
                             if (args.Status == TaskStatus.Failed)
                             {
-                                TaskFailed?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskFailed?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             }
                             if (args.Status == TaskStatus.Finished)
                             {
-                                TaskFinished?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskFinished?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             }
                         }
                     }
@@ -1136,6 +1128,8 @@ namespace TarkovMonitor
             if (newType == GameLogType.Application)
             {
                 CurrentProfile = new();
+                raidInfo.Profile = CurrentProfile.Snapshot();
+                ProfileChanged?.Invoke(this, new(CurrentProfile.Snapshot()));
             }
             if (newType == GameLogType.Output)
             {
@@ -1235,7 +1229,7 @@ namespace TarkovMonitor
             if (shouldPublish)
             {
                 PublishMatchingStarted(false);
-                InitialReadComplete?.Invoke(this, new(CurrentProfile));
+                InitialReadComplete?.Invoke(this, new(CurrentProfile.Snapshot()));
             }
         }
 
@@ -1267,24 +1261,6 @@ namespace TarkovMonitor
 		Notifications,
 		Output,
 		Traces
-	}
-    public enum MessageType
-	{
-		PlayerMessage = 1,
-        Insurance = 2,
-        FleaMarket = 4,
-        InsuranceReturn = 8,
-		TaskStarted = 10,
-		TaskFailed = 11,
-		TaskFinished = 12,
-        TwitchDrop = 13,
-	}
-	public enum TaskStatus
-	{
-        None = 0,
-		Started = 10,
-		Failed = 11,
-		Finished = 12
 	}
 	public enum RaidType
 	{
@@ -1408,47 +1384,6 @@ namespace TarkovMonitor
             this.Rotation = rotation;
             this.Filename = filename;
         }
-    }
-
-    public class LogDetails
-    {
-        public Profile Profile { get; set; }
-        public int AccountId { get; set; }
-        public DateTime Date { get; set; }
-        public Version Version { get; set; }
-        public string Folder { get; set; }
-    }
-
-    public enum ProfileType
-    {
-        PVE,
-        Regular,
-        PvpSeason,
-        Unknown,
-    }
-
-    public static class ProfileTypeExtensions
-    {
-        public static string ToApiString(this ProfileType profileType) => profileType switch
-        {
-            ProfileType.PvpSeason => "pvp-season",
-            ProfileType.Unknown => "unknown",
-            _ => profileType.ToString().ToLower(),
-        };
-        public static string ToPlayersApiString(this ProfileType profileType) => profileType switch
-        {
-            ProfileType.PvpSeason => "pvp-season",
-            ProfileType.Regular => "profile",
-            ProfileType.Unknown => "unknown",
-            _ => profileType.ToString().ToLower(),
-        };
-    }
-
-    public class Profile
-    {
-        public string Id { get; set; } = "";
-        public ProfileType Type { get; set; } = ProfileType.Regular;
-        public string AccountId { get; set; } = "";
     }
 
     public class ProfileEventArgs : EventArgs

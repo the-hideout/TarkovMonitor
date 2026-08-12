@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using TarkovMonitor;
 using TaskStatus = TarkovMonitor.TaskStatus;
@@ -6,6 +7,11 @@ var tests = new (string Name, Action Run)[]
 {
     ("start maps to active", StartMapsToActive),
     ("dispatch is unconditional after guards", DispatchIsUnconditionalAfterGuards),
+    ("profile defaults to unknown without mode", ProfileDefaultsToUnknown),
+    ("delayed recognized mode recovers dispatch", DelayedModeRecovery),
+    ("unparseable mode fails closed and recovers", UnparseableModeRecovery),
+    ("profile switch authorization is atomic", ProfileSwitchAuthorizationIsAtomic),
+    ("active compatibility requires enum evidence", ActiveCompatibilityRequiresEvidence),
     ("response active is nullable", ResponseActiveIsNullable),
     ("cache lifecycle truth table", CacheLifecycleTruthTable),
     ("start then finish coalesces terminal", StartThenFinish),
@@ -58,11 +64,124 @@ static void DispatchIsUnconditionalAfterGuards()
         true, "profilea", "PVP_0123456789abcdef01"));
 }
 
+static void ProfileDefaultsToUnknown()
+{
+    var profile = new Profile { Id = "profilea" };
+    Equal(ProfileType.Unknown, profile.Type);
+    False(ProfileIdentity.TryParseMode(null, out _));
+    False(TaskLifecycle.ShouldDispatch(
+        profile,
+        true,
+        "profilea",
+        "PVP_0123456789abcdef01"));
+}
+
+static void DelayedModeRecovery()
+{
+    var profile = new Profile { Id = "profilea", AccountId = "1" };
+    False(TaskLifecycle.ShouldDispatch(
+        profile,
+        true,
+        "profilea",
+        "PVP_0123456789abcdef01"));
+
+    var transition = ProfileIdentity.ApplyMode(profile, "Regular");
+    True(transition.Recognized);
+    True(transition.Changed);
+    True(transition.ProfileReady);
+    Equal(ProfileType.Regular, profile.Type);
+    True(TaskLifecycle.ShouldDispatch(
+        profile,
+        true,
+        "profilea",
+        "PVP_0123456789abcdef01"));
+}
+
+static void UnparseableModeRecovery()
+{
+    var profile = new Profile { Id = "profilea", AccountId = "1" };
+    var invalid = ProfileIdentity.ApplyMode(profile, "future-mode");
+    False(invalid.Recognized);
+    Equal(ProfileType.Unknown, profile.Type);
+    Equal("profilea", profile.Id);
+    False(TaskLifecycle.ShouldDispatch(
+        profile,
+        true,
+        "profilea",
+        "PVE_0123456789abcdef01"));
+
+    var recovered = ProfileIdentity.ApplyMode(profile, "PVE");
+    True(recovered.Recognized);
+    True(recovered.ProfileReady);
+    True(TaskLifecycle.ShouldDispatch(
+        profile,
+        true,
+        "profilea",
+        "PVE_0123456789abcdef01"));
+
+    var switched = ProfileIdentity.ApplyMode(profile, "Regular");
+    True(switched.Recognized);
+    False(switched.ProfileReady);
+    Equal("", profile.Id);
+}
+
+static void ProfileSwitchAuthorizationIsAtomic()
+{
+    var state = new TrackerAuthorizationState<List<string>>(() => new());
+    var profileA = new Profile { Id = "profilea", Type = ProfileType.Regular };
+    var switchA = state.BeginSwitch(profileA, "PVP_0123456789abcdef01");
+    False(state.Valid);
+    True(state.TryActivate(switchA, new() { "A" }, out var authorizationA));
+    True(state.TryAuthorize(profileA, out var capturedA));
+    Equal(authorizationA, capturedA);
+    Equal("Bearer PVP_0123456789abcdef01", capturedA.AuthorizationHeader);
+
+    var profileB = new Profile { Id = "profileb", Type = ProfileType.PVE };
+    var switchB = state.BeginSwitch(profileB, "PVE_0123456789abcdef02");
+    False(state.Valid);
+    False(state.IsCurrent(capturedA));
+    False(state.TryAuthorize(profileA, out _));
+    False(state.UpdateIfCurrent(capturedA, progress => progress.Add("stale A")));
+    Equal("Bearer PVP_0123456789abcdef01", capturedA.AuthorizationHeader);
+
+    True(state.TryActivate(switchB, new() { "B" }, out var authorizationB));
+    Equal("Bearer PVE_0123456789abcdef02", authorizationB.AuthorizationHeader);
+    Equal("B", state.Progress.Single());
+    False(state.TryActivate(switchA, new() { "late A" }, out _));
+    Equal("B", state.Progress.Single());
+}
+
+static void ActiveCompatibilityRequiresEvidence()
+{
+    const string enumEvidence =
+        "{\"path\":[\"state\"],\"message\":\"Invalid enum value active; expected completed, uncompleted, or failed\"}";
+    True(TrackerCompatibility.IsUnsupportedActiveState(HttpStatusCode.BadRequest, enumEvidence));
+    True(TrackerCompatibility.IsUnsupportedActiveState(
+        HttpStatusCode.UnprocessableEntity,
+        "{\"message\":\"unsupported state active\"}"));
+
+    False(TrackerCompatibility.IsUnsupportedActiveState(HttpStatusCode.Forbidden, enumEvidence));
+    False(TrackerCompatibility.IsUnsupportedActiveState(HttpStatusCode.NotFound, enumEvidence));
+    False(TrackerCompatibility.IsUnsupportedActiveState(HttpStatusCode.Conflict, enumEvidence));
+    False(TrackerCompatibility.IsUnsupportedActiveState(
+        HttpStatusCode.UnprocessableEntity,
+        "{\"message\":\"Task is already active for the current profile state\"}"));
+    False(TrackerCompatibility.IsUnsupportedActiveState(
+        HttpStatusCode.UnprocessableEntity,
+        "{\"state\":\"active\",\"message\":\"Unknown task id\"}"));
+    False(TrackerCompatibility.IsUnsupportedActiveState(
+        HttpStatusCode.UnprocessableEntity,
+        "{\"state\":\"active\",\"message\":\"Unsupported profile mode\"}"));
+    False(TrackerCompatibility.IsUnsupportedActiveState(
+        HttpStatusCode.UnprocessableEntity,
+        "{\"message\":\"Invalid task id\"}"));
+}
+
 static void ResponseActiveIsNullable()
 {
-    var legacy = JsonSerializer.Deserialize<TarkovTracker.ProgressResponseTask>(
+    var legacy = JsonSerializer.Deserialize<TrackerTaskProgress>(
         "{\"id\":\"a\",\"complete\":false}")!;
-    var active = JsonSerializer.Deserialize<TarkovTracker.ProgressResponseTask>(
+    var active = JsonSerializer.Deserialize<TrackerTaskProgress>(
         "{\"id\":\"a\",\"active\":true}")!;
     Equal<bool?>(null, legacy.active);
     Equal<bool?>(true, active.active);
@@ -191,7 +310,7 @@ static string Line(string timestamp, string message, string? json = null) =>
 
 static void AssertCache(TaskStatus status, bool active, bool complete, bool failed, bool invalid)
 {
-    var actual = new TarkovTracker.ProgressResponseTask
+    var actual = new TrackerTaskProgress
     {
         id = "task-a",
         active = !active,

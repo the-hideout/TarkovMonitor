@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\TarkovMonitor\TaskLifecycleModels.cs" Link="TaskLifecycleModels.cs" />
     <Compile Include="..\TarkovMonitor\TaskLifecycle.cs" Link="TaskLifecycle.cs" />
+    <Compile Include="..\TarkovMonitor\TrackerWriteSafety.cs" Link="TrackerWriteSafety.cs" />
   </ItemGroup>
 </Project>

@@ -24,6 +24,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
+      - name: Run lifecycle tests
+        run: dotnet run --project TarkovMonitor.Tests/TarkovMonitor.Tests.csproj --configuration Release --no-restore
+
       - name: Build and publish
         shell: pwsh
         run: |
