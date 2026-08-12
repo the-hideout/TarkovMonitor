@@ -42,8 +42,8 @@ namespace TarkovMonitor
         }
 
         private static readonly HttpClient tokenInspectionClient = new();
-        private static ITarkovTrackerAPI api = InitAPI();
         private static readonly TrackerAuthorizationState<ProgressResponse> authorizationState = new(() => new());
+        private static readonly TrackerEndpointState<ITarkovTrackerAPI> endpointState = CreateInitialEndpoint();
 
         public static ProgressResponse Progress => authorizationState.Progress;
         public static bool ValidToken => authorizationState.Valid;
@@ -125,12 +125,30 @@ namespace TarkovMonitor
             }
         }
 
+        private static TrackerEndpointState<ITarkovTrackerAPI> CreateInitialEndpoint()
+        {
+            var domain = Properties.Settings.Default.tarkovTrackerDomain;
+            var baseUrl = GetApiBaseUrl(domain);
+            return new(baseUrl, IsOrgDomain(domain), CreateApiClient(baseUrl));
+        }
+
+        private static ITarkovTrackerAPI CreateApiClient(string baseUrl)
+        {
+            var client = RestService.For<ITarkovTrackerAPI>(baseUrl);
+            client.Client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            return client;
+        }
+
+        private static bool IsOrgDomain(string? domain) =>
+            string.Equals(domain, "tarkovtracker.org", StringComparison.OrdinalIgnoreCase);
+
         public static ITarkovTrackerAPI InitAPI()
         {
-            api = RestService.For<ITarkovTrackerAPI>(
-                GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain));
-            api.Client.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
-            return api;
+            var domain = Properties.Settings.Default.tarkovTrackerDomain;
+            var baseUrl = GetApiBaseUrl(domain);
+            var endpoint = endpointState.Replace(baseUrl, IsOrgDomain(domain), CreateApiClient(baseUrl));
+            authorizationState.Reset();
+            return endpoint.Client;
         }
 
         public static void ResetActiveState()
@@ -157,10 +175,7 @@ namespace TarkovMonitor
             {
                 throw new Exception("No PVP or PVE profile initialized, please launch Escape from Tarkov first");
             }
-            if (profileId == CurrentProfileId)
-            {
-                ResetActiveState();
-            }
+            authorizationState.InvalidateProfile(profileId);
             tokens[profileId] = token;
             Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
             Properties.Settings.Default.Save();
@@ -180,17 +195,21 @@ namespace TarkovMonitor
 
             var profileSnapshot = profile.Snapshot();
             var newToken = GetToken(profileSnapshot.Id);
-            var profileSwitch = authorizationState.BeginSwitch(profileSnapshot, newToken);
+            var endpoint = endpointState.Snapshot;
+            var profileSwitch = authorizationState.BeginSwitch(
+                profileSnapshot,
+                newToken,
+                endpoint.Generation);
             if (profileSnapshot.Id == "" || profileSnapshot.Type == ProfileType.Unknown)
             {
                 throw new Exception("Can't set PVP or PVE profile, please launch Escape from Tarkov and then restart this application");
             }
-            if (!TrackerTokenFormat.MatchesMode(newToken, profileSnapshot.Type))
+            if (!endpoint.IsOrg || !TrackerTokenFormat.MatchesMode(newToken, profileSnapshot.Type))
             {
                 return Progress;
             }
 
-            var tokenResponse = await TestToken(newToken);
+            var tokenResponse = await TestToken(newToken, endpoint);
             if (!authorizationState.IsCurrent(profileSwitch))
             {
                 return Progress;
@@ -201,7 +220,7 @@ namespace TarkovMonitor
                 return Progress;
             }
 
-            var loadedProgress = await GetProgress(newToken);
+            var loadedProgress = await GetProgress(newToken, endpoint);
             if (authorizationState.TryActivate(profileSwitch, loadedProgress, out _))
             {
                 ProgressRetrieved?.Invoke(null, EventArgs.Empty);
@@ -234,14 +253,15 @@ namespace TarkovMonitor
             string questId,
             TaskStatus status)
         {
-            if (IsLegacyService || !authorizationState.IsCurrent(authorization))
+            if (!authorizationState.IsCurrent(authorization)
+                || !endpointState.TryResolve(authorization, out var endpoint))
             {
                 throw new InvalidOperationException(
                     "The TarkovTracker write authorization is no longer current for this profile and mode.");
             }
             try
             {
-                await api.SetTaskStatus(
+                await endpoint.Client.SetTaskStatus(
                     questId,
                     TaskStatusBody.From(status),
                     authorization.AuthorizationHeader);
@@ -331,7 +351,8 @@ namespace TarkovMonitor
             TrackerWriteAuthorization authorization,
             Dictionary<string, TaskStatus> statuses)
         {
-			if (IsLegacyService || !authorizationState.IsCurrent(authorization))
+			if (!authorizationState.IsCurrent(authorization)
+                || !endpointState.TryResolve(authorization, out var endpoint))
 			{
 				throw new InvalidOperationException(
                     "The TarkovTracker write authorization is no longer current for this profile and mode.");
@@ -345,7 +366,7 @@ namespace TarkovMonitor
             }
 			try
 			{
-				await api.SetTaskStatuses(body, authorization.AuthorizationHeader);
+				await endpoint.Client.SetTaskStatuses(body, authorization.AuthorizationHeader);
                 authorizationState.UpdateIfCurrent(authorization, progress =>
                 {
                     foreach (var kvp in statuses)
@@ -378,11 +399,13 @@ namespace TarkovMonitor
 			return "success";
 		}
 
-        private static async Task<ProgressResponse> GetProgress(string token)
+        private static async Task<ProgressResponse> GetProgress(
+            string token,
+            TrackerEndpointSnapshot<ITarkovTrackerAPI> endpoint)
 		{
             try
             {
-                return await api.GetProgress($"Bearer {token}");
+                return await endpoint.Client.GetProgress($"Bearer {token}");
             }
             catch (ApiException ex)
             {
@@ -404,7 +427,14 @@ namespace TarkovMonitor
 
         public static async Task<TokenResponse> TestToken(string apiToken)
         {
-            if (IsLegacyService)
+            return await TestToken(apiToken, endpointState.Snapshot);
+        }
+
+        private static async Task<TokenResponse> TestToken(
+            string apiToken,
+            TrackerEndpointSnapshot<ITarkovTrackerAPI> endpoint)
+        {
+            if (!endpoint.IsOrg)
             {
                 throw new InvalidOperationException(
                     "Support for TarkovTracker.io has been retired. Switch to TarkovTracker.org.");
@@ -412,7 +442,7 @@ namespace TarkovMonitor
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
-                $"{GetApiBaseUrl(Properties.Settings.Default.tarkovTrackerDomain).TrimEnd('/')}/token");
+                $"{endpoint.BaseUrl.TrimEnd('/')}/token");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiToken.Trim());
 
             HttpResponseMessage httpResponse;

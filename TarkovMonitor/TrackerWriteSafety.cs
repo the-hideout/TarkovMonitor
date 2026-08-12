@@ -7,13 +7,15 @@ namespace TarkovMonitor
         long Generation,
         string ProfileId,
         ProfileType Mode,
-        string Token);
+        string Token,
+        long EndpointGeneration);
 
     internal readonly record struct TrackerWriteAuthorization(
         long Generation,
         string ProfileId,
         ProfileType Mode,
-        string Token)
+        string Token,
+        long EndpointGeneration)
     {
         internal string AuthorizationHeader => $"Bearer {Token}";
     }
@@ -58,6 +60,7 @@ namespace TarkovMonitor
         private readonly Func<TProgress> emptyProgress;
         private long generation;
         private TrackerWriteAuthorization? current;
+        private TrackerProfileSwitch? pending;
         private TProgress progress;
 
         internal TrackerAuthorizationState(Func<TProgress> emptyProgress)
@@ -99,14 +102,20 @@ namespace TarkovMonitor
             }
         }
 
-        internal TrackerProfileSwitch BeginSwitch(Profile profile, string token)
+        internal TrackerProfileSwitch BeginSwitch(Profile profile, string token, long endpointGeneration)
         {
             lock (gate)
             {
                 generation++;
                 current = null;
                 progress = emptyProgress();
-                return new(generation, profile.Id, profile.Type, token.Trim());
+                pending = new(
+                    generation,
+                    profile.Id,
+                    profile.Type,
+                    token.Trim(),
+                    endpointGeneration);
+                return pending.Value;
             }
         }
 
@@ -117,7 +126,8 @@ namespace TarkovMonitor
         {
             lock (gate)
             {
-                if (profileSwitch.Generation != generation
+                if (pending != profileSwitch
+                    || profileSwitch.Generation != generation
                     || string.IsNullOrWhiteSpace(profileSwitch.ProfileId)
                     || !TrackerTokenFormat.MatchesMode(profileSwitch.Token, profileSwitch.Mode))
                 {
@@ -129,8 +139,10 @@ namespace TarkovMonitor
                     profileSwitch.Generation,
                     profileSwitch.ProfileId,
                     profileSwitch.Mode,
-                    profileSwitch.Token);
+                    profileSwitch.Token,
+                    profileSwitch.EndpointGeneration);
                 current = authorization;
+                pending = null;
                 progress = loadedProgress;
                 return true;
             }
@@ -167,7 +179,26 @@ namespace TarkovMonitor
         {
             lock (gate)
             {
-                return profileSwitch.Generation == generation && current == null;
+                return pending == profileSwitch
+                    && profileSwitch.Generation == generation
+                    && current == null;
+            }
+        }
+
+        internal bool InvalidateProfile(string profileId)
+        {
+            lock (gate)
+            {
+                if (!string.Equals(pending?.ProfileId, profileId, StringComparison.Ordinal)
+                    && !string.Equals(current?.ProfileId, profileId, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+                generation++;
+                pending = null;
+                current = null;
+                progress = emptyProgress();
+                return true;
             }
         }
 
@@ -193,6 +224,7 @@ namespace TarkovMonitor
                     return false;
                 }
                 generation++;
+                pending = null;
                 current = null;
                 progress = emptyProgress();
                 return true;
@@ -204,8 +236,63 @@ namespace TarkovMonitor
             lock (gate)
             {
                 generation++;
+                pending = null;
                 current = null;
                 progress = emptyProgress();
+            }
+        }
+    }
+
+    internal readonly record struct TrackerEndpointSnapshot<TClient>(
+        long Generation,
+        string BaseUrl,
+        bool IsOrg,
+        TClient Client)
+        where TClient : class;
+
+    internal sealed class TrackerEndpointState<TClient> where TClient : class
+    {
+        private readonly object gate = new();
+        private TrackerEndpointSnapshot<TClient> current;
+
+        internal TrackerEndpointState(string baseUrl, bool isOrg, TClient client)
+        {
+            current = new(1, baseUrl, isOrg, client);
+        }
+
+        internal TrackerEndpointSnapshot<TClient> Snapshot
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return current;
+                }
+            }
+        }
+
+        internal TrackerEndpointSnapshot<TClient> Replace(string baseUrl, bool isOrg, TClient client)
+        {
+            lock (gate)
+            {
+                current = new(current.Generation + 1, baseUrl, isOrg, client);
+                return current;
+            }
+        }
+
+        internal bool TryResolve(
+            TrackerWriteAuthorization authorization,
+            out TrackerEndpointSnapshot<TClient> endpoint)
+        {
+            lock (gate)
+            {
+                if (!current.IsOrg || current.Generation != authorization.EndpointGeneration)
+                {
+                    endpoint = default;
+                    return false;
+                }
+                endpoint = current;
+                return true;
             }
         }
     }
@@ -213,7 +300,7 @@ namespace TarkovMonitor
     internal static class TrackerCompatibility
     {
         private static readonly Regex RejectedActiveStatePattern = new(
-            @"(?:unsupported|unknown|unrecognized|invalid)\s+(?:task\s+)?state\W{0,20}active|state\W{0,20}active\W{0,80}(?:unsupported|not\s+supported|unknown|unrecognized|invalid)",
+            @"(?:unsupported|unknown|unrecognized|invalid)\s+(?:task\s+)?state\s*[:=]?\s*['"" ]?active|(?:task\s+)?state\s*[:=]?\s*['"" ]?active['"" ]?\s+(?:is\s+)?(?:unsupported|not\s+supported|unknown|unrecognized|invalid)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         internal static bool IsUnsupportedActiveState(HttpStatusCode statusCode, string? responseBody)
@@ -233,7 +320,8 @@ namespace TarkovMonitor
 
             return RejectedActiveStatePattern.IsMatch(evidence)
                 || (evidence.Contains("invalid", StringComparison.Ordinal)
-                    && evidence.Contains("enum", StringComparison.Ordinal))
+                    && evidence.Contains("enum", StringComparison.Ordinal)
+                    && Regex.IsMatch(evidence, @"(?:enum\W{0,30}active|active\W{0,30}enum)", RegexOptions.IgnoreCase))
                 || ((evidence.Contains("expected", StringComparison.Ordinal)
                         || evidence.Contains("allowed", StringComparison.Ordinal)
                         || evidence.Contains("one of", StringComparison.Ordinal)

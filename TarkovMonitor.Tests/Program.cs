@@ -11,6 +11,8 @@ var tests = new (string Name, Action Run)[]
     ("delayed recognized mode recovers dispatch", DelayedModeRecovery),
     ("unparseable mode fails closed and recovers", UnparseableModeRecovery),
     ("profile switch authorization is atomic", ProfileSwitchAuthorizationIsAtomic),
+    ("token replacement cancels pending validation", TokenReplacementCancelsPendingValidation),
+    ("endpoint replacement cannot redirect bearer", EndpointReplacementCannotRedirectBearer),
     ("active compatibility requires enum evidence", ActiveCompatibilityRequiresEvidence),
     ("response active is nullable", ResponseActiveIsNullable),
     ("cache lifecycle truth table", CacheLifecycleTruthTable),
@@ -129,7 +131,7 @@ static void ProfileSwitchAuthorizationIsAtomic()
 {
     var state = new TrackerAuthorizationState<List<string>>(() => new());
     var profileA = new Profile { Id = "profilea", Type = ProfileType.Regular };
-    var switchA = state.BeginSwitch(profileA, "PVP_0123456789abcdef01");
+    var switchA = state.BeginSwitch(profileA, "PVP_0123456789abcdef01", 1);
     False(state.Valid);
     True(state.TryActivate(switchA, new() { "A" }, out var authorizationA));
     True(state.TryAuthorize(profileA, out var capturedA));
@@ -137,7 +139,7 @@ static void ProfileSwitchAuthorizationIsAtomic()
     Equal("Bearer PVP_0123456789abcdef01", capturedA.AuthorizationHeader);
 
     var profileB = new Profile { Id = "profileb", Type = ProfileType.PVE };
-    var switchB = state.BeginSwitch(profileB, "PVE_0123456789abcdef02");
+    var switchB = state.BeginSwitch(profileB, "PVE_0123456789abcdef02", 1);
     False(state.Valid);
     False(state.IsCurrent(capturedA));
     False(state.TryAuthorize(profileA, out _));
@@ -149,6 +151,46 @@ static void ProfileSwitchAuthorizationIsAtomic()
     Equal("B", state.Progress.Single());
     False(state.TryActivate(switchA, new() { "late A" }, out _));
     Equal("B", state.Progress.Single());
+}
+
+static void TokenReplacementCancelsPendingValidation()
+{
+    var state = new TrackerAuthorizationState<List<string>>(() => new());
+    var profile = new Profile { Id = "profilea", Type = ProfileType.Regular };
+    var pending = state.BeginSwitch(profile, "PVP_0123456789abcdef01", 7);
+    Equal("", state.CurrentProfileId);
+
+    True(state.InvalidateProfile("profilea"));
+    False(state.TryActivate(pending, new() { "stale" }, out _));
+    False(state.Valid);
+
+    var replacement = state.BeginSwitch(profile, "PVP_0123456789abcdef02", 7);
+    True(state.TryActivate(replacement, new() { "replacement" }, out var authorization));
+    Equal("PVP_0123456789abcdef02", authorization.Token);
+    Equal("replacement", state.Progress.Single());
+}
+
+static void EndpointReplacementCannotRedirectBearer()
+{
+    var endpoints = new TrackerEndpointState<string>(
+        "https://api.tarkovtracker.org",
+        true,
+        "org-client");
+    var state = new TrackerAuthorizationState<List<string>>(() => new());
+    var profile = new Profile { Id = "profilea", Type = ProfileType.Regular };
+    var pending = state.BeginSwitch(
+        profile,
+        "PVP_0123456789abcdef01",
+        endpoints.Snapshot.Generation);
+    True(state.TryActivate(pending, new(), out var authorization));
+    True(endpoints.TryResolve(authorization, out var capturedOrgEndpoint));
+    Equal("org-client", capturedOrgEndpoint.Client);
+    Equal("Bearer PVP_0123456789abcdef01", authorization.AuthorizationHeader);
+
+    endpoints.Replace("https://tarkovtracker.io/api/v2", false, "legacy-client");
+    False(endpoints.TryResolve(authorization, out _));
+    Equal("org-client", capturedOrgEndpoint.Client);
+    False(capturedOrgEndpoint.Client == "legacy-client");
 }
 
 static void ActiveCompatibilityRequiresEvidence()
