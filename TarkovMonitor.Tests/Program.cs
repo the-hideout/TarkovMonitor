@@ -12,6 +12,7 @@ var tests = new (string Name, Action Run)[]
     ("unparseable mode fails closed and recovers", UnparseableModeRecovery),
     ("profile switch authorization is atomic", ProfileSwitchAuthorizationIsAtomic),
     ("token replacement cancels pending validation", TokenReplacementCancelsPendingValidation),
+    ("token replacement and switch registration are atomic", TokenReplacementAndSwitchRegistrationAreAtomic),
     ("endpoint replacement cannot redirect bearer", EndpointReplacementCannotRedirectBearer),
     ("active compatibility requires enum evidence", ActiveCompatibilityRequiresEvidence),
     ("response active is nullable", ResponseActiveIsNullable),
@@ -168,6 +169,51 @@ static void TokenReplacementCancelsPendingValidation()
     True(state.TryActivate(replacement, new() { "replacement" }, out var authorization));
     Equal("PVP_0123456789abcdef02", authorization.Token);
     Equal("replacement", state.Progress.Single());
+}
+
+static void TokenReplacementAndSwitchRegistrationAreAtomic()
+{
+    const string oldToken = "PVP_0123456789abcdef01";
+    const string replacementToken = "PVP_0123456789abcdef02";
+    var authorizationState = new TrackerAuthorizationState<List<string>>(() => new());
+    var tokenState = new TrackerProfileTokenState<List<string>>(
+        authorizationState,
+        new() { ["profilea"] = oldToken });
+    var profile = new Profile { Id = "profilea", Type = ProfileType.Regular };
+    using var invalidated = new ManualResetEventSlim();
+    using var switchAttempted = new ManualResetEventSlim();
+    using var allowReplacementStore = new ManualResetEventSlim();
+
+    var replacement = Task.Run(() => tokenState.ReplaceToken(
+        profile.Id,
+        replacementToken,
+        () =>
+        {
+            invalidated.Set();
+            True(switchAttempted.Wait(TimeSpan.FromSeconds(5)));
+            True(allowReplacementStore.Wait(TimeSpan.FromSeconds(5)));
+        }));
+
+    True(invalidated.Wait(TimeSpan.FromSeconds(5)));
+    var profileSwitch = Task.Run(() =>
+    {
+        switchAttempted.Set();
+        return tokenState.BeginSwitch(profile, 7);
+    });
+
+    True(switchAttempted.Wait(TimeSpan.FromSeconds(5)));
+    False(profileSwitch.Wait(TimeSpan.FromMilliseconds(100)));
+    allowReplacementStore.Set();
+    True(replacement.Wait(TimeSpan.FromSeconds(5)));
+    True(profileSwitch.Wait(TimeSpan.FromSeconds(5)));
+
+    Equal(replacementToken, profileSwitch.Result.Token);
+    Equal(replacementToken, profileSwitch.Result.ProfileSwitch.Token);
+    True(authorizationState.TryActivate(
+        profileSwitch.Result.ProfileSwitch,
+        new() { "replacement" },
+        out var authorization));
+    Equal(replacementToken, authorization.Token);
 }
 
 static void EndpointReplacementCannotRedirectBearer()

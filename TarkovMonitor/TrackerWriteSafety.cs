@@ -243,6 +243,56 @@ namespace TarkovMonitor
         }
     }
 
+    internal sealed class TrackerProfileTokenState<TProgress> where TProgress : class
+    {
+        private readonly object gate = new();
+        private readonly TrackerAuthorizationState<TProgress> authorizationState;
+        private readonly Dictionary<string, string> tokens;
+
+        internal TrackerProfileTokenState(
+            TrackerAuthorizationState<TProgress> authorizationState,
+            Dictionary<string, string> tokens)
+        {
+            this.authorizationState = authorizationState;
+            this.tokens = tokens;
+        }
+
+        internal string GetToken(string profileId)
+        {
+            lock (gate)
+            {
+                return tokens.TryGetValue(profileId, out var token) ? token : string.Empty;
+            }
+        }
+
+        internal (string Token, TrackerProfileSwitch ProfileSwitch) BeginSwitch(
+            Profile profile,
+            long endpointGeneration)
+        {
+            lock (gate)
+            {
+                var token = tokens.TryGetValue(profile.Id, out var storedToken)
+                    ? storedToken
+                    : string.Empty;
+                return (token, authorizationState.BeginSwitch(profile, token, endpointGeneration));
+            }
+        }
+
+        internal Dictionary<string, string> ReplaceToken(
+            string profileId,
+            string token,
+            Action? afterInvalidationBeforeStore = null)
+        {
+            lock (gate)
+            {
+                authorizationState.InvalidateProfile(profileId);
+                afterInvalidationBeforeStore?.Invoke();
+                tokens[profileId] = token;
+                return new(tokens);
+            }
+        }
+    }
+
     internal readonly record struct TrackerEndpointSnapshot<TClient>(
         long Generation,
         string BaseUrl,

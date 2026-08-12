@@ -43,6 +43,11 @@ namespace TarkovMonitor
 
         private static readonly HttpClient tokenInspectionClient = new();
         private static readonly TrackerAuthorizationState<ProgressResponse> authorizationState = new(() => new());
+        private static readonly Dictionary<string, string> tokens =
+            JsonSerializer.Deserialize<Dictionary<string, string>>(
+                Properties.Settings.Default.tarkovTrackerTokens) ?? new();
+        private static readonly TrackerProfileTokenState<ProgressResponse> profileTokenState =
+            new(authorizationState, tokens);
         private static readonly TrackerEndpointState<ITarkovTrackerAPI> endpointState = CreateInitialEndpoint();
 
         public static ProgressResponse Progress => authorizationState.Progress;
@@ -51,7 +56,6 @@ namespace TarkovMonitor
             Properties.Settings.Default.tarkovTrackerDomain,
             "tarkovtracker.io",
             StringComparison.OrdinalIgnoreCase);
-        private static Dictionary<string, string> tokens = new();
         public static string CurrentProfileId => authorizationState.CurrentProfileId;
 
         public static event EventHandler<EventArgs>? TokenValidated;
@@ -64,7 +68,6 @@ namespace TarkovMonitor
 
         static TarkovTracker() {
             tokenInspectionClient.DefaultRequestHeaders.UserAgent.TryParseAdd($"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name} {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
-            tokens = JsonSerializer.Deserialize<Dictionary<string, string>>(Properties.Settings.Default.tarkovTrackerTokens) ?? tokens;
         }
 
         public static string GetApiBaseUrl(string trackerDomain)
@@ -158,11 +161,7 @@ namespace TarkovMonitor
 
         public static string GetToken(string profileId)
         {
-            if (!tokens.ContainsKey(profileId))
-            {
-                return "";
-            }
-            return tokens[profileId];
+            return profileTokenState.GetToken(profileId);
         }
 
         public static void SetToken(string profileId, string token)
@@ -175,9 +174,8 @@ namespace TarkovMonitor
             {
                 throw new Exception("No PVP or PVE profile initialized, please launch Escape from Tarkov first");
             }
-            authorizationState.InvalidateProfile(profileId);
-            tokens[profileId] = token;
-            Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokens);
+            var tokensSnapshot = profileTokenState.ReplaceToken(profileId, token);
+            Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokensSnapshot);
             Properties.Settings.Default.Save();
         }
 
@@ -194,11 +192,9 @@ namespace TarkovMonitor
             }
 
             var profileSnapshot = profile.Snapshot();
-            var newToken = GetToken(profileSnapshot.Id);
             var endpoint = endpointState.Snapshot;
-            var profileSwitch = authorizationState.BeginSwitch(
+            var (newToken, profileSwitch) = profileTokenState.BeginSwitch(
                 profileSnapshot,
-                newToken,
                 endpoint.Generation);
             if (profileSnapshot.Id == "" || profileSnapshot.Type == ProfileType.Unknown)
             {
