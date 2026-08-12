@@ -58,7 +58,6 @@
         }
     }
     List<LogDetails>? breakpoints;
-    Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
     bool SubmitDisabled { get; set; } = true;
 
     private string currentProfileName = GameWatcher.CurrentProfile.AccountId;
@@ -99,7 +98,9 @@
 
     private void GetBreakPoints()
     {
-        breakpoints = customWatcher.GetLogBreakpoints(GameWatcher.CurrentProfile.Id);
+        breakpoints = customWatcher.GetLogBreakpoints(
+            GameWatcher.CurrentProfile.Id,
+            GameWatcher.CurrentProfile.Type);
         InvokeAsync(() => StateHasChanged());
     }
 
@@ -115,54 +116,53 @@
         if (!TarkovTracker.ValidToken)
         {
             messageLog.AddMessage("You must have a valid Tarkov Tracker API token to read past logs.", "exception");
+            return;
         }
         SubmitDisabled = true;
         GameWatcher.ReadingPastLogs = true;
-        TaskStatuses.Clear();
         var totalTasks = 0;
         Dictionary<string, TarkovMonitor.TaskStatus> updateTasks = new();
+        Profile currentProfile = new()
+        {
+            Id = GameWatcher.CurrentProfile.Id,
+            Type = GameWatcher.CurrentProfile.Type,
+            AccountId = GameWatcher.CurrentProfile.AccountId,
+        };
         var startedUtc = DateTime.UtcNow;
         try
         {
-            //eft.ProcessLogs(selectedPath);
-            customWatcher.TaskModified += UpdateTaskStatus;
-            Profile currentProfile = new()
+            if (selectedBreakpoint.Profile.Id != currentProfile.Id
+                || selectedBreakpoint.Profile.Type != currentProfile.Type
+                || !TarkovTracker.CanWriteForProfile(currentProfile))
             {
-                Id = GameWatcher.CurrentProfile.Id,
-                Type = GameWatcher.CurrentProfile.Type,
-                AccountId = GameWatcher.CurrentProfile.AccountId,
-            };
-            customWatcher.ProcessLogsFromBreakpoint(selectedBreakpoint);
-            GameWatcher.CurrentProfile = currentProfile;
-            customWatcher.TaskModified -= UpdateTaskStatus;
-            foreach (var kvp in TaskStatuses)
+                messageLog.AddMessage(
+                    "The selected logs do not match the active TarkovTracker profile and mode.",
+                    "warning");
+                return;
+            }
+
+            var replay = customWatcher.ProcessLogsFromBreakpoint(selectedBreakpoint);
+            var taskStatuses = replay.Coalesce()
+                .Where(kvp => kvp.Key.ProfileId == currentProfile.Id && kvp.Key.Mode == currentProfile.Type)
+                .ToDictionary(kvp => kvp.Key.TaskId, kvp => kvp.Value.Status);
+            if (replay.UnknownIdentityCount > 0)
             {
-                if (kvp.Value == TarkovMonitor.TaskStatus.Started)
-                {
-                    // don't update task status if started
-                    continue;
-                }
-                var task = TarkovDev.Tasks.Find((t) => t.id == kvp.Key);
+                messageLog.AddMessage(
+                    $"Skipped {replay.UnknownIdentityCount} past task event(s) because their profile and mode could not be established safely.",
+                    "warning");
+            }
+
+            foreach (var kvp in taskStatuses)
+            {
+                var task = TarkovDev.Tasks.Find(t => t.id == kvp.Key);
                 if (task == null)
                 {
                     // probably a daily
                     continue;
                 }
                 totalTasks++;
-                TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
                 var taskProgress = TarkovTracker.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
-                if (taskProgress != null)
-                {
-                    if (taskProgress.failed)
-                    {
-                        savedTaskStatus = TarkovMonitor.TaskStatus.Failed;
-                    }
-                    if (taskProgress.complete)
-                    {
-                        savedTaskStatus = TarkovMonitor.TaskStatus.Finished;
-                    }
-                }
-                if (kvp.Value == savedTaskStatus)
+                if (TaskLifecycle.CacheMatches(taskProgress, kvp.Value))
                 {
                     // status matches, so don't update
                     continue;
@@ -184,6 +184,15 @@
         var updateStartedUtc = DateTime.UtcNow;
         try
         {
+            if (GameWatcher.CurrentProfile.Id != currentProfile.Id
+                || GameWatcher.CurrentProfile.Type != currentProfile.Type
+                || !TarkovTracker.CanWriteForProfile(currentProfile))
+            {
+                messageLog.AddMessage(
+                    "The TarkovTracker profile or mode changed before past-log updates could be sent.",
+                    "warning");
+                return;
+            }
             if (updateTasks.Count > 0)
             {
                 await TarkovTracker.SetTaskStatuses(updateTasks);
@@ -191,14 +200,14 @@
             messageLog.AddMessage($"Of {totalTasks} tasks found in logs, {updateTasks.Count} require status updates in Tarkov Tracker.", "info");
             MudDialog.Close(DialogResult.Ok(true));
         }
+        catch (TrackerActiveStateCompatibilityException ex)
+        {
+            messageLog.AddMessage(ex.Message, "warning");
+        }
         catch (Exception ex)
         {
             messageLog.AddException("Past-log task updates could not be sent.", "TM-API-TRACKER-007", "UpdatePastLogTasks", ex, "TarkovTracker", "PastLogs", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(updateStartedUtc));
         }
     }
 
-    private void UpdateTaskStatus(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
-    {
-        TaskStatuses[e.LogContent.TaskId] = e.LogContent.Status;
-    }
 }

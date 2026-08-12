@@ -778,7 +778,7 @@ namespace TarkovMonitor
 
             messageLog.AddMessage($"Completed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
-            if (!TarkovTracker.ValidToken)
+            if (!TarkovTracker.CanWriteForProfile(e.Profile))
             {
                 return;
             }
@@ -804,7 +804,7 @@ namespace TarkovMonitor
 
             messageLog.AddMessage($"Failed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
-            if (!TarkovTracker.ValidToken)
+            if (!TarkovTracker.CanWriteForProfile(e.Profile))
             {
                 return;
             }
@@ -829,7 +829,7 @@ namespace TarkovMonitor
             }
             messageLog.AddMessage($"Started task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
-            if (!TarkovTracker.ValidToken)
+            if (!TarkovTracker.CanWriteForProfile(e.Profile))
             {
                 return;
             }
@@ -837,6 +837,10 @@ namespace TarkovMonitor
             try
             {
                 await TarkovTracker.SetTaskStarted(e.LogContent.TaskId);
+            }
+            catch (TrackerActiveStateCompatibilityException ex)
+            {
+                messageLog.AddMessage(ex.Message, "warning");
             }
             catch (Exception ex)
             {

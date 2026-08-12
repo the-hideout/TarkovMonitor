@@ -25,7 +25,7 @@ TarkovMonitor is an Escape from Tarkov companion application that provides usefu
     - Automatically load the website map for the map you're playing on
     - Take an in-game screenshot and show your position on the website map
 - Connect to Tarkov Tracker via API token
-    - Automatically mark quests as complete as you complete them
+    - Automatically mark ordinary quests as accepted/active, failed, restarted, or complete as EFT writes those lifecycle events
 - Statistics (all stored locally on your computer)
     - Track your total sales on the flea market
     - Track how many times you play on each map
@@ -50,7 +50,9 @@ On its own, TarkovMonitor will play audio notifications (e.g., when you match in
 
 [Tarkov Tracker](https://tarkovtracker.org) is a free website that allows you to track your quest progress. Once you log in to create a Tarkov Tracker account, you can share your quest progress with other tools (including TarkovMonitor) by creating an API token. Navigate to the [Tarkov Tracker settings page](https://tarkovtracker.org/settings), click the `create a token` button, and create a token that has permissions to `get progression` and `write progression`. You can give the token any name you want, but if you're creating it for Tarkov Monitor, it makes sense to name it `Tarkov Monitor`. Then click the `create token` button and click the token's copy button. Do not try to manually highlight the displayed token and copy it; some of the displayed token's characters are obfuscated with asterisks (*). Once you've copied the token, paste it in the Tarkov Tracker API token box in Tarkov Monitor settings and click the `Test Token` button. If you see a pop up indicating success, Tarkov Tracker is ready to start automatically updating your progress on Tarkov Tracker.
 
-Tarkov Tracker only automatically marks a quest as complete if it's running when the quest is completed. If you already completed a bunch of quests prior to running Tarkov Monitor, see [the below section on how to read past progress](#ive-installed-and-run-tarkovmonitor-why-hasnt-it-marked-all-my-completed-quests-as-complete).
+Tarkov Monitor syncs ordinary quest acceptance (`active`), failure, restart, and completion while it is running. Failed tasks retain Tarkov Tracker's completed-plus-failed encoding. Accepted-task sync requires a Tarkov Tracker server version that supports the explicit `active` task state; Tarkov Monitor will warn and leave that state unwritten if the server rejects it, rather than incorrectly falling back to `uncompleted`. If you already made progress prior to running Tarkov Monitor, see [the below section on how to read past progress](#ive-installed-and-run-tarkovmonitor-why-hasnt-it-marked-all-my-completed-quests-as-complete).
+
+EFT does not continuously write all useful events while you are in a raid. Task events become available to Tarkov Monitor only after EFT writes them to its logs, commonly when you are out of raid.
 
 ### Tarkov.dev Website Integration
 
@@ -66,9 +68,11 @@ TarkovMonitor simply watches the log files that the game creates as it's running
 
 ### I've installed and run TarkovMonitor, why hasn't it marked all my completed quests as complete?
 
-TarkovMonitor only monitors new logs as they are being written while the app is running. Therefore, it doesn't automatically update quest progress that was made prior to the app running. It will, however, still mark quests as complete going forward while the app is running.
+TarkovMonitor only monitors new logs as they are being written while the app is running. Therefore, it doesn't automatically update quest progress that was made prior to the app running. Going forward, it syncs ordinary task acceptance, failure/restart, and completion after EFT writes those events to its logs (typically out of raid).
 
-If you want to automatically update your progress from previous logs, open the Settings page, scroll down to the Initial Setup section, and click the Read Past Logs button. Tarkov Monitor will then present you with a list of breakpoints to choose the starting point to read logs from. The breakpoints are determined by the game's version number and your player profile id as written into each set of logs. Select the breakpoint corresponding with the start of the wipe for the correct account, click OK, and Tarkov Monitor will process all logs starting from that point through the present for the selected profile and update your quest progress accordingly.
+If you want to automatically update your progress from previous logs, open the Settings page, scroll down to the Initial Setup section, and click the Read Past Logs button. Tarkov Monitor will then present you with a list of breakpoints to choose the starting point to read logs from. The breakpoints are determined by the game's version number, player profile id, and supported game mode as written into the logs. Select the breakpoint corresponding with the start of the wipe for the correct account and mode, then click OK.
+
+Read Past Logs orders task lifecycle events globally by their logged timestamp, even when logs span folders or rotated/overlapping files. It establishes profile and mode at each event, ignores duplicates, and sends only the final state for each task in the selected profile and mode as one quota-conscious batch. Events whose profile or mode cannot be established are skipped rather than attributed across PvE, regular PvP, or seasonal PvP. Accepted states have the same Tarkov Tracker `active` server-version dependency described above.
 
 ### Is TarkovMonitor a cheat?
 

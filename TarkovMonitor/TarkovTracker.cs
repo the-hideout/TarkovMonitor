@@ -8,6 +8,18 @@ using Refit;
 
 namespace TarkovMonitor
 {
+    internal sealed class TrackerActiveStateCompatibilityException : Exception
+    {
+        public TrackerActiveStateCompatibilityException(HttpStatusCode statusCode, Exception innerException)
+            : base(
+                $"TarkovTracker rejected explicit task state 'active' ({(int)statusCode} {statusCode}). " +
+                "Accepted-task sync requires a Tracker server version that supports active task state. " +
+                "TarkovMonitor did not retry the update as 'uncompleted'.",
+                innerException)
+        {
+        }
+    }
+
     internal class TarkovTracker
     {
         internal interface ITarkovTrackerAPI
@@ -212,36 +224,25 @@ namespace TarkovMonitor
             return Progress;
         }
 
-        private static void SyncStoredStatus(string questId, TaskStatus status)
+        internal static void SyncStoredStatus(ProgressResponse progress, string questId, TaskStatus status)
         {
-            var storedStatus = Progress.data.tasksProgress.Find(ts => ts.id == questId);
+            var storedStatus = progress.data.tasksProgress.Find(ts => ts.id == questId);
             if (storedStatus == null)
             {
                 storedStatus = new()
                 {
                     id = questId,
                 };
-                Progress.data.tasksProgress.Add(storedStatus);
+                progress.data.tasksProgress.Add(storedStatus);
             }
-            if (status == TaskStatus.Finished && !storedStatus.complete)
-            {
-                storedStatus.complete = true;
-                storedStatus.failed = false;
-                storedStatus.invalid = false;
-            }
-            if (status == TaskStatus.Failed && !storedStatus.failed)
-            {
-                storedStatus.complete = false;
-                storedStatus.failed = true;
-                storedStatus.invalid = false;
-            }
-            if (status == TaskStatus.Started && (storedStatus.failed || storedStatus.invalid || storedStatus.complete))
-            {
-                storedStatus.complete = false;
-                storedStatus.failed = false;
-                storedStatus.invalid = false;
-            }
+            TaskLifecycle.ApplyToCache(storedStatus, status);
         }
+
+        private static void SyncStoredStatus(string questId, TaskStatus status) =>
+            SyncStoredStatus(Progress, questId, status);
+
+        public static bool CanWriteForProfile(Profile profile) =>
+            TaskLifecycle.ShouldDispatch(profile, ValidToken, currentProfile, GetToken(currentProfile));
 
         public static async Task<string> SetTaskStatus(string questId, TaskStatus status)
         {
@@ -263,6 +264,10 @@ namespace TarkovMonitor
                 if (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
+                }
+                if (status == TaskStatus.Started && IsCompatibilityRejection(ex.StatusCode))
+                {
+                    throw new TrackerActiveStateCompatibilityException(ex.StatusCode, ex);
                 }
                 throw new Exception($"Invalid TarkovTracker API response code: {ex.StatusCode}.", ex);
             }
@@ -314,19 +319,7 @@ namespace TarkovMonitor
 
         public static async Task<string> SetTaskStarted(string questId)
         {
-            foreach (var taskStatus in Progress.data.tasksProgress)
-            {
-                if (taskStatus.id != questId)
-                {
-                    continue;
-                }
-                if (taskStatus.failed)
-                {
-                    return await SetTaskStatus(questId, TaskStatus.Started);
-                }
-                break;
-            }
-            return "task not marked as failed";
+            return await SetTaskStatus(questId, TaskStatus.Started);
         }
 
         public static async Task<string> SetTaskStatuses(Dictionary<string, TaskStatus> statuses)
@@ -360,6 +353,10 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
+				if (statuses.Values.Contains(TaskStatus.Started) && IsCompatibilityRejection(ex.StatusCode))
+				{
+					throw new TrackerActiveStateCompatibilityException(ex.StatusCode, ex);
+				}
 				throw new Exception($"Invalid TarkovTracker API response code: {ex.StatusCode}.", ex);
 			}
 			catch (Exception ex)
@@ -470,6 +467,15 @@ namespace TarkovMonitor
             throw new Exception("Tarkov Tracker API token is invalid");
         }
 
+        private static bool IsCompatibilityRejection(HttpStatusCode statusCode)
+        {
+            var numericStatus = (int)statusCode;
+            return numericStatus >= 400
+                && numericStatus < 500
+                && statusCode != HttpStatusCode.Unauthorized
+                && statusCode != HttpStatusCode.TooManyRequests;
+        }
+
         public static bool HasAirFilter()
         {
             if (Progress == null)
@@ -521,6 +527,7 @@ namespace TarkovMonitor
             public bool complete { get; set; }
             public bool invalid { get; set; }
             public bool failed { get; set; }
+            public bool? active { get; set; }
         }
         public class ProgressResponseHideoutModules    
         {
@@ -542,17 +549,10 @@ namespace TarkovMonitor
             public static TaskStatusBody Completed => new("completed");
             public static TaskStatusBody Uncompleted => new("uncompleted");
             public static TaskStatusBody Failed => new("failed");
+            public static TaskStatusBody Active => new("active");
             public static TaskStatusBody From(TaskStatus code)
             {
-                if (code == TaskStatus.Finished)
-                {
-                    return TaskStatusBody.Completed;
-                }
-                if (code == TaskStatus.Failed)
-                {
-                    return TaskStatusBody.Failed;
-                }
-                return TaskStatusBody.Uncompleted;
+                return new TaskStatusBody(TaskLifecycle.ToTrackerState(code));
             }
             public static TaskStatusBody From(MessageType messageType)
             {
