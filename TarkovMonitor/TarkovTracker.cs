@@ -1782,11 +1782,11 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.StatusCode}.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
+                throw new Exception("TarkovTracker API error.", ex);
             }
         }
 
@@ -1948,15 +1948,14 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
-            }
-            return "success";
-        }
-
+				throw new Exception($"Invalid TarkovTracker API response code: {ex.StatusCode}.", ex);
+			}
+			catch (Exception ex)
+			{
+				throw new Exception("TarkovTracker API error.", ex);
+			}
+			return "success";
+		}
         public static async Task<ProgressResponse> GetProgress()
         {
             var request = CaptureActiveRequest();
@@ -1979,11 +1978,11 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                throw new Exception($"Invalid TarkovTracker response code: {ex.Message}");
+                throw new Exception($"Invalid TarkovTracker response code: {ex.StatusCode}.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
+                throw new Exception("TarkovTracker API error.", ex);
             }
         }
 
@@ -2045,7 +2044,7 @@ namespace TarkovMonitor
             }
             catch (HttpRequestException ex)
             {
-                throw new Exception($"TarkovTracker API connection error: {ex.Message}");
+                throw new Exception("TarkovTracker API connection error.", ex);
             }
 
             using (httpResponse)

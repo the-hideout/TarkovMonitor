@@ -381,6 +381,7 @@
             </div>
         </MudPaper>
     </MudItem>
+
 </MudGrid>
 
 @code {
@@ -390,6 +391,7 @@
 
     private Dictionary<int, string> PlaybackDevices;
     private List<(string Code, string Name)> AvailableLanguages = new();
+    private string resolvedCustomLogsFolder = "";
     private bool BoundKeyFilterEnabled => false;
     private string boundKeyFilter = "";
     // Drawer state survives navigation within this process, but is never persisted.
@@ -457,7 +459,7 @@
     private async Task UpdateProfileName()
     {
         var profile = GameWatcher.CurrentProfile.Snapshot();
-        if (!profile.HasTarkovDevPlayerRoute)
+        if (!eft.IsGameRunning || !profile.HasTarkovDevPlayerRoute)
         {
             currentProfileName = "";
             return;
@@ -480,6 +482,7 @@
         PlaybackDevices = Sound.GetPlaybackDevices();
         AvailableLanguages = LocalizationService.GetAvailableLanguages();
         LocalizationService.LanguageChanged += OnLanguageChanged;
+        ResolveCustomLogsFolder();
         eft.GameStarted += OnGameClientStateChanged;
         eft.ProfileChanged += OnGameClientStateChanged;
         _ = UpdateProfileName();
@@ -877,13 +880,14 @@
             return;
         }
 
+        var startedUtc = DateTime.UtcNow;
         try
         {
             await TarkovTracker.SetProfile(GameWatcher.CurrentProfile);
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Error changing Tarkov Tracker service: {ex.Message}", "exception");
+            messageLog.AddException("Tarkov Tracker profile could not be loaded.", "TM-API-TRACKER-005", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{TarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 
@@ -892,7 +896,7 @@
         "tarkovtracker.io",
         StringComparison.OrdinalIgnoreCase);
 
-    private bool HasCurrentProfileRoute => GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute;
+    private bool HasCurrentProfileRoute => eft.IsGameRunning && GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute;
 
     private string CurrentProfileUrl => HasCurrentProfileRoute
         ? $"https://tarkov.dev/players/{GameWatcher.CurrentProfile.TarkovDevPlayerMode}/{GameWatcher.CurrentProfile.AccountId}"
@@ -1378,16 +1382,18 @@
             protectedValues.Select(value => new MonitorMessageProtectedValue(value.Label, value.Value)));
     }
 
-    private static string CurrentAccountMarker(string accountId)
+    private string CurrentAccountMarker(string accountId)
     {
-        return string.Equals(accountId, GameWatcher.CurrentProfile.AccountId, StringComparison.Ordinal)
+        return eft.IsGameRunning
+            && string.Equals(accountId, GameWatcher.CurrentProfile.AccountId, StringComparison.Ordinal)
             ? "• Current account"
             : "";
     }
 
-    private static string ActiveKeyMarker(TarkovTracker.OrgKeySummary key)
+    private string ActiveKeyMarker(TarkovTracker.OrgKeySummary key)
     {
-        if (!TarkovTracker.IsLegacyService
+        if (eft.IsGameRunning
+            && !TarkovTracker.IsLegacyService
             && TarkovTracker.ValidToken
             && string.Equals(key.AccountId, TarkovTracker.CurrentAccountId, StringComparison.Ordinal)
             && string.Equals(key.ProfileId, TarkovTracker.CurrentProfileId, StringComparison.Ordinal)
@@ -1404,7 +1410,7 @@
             : "";
     }
 
-    private static string ProfileRowLabel(TarkovTracker.OrgKeySummary key)
+    private string ProfileRowLabel(TarkovTracker.OrgKeySummary key)
     {
         var marker = ActiveKeyMarker(key);
         if (string.IsNullOrWhiteSpace(key.ProfileNickname))
@@ -1515,25 +1521,42 @@
             {
                 return Properties.Settings.Default.customLogsPath;
             }
-            try
-            {
-                return GameWatcher.GetDefaultLogsFolder();
-            }
-            catch (Exception ex)
-            {
-                messageLog.AddMessage($"Could not find the default logs folder: {ex.Message}", "exception");
-            }
-            return "";
+            return resolvedCustomLogsFolder;
         }
         set
         {
-            Properties.Settings.Default.customLogsPath = value;
+            Properties.Settings.Default.customLogsPath = value ?? "";
             Properties.Settings.Default.Save();
+            if (string.IsNullOrWhiteSpace(Properties.Settings.Default.customLogsPath))
+            {
+                ResolveCustomLogsFolder();
+            }
+        }
+    }
+
+    private void ResolveCustomLogsFolder()
+    {
+        if (!string.IsNullOrWhiteSpace(Properties.Settings.Default.customLogsPath))
+        {
+            resolvedCustomLogsFolder = Properties.Settings.Default.customLogsPath;
+            return;
+        }
+
+        var startedUtc = DateTime.UtcNow;
+        try
+        {
+            resolvedCustomLogsFolder = GameWatcher.GetDefaultLogsFolder();
+        }
+        catch (Exception ex)
+        {
+            resolvedCustomLogsFolder = "";
+            messageLog.AddException("The default EFT logs folder could not be located.", "TM-FILES-002", "GetDefaultLogsFolder", ex, "Filesystem", "Settings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 
     void CustomLogsFolderClick()
     {
+        var startedUtc = DateTime.UtcNow;
         try
         {
             var currentFolder = CustomLogsFolder;
@@ -1552,7 +1575,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Could not open the logs-folder picker: {ex.Message}", "exception");
+            messageLog.AddException("The EFT logs folder picker could not be opened.", "TM-UI-004", "OpenLogsFolderPicker", ex, "UI", "Settings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
         }
     }
 

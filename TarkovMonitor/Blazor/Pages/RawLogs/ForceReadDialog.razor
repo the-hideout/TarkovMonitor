@@ -179,90 +179,111 @@
         var taskMessages = new List<MonitorMessage>();
         var updateTasks = new Dictionary<string, TarkovMonitor.TaskStatus>();
         var totalTasks = 0;
+        var startedUtc = DateTime.UtcNow;
         IsProcessing = true;
         SubmitDisabled = true;
         await InvokeAsync(StateHasChanged);
         try
         {
-            trackerLease = await TarkovTracker.AcquireProfileLease(breakpoint.Profile);
-            if (eft.IsGameRunning)
+            try
             {
-                messageLog.AddMessage(
-                    "Read Past Logs was cancelled because Escape from Tarkov started before historical processing began.",
-                    "warning");
+                trackerLease = await TarkovTracker.AcquireProfileLease(breakpoint.Profile);
+                if (eft.IsGameRunning)
+                {
+                    messageLog.AddMessage(
+                        "Read Past Logs was cancelled because Escape from Tarkov started before historical processing began.",
+                        "warning");
+                    return;
+                }
+
+                GameWatcher.ReadingPastLogs = true;
+                TaskStatuses.Clear();
+                TaskSequence.Clear();
+                nextTaskSequence = 0;
+                customWatcher.TaskModified += UpdateTaskStatus;
+                handlerAttached = true;
+                customWatcher.ProcessLogsFromBreakpoint(breakpoint);
+
+                foreach (var kvp in TaskStatuses.OrderBy(item => TaskSequence[item.Key]))
+                {
+                    if (kvp.Value == TarkovMonitor.TaskStatus.Started)
+                    {
+                        continue;
+                    }
+                    var task = TarkovDev.Tasks.Find((t) => t.id == kvp.Key);
+                    if (task == null)
+                    {
+                        continue;
+                    }
+                    totalTasks++;
+                    TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
+                    var taskProgress = trackerLease.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
+                    if (taskProgress != null)
+                    {
+                        if (taskProgress.failed)
+                        {
+                            savedTaskStatus = TarkovMonitor.TaskStatus.Failed;
+                        }
+                        if (taskProgress.complete)
+                        {
+                            savedTaskStatus = TarkovMonitor.TaskStatus.Finished;
+                        }
+                    }
+                    if (kvp.Value == savedTaskStatus)
+                    {
+                        continue;
+                    }
+                    updateTasks.Add(kvp.Key, kvp.Value);
+                    taskMessages.Add(new MonitorMessage(
+                        $"{kvp.Value} task: {task.name}.",
+                        "quest",
+                        $"https://tarkov.dev/task/{task.normalizedName}"));
+                }
+
+                if (eft.IsGameRunning)
+                {
+                    messageLog.AddMessage(
+                        "Read Past Logs was cancelled because Escape from Tarkov started before task updates were sent.",
+                        "warning");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                messageLog.AddException("Past-log task updates could not be compiled.", "TM-LOG-001", "CompileTaskUpdates", ex, "LogParser", "PastLogs", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
                 return;
             }
 
-            GameWatcher.ReadingPastLogs = true;
-            TaskStatuses.Clear();
-            TaskSequence.Clear();
-            nextTaskSequence = 0;
-            customWatcher.TaskModified += UpdateTaskStatus;
-            handlerAttached = true;
-            customWatcher.ProcessLogsFromBreakpoint(breakpoint);
-
-            foreach (var kvp in TaskStatuses.OrderBy(item => TaskSequence[item.Key]))
+            GameWatcher.ReadingPastLogs = false;
+            if (handlerAttached)
             {
-                if (kvp.Value == TarkovMonitor.TaskStatus.Started)
-                {
-                    continue;
-                }
-                var task = TarkovDev.Tasks.Find((t) => t.id == kvp.Key);
-                if (task == null)
-                {
-                    continue;
-                }
-                totalTasks++;
-                TarkovMonitor.TaskStatus savedTaskStatus = TarkovMonitor.TaskStatus.None;
-                var taskProgress = trackerLease.Progress.data.tasksProgress.Find((prog) => prog.id == kvp.Key);
-                if (taskProgress != null)
-                {
-                    if (taskProgress.failed)
-                    {
-                        savedTaskStatus = TarkovMonitor.TaskStatus.Failed;
-                    }
-                    if (taskProgress.complete)
-                    {
-                        savedTaskStatus = TarkovMonitor.TaskStatus.Finished;
-                    }
-                }
-                if (kvp.Value == savedTaskStatus)
-                {
-                    continue;
-                }
-                updateTasks.Add(kvp.Key, kvp.Value);
-                taskMessages.Add(new MonitorMessage(
-                    $"{kvp.Value} task: {task.name}.",
-                    "quest",
-                    $"https://tarkov.dev/task/{task.normalizedName}"));
+                customWatcher.TaskModified -= UpdateTaskStatus;
+                handlerAttached = false;
             }
 
-            if (eft.IsGameRunning)
+            var updateStartedUtc = DateTime.UtcNow;
+            try
             {
-                messageLog.AddMessage(
-                    "Read Past Logs was cancelled because Escape from Tarkov started before task updates were sent.",
-                    "warning");
-                return;
+                if (updateTasks.Count > 0)
+                {
+                    await TarkovTracker.SetTaskStatuses(updateTasks, trackerLease);
+                    messageLog.AddMessages(taskMessages, preserveDisplayOrder: true);
+                    messageLog.AddMessage(
+                        $"Updated {updateTasks.Count} of {totalTasks} tasks found in the selected logs.",
+                        "info");
+                }
+                else
+                {
+                    messageLog.AddMessage(
+                        $"Checked {totalTasks} tasks in the selected logs. Tarkov Tracker was already up to date.",
+                        "info");
+                }
+                MudDialog.Close(DialogResult.Ok(true));
             }
-            if (updateTasks.Count > 0)
+            catch (Exception ex)
             {
-                await TarkovTracker.SetTaskStatuses(updateTasks, trackerLease);
-                messageLog.AddMessages(taskMessages, preserveDisplayOrder: true);
-                messageLog.AddMessage(
-                    $"Updated {updateTasks.Count} of {totalTasks} tasks found in the selected logs.",
-                    "info");
+                messageLog.AddException("Past-log task updates could not be sent.", "TM-API-TRACKER-007", "UpdatePastLogTasks", ex, "TarkovTracker", "PastLogs", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(updateStartedUtc));
             }
-            else
-            {
-                messageLog.AddMessage(
-                    $"Checked {totalTasks} tasks in the selected logs. Tarkov Tracker was already up to date.",
-                    "info");
-            }
-            MudDialog.Close(DialogResult.Ok(true));
-        }
-        catch (Exception ex)
-        {
-            messageLog.AddMessage($"Could not read past logs: {ex.Message}", "exception");
         }
         finally
         {
@@ -293,7 +314,6 @@
         TaskStatuses[e.LogContent.TaskId] = e.LogContent.Status;
         TaskSequence[e.LogContent.TaskId] = nextTaskSequence++;
     }
-
     private void Settings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == "customLogsPath")

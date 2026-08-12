@@ -1,27 +1,20 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TarkovMonitor
 {
-    // An Event Delegate and Arguments for when a new event is added to the MessageLog
     public delegate void NewLogMessage(object source, NewLogMessageArgs e);
 
     public class NewLogMessageArgs : EventArgs
     {
         public MonitorMessage Message { get; set; }
-        private string type
-        {
-            get
-            {
-                return Message.Type;
-            }
-        }
-        public NewLogMessageArgs(MonitorMessage message)
+        public bool IsRepeat { get; }
+
+        public NewLogMessageArgs(MonitorMessage message, bool isRepeat = false)
         {
             Message = message;
+            IsRepeat = isRepeat;
         }
     }
 
@@ -30,17 +23,33 @@ namespace TarkovMonitor
         internal const int MaxMessageLength = 2048;
         internal const int MaxMessages = 200;
         private const string ShortenedMessageSuffix = "\n[Message shortened by Tarkov Monitor.]";
-        private readonly object messagesLock = new();
+        private const int MaxRecentDiagnostics = 500;
+        private static readonly TimeSpan DeduplicationWindow = TimeSpan.FromSeconds(30);
+        private readonly object gate = new();
+        private readonly Dictionary<string, (MonitorMessage Message, DateTime LastSeen)> recentDiagnostics = new(StringComparer.Ordinal);
         private readonly List<MonitorMessage> messages = new();
+
         public event NewLogMessage newMessage = delegate { };
 
-        public IReadOnlyList<MonitorMessage> GetSnapshot()
+        public MessageLog(DiagnosticsService? diagnostics = null)
         {
-            lock (messagesLock)
+            Diagnostics = diagnostics ?? new DiagnosticsService();
+        }
+
+        public DiagnosticsService Diagnostics { get; }
+
+        public IReadOnlyList<MonitorMessage> Messages
+        {
+            get
             {
-                return messages.ToList();
+                lock (gate)
+                {
+                    return messages.ToList();
+                }
             }
         }
+
+        public IReadOnlyList<MonitorMessage> GetSnapshot() => Messages;
 
         public void AddMessage(MonitorMessage message)
         {
@@ -50,8 +59,7 @@ namespace TarkovMonitor
 
         public void AddMessage(string message, string? type = "", string? url = null, string? linkText = null)
         {
-            var monMessage = new MonitorMessage(LimitMessageLength(message), type, url, linkText);
-            AddMessageCore(monMessage);
+            AddMessage(new MonitorMessage(LimitMessageLength(message), type, url, linkText));
         }
 
         public void AddMessages(IEnumerable<MonitorMessage> messageBatch, bool preserveDisplayOrder = false)
@@ -70,18 +78,16 @@ namespace TarkovMonitor
                 message.PreserveDisplayBatchOrder = preserveDisplayOrder;
             }
 
-            lock (messagesLock)
+            lock (gate)
             {
                 messages.AddRange(batch);
-                if (messages.Count > MaxMessages)
+                while (messages.Count > MaxMessages)
                 {
-                    messages.RemoveRange(0, messages.Count - MaxMessages);
+                    messages.RemoveAt(0);
                 }
             }
 
-            // A historical replay can produce many task messages at once. Notify once
-            // after the complete batch is visible so the UI performs one stable render.
-            newMessage(this, new NewLogMessageArgs(batch[^1]));
+            RaiseMessageAdded(batch[^1]);
         }
 
         public void AddProtectedMessage(
@@ -101,19 +107,72 @@ namespace TarkovMonitor
             AddMessageCore(monMessage);
         }
 
-        private void AddMessageCore(MonitorMessage message)
+        public DiagnosticSnapshot AddException(
+            string displayMessage,
+            string code,
+            string operation,
+            Exception exception,
+            string service,
+            string stage,
+            string? endpoint = null,
+            long? durationMilliseconds = null)
         {
-            lock (messagesLock)
+            var snapshot = Diagnostics.Capture(
+                new DiagnosticContext(code, operation, service, stage, displayMessage, endpoint),
+                exception,
+                durationMilliseconds);
+            AddDiagnostic(snapshot);
+            return snapshot;
+        }
+
+        public void AddDiagnostic(DiagnosticSnapshot snapshot)
+        {
+            MonitorMessage? messageToRaise = null;
+            var isRepeat = false;
+            var now = DateTime.UtcNow;
+
+            lock (gate)
             {
-                messages.Add(message);
-                if (messages.Count > MaxMessages)
+                if (recentDiagnostics.TryGetValue(snapshot.DiagnosticKey, out var previous)
+                    && now - previous.LastSeen <= DeduplicationWindow)
                 {
-                    messages.RemoveRange(0, messages.Count - MaxMessages);
+                    var occurrenceCount = Math.Max(previous.Message.DiagnosticOccurrenceCount, snapshot.OccurrenceCount);
+                    if (snapshot.OccurrenceCount >= previous.Message.DiagnosticOccurrenceCount)
+                    {
+                        previous.Message.DiagnosticText = snapshot.ClipboardText;
+                    }
+                    previous.Message.DiagnosticKey = snapshot.DiagnosticKey;
+                    previous.Message.DiagnosticOccurrenceCount = occurrenceCount;
+                    previous.Message.Message = $"{snapshot.DisplayMessage} (repeated {occurrenceCount} times)";
+                    recentDiagnostics[snapshot.DiagnosticKey] = (previous.Message, now);
+                    isRepeat = true;
+                    messageToRaise = previous.Message;
+                }
+                else
+                {
+                    var message = new MonitorMessage(snapshot.DisplayMessage, "exception", diagnosticText: snapshot.ClipboardText)
+                    {
+                        DiagnosticKey = snapshot.DiagnosticKey,
+                        DiagnosticOccurrenceCount = snapshot.OccurrenceCount,
+                    };
+                    AddToBoundedList(message);
+                    recentDiagnostics[snapshot.DiagnosticKey] = (message, now);
+                    TrimRecentDiagnostics();
+                    messageToRaise = message;
                 }
             }
 
-            // Notify after releasing the lock so render callbacks can safely take a snapshot.
-            newMessage(this, new NewLogMessageArgs(message));
+            RaiseMessageAdded(messageToRaise, isRepeat);
+        }
+
+        private void AddMessageCore(MonitorMessage message)
+        {
+            lock (gate)
+            {
+                AddToBoundedList(message);
+            }
+
+            RaiseMessageAdded(message);
         }
 
         private static string LimitMessageLength(string message)
@@ -124,6 +183,54 @@ namespace TarkovMonitor
             }
 
             return message[..(MaxMessageLength - ShortenedMessageSuffix.Length)] + ShortenedMessageSuffix;
+        }
+
+        private void AddToBoundedList(MonitorMessage message)
+        {
+            messages.Add(message);
+            while (messages.Count > MaxMessages)
+            {
+                messages.RemoveAt(0);
+            }
+        }
+
+        private void TrimRecentDiagnostics()
+        {
+            while (recentDiagnostics.Count > MaxRecentDiagnostics)
+            {
+                var oldest = recentDiagnostics.MinBy(entry => entry.Value.LastSeen);
+                recentDiagnostics.Remove(oldest.Key);
+            }
+        }
+
+        private void RaiseMessageAdded(MonitorMessage message, bool isRepeat = false)
+        {
+            var args = new NewLogMessageArgs(message, isRepeat);
+            foreach (NewLogMessage handler in newMessage.GetInvocationList())
+            {
+                try
+                {
+                    handler(this, args);
+                }
+                catch (Exception exception)
+                {
+                    try
+                    {
+                        Diagnostics.Capture(
+                            new DiagnosticContext(
+                                "TM-UI-005",
+                                "MessageNotification",
+                                "UI",
+                                "Notification",
+                                "A notification subscriber failed."),
+                            exception);
+                    }
+                    catch
+                    {
+                        // A notification failure must not prevent the original message from being recorded.
+                    }
+                }
+            }
         }
     }
 }

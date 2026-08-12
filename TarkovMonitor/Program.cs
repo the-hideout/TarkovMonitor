@@ -8,6 +8,27 @@ namespace TarkovMonitor
         [STAThread]
         static void Main()
         {
+            var diagnostics = new DiagnosticsService();
+            Application.ThreadException += (_, args) => diagnostics.Capture(
+                new DiagnosticContext("TM-APP-001", "UnhandledUiException", "Application", "Thread", "The application encountered an unexpected UI failure."),
+                args.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception exception)
+                {
+                    diagnostics.Capture(
+                        new DiagnosticContext("TM-APP-002", "UnhandledException", "Application", "Process", "The application encountered an unexpected failure."),
+                        exception);
+                }
+            };
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                diagnostics.Capture(
+                    new DiagnosticContext("TM-APP-003", "UnobservedTaskException", "Application", "BackgroundTask", "A background task failed without an observed handler."),
+                    args.Exception);
+                args.SetObserved();
+            };
+
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
@@ -22,7 +43,6 @@ namespace TarkovMonitor
 				Properties.Settings.Default.upgradeRequired = false;
 				Properties.Settings.Default.Save();
 			}
-
 			// Initialize the application behind the branding splash. The native
 			// window stays hidden, but WebView2 and Blazor are allowed to render
 			// immediately so the first revealed frame is complete.
@@ -32,10 +52,19 @@ namespace TarkovMonitor
 			// both modes. Skip mode has no branding window, but it should still
 			// reveal the finished UI instead of exposing the temporary WebView
 			// startup shell.
-			var mainWindow = new MainBlazorUI(holdUntilSplashCompletes: true)
+			var mainWindow = new MainBlazorUI(holdUntilSplashCompletes: true, diagnosticsService: diagnostics)
 			{
 				ShowInTaskbar = false
 			};
+			var primaryScreen = Screen.PrimaryScreen ?? Screen.AllScreens.FirstOrDefault();
+			if (primaryScreen is not null)
+			{
+				mainWindow.StartPosition = FormStartPosition.Manual;
+				var primaryWorkArea = primaryScreen.WorkingArea;
+				var mainLeft = primaryWorkArea.Left + Math.Max(0, (primaryWorkArea.Width - mainWindow.Width) / 2);
+				var mainTop = primaryWorkArea.Top + Math.Max(0, (primaryWorkArea.Height - mainWindow.Height) / 2);
+				mainWindow.Location = new Point(mainLeft, mainTop);
+			}
 			if (!splashEnabled)
 			{
 				mainWindow.UiReady += (_, _) => mainWindow.ReleaseSplashGate();
@@ -44,7 +73,7 @@ namespace TarkovMonitor
 			{
 				mainWindow.Shown += (_, _) =>
 				{
-					var startupSplash = new Splash(TarkovMonitor.Properties.Resources.tarkov_dev_logo, splashTime, waitForReadiness: true);
+					var startupSplash = new Splash(TarkovMonitor.Properties.Resources.tarkov_dev_logo, splashTime, diagnostics: diagnostics, waitForReadiness: true);
 					var startupFallback = new System.Windows.Forms.Timer { Interval = 10000 };
 					mainWindow.UiReady += (_, _) => startupSplash.CloseWhenReady();
 					startupFallback.Tick += (_, _) =>
