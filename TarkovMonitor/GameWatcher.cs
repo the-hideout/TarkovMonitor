@@ -188,6 +188,7 @@ namespace TarkovMonitor
         public event EventHandler<ExceptionEventArgs>? ExceptionThrown;
         public event EventHandler<DebugEventArgs>? DebugMessage;
         public event EventHandler? GameStarted;
+        public event EventHandler? GameStopped;
         public event EventHandler<LogContentEventArgs<GroupLogContent>>? GroupInviteAccept;
         public event EventHandler<LogContentEventArgs<GroupRaidSettingsLogContent>>? GroupRaidSettings;
         public event EventHandler<LogContentEventArgs<GroupMatchRaidReadyLogContent>>? GroupMemberReady;
@@ -213,6 +214,7 @@ namespace TarkovMonitor
         public event EventHandler<PlayerPositionEventArgs>? PlayerPosition;
         public event EventHandler<ProfileEventArgs> ProfileChanged;
         public event EventHandler<ProfileEventArgs> InitialReadComplete;
+        public event EventHandler<ProfileEventArgs>? ProfileReady;
         public event EventHandler<ControlSettingsEventArgs> ControlSettings;
 
         private static string logPatternPrefix = @"(?<date>^\d{4}-\d{2}-\d{2}) (?<time>\d{2}:\d{2}:\d{2}\.\d{3})(?<tzoffset> [+-]\d{2}:\d{2})?\|";
@@ -1274,6 +1276,9 @@ namespace TarkovMonitor
                     }
                     //DebugMessage?.Invoke(this, new DebugEventArgs("EFT exited."));
                     process = null;
+                    CurrentProfile = new();
+                    raidInfo = new();
+                    GameStopped?.Invoke(this, EventArgs.Empty);
                 }
                 raidInfo = new();
                 var processes = Process.GetProcessesByName("EscapeFromTarkov");
@@ -1406,8 +1411,10 @@ namespace TarkovMonitor
                             applicationInitialReadComplete = false;
                         }
                     }
-                    newMon.InitialReadComplete += LogMonitor_InitialReadComplete;
                 }
+                // Every replacement application log must produce a profile-ready
+                // transition, even after the original startup read completed.
+                newMon.InitialReadComplete += LogMonitor_InitialReadComplete;
                 Monitors[newType.Value] = newMon;
                 newMon.Start();
             }
@@ -1449,9 +1456,12 @@ namespace TarkovMonitor
             }
 
             var shouldPublish = false;
+            var shouldPublishProfileReady = false;
             lock (initialReadGate)
             {
-                if (!pendingInitialReads.Remove(monitor))
+                var wasPendingInitialRead = pendingInitialReads.Remove(monitor);
+                if (!wasPendingInitialRead
+                    && (!InitialLogsRead || monitor.Type != GameLogType.Application))
                 {
                     return;
                 }
@@ -1461,14 +1471,22 @@ namespace TarkovMonitor
                     applicationInitialReadComplete = true;
                 }
 
-                if (!InitialLogsRead && applicationInitialReadComplete && pendingInitialReads.Count == 0)
+                if (InitialLogsRead && monitor.Type == GameLogType.Application)
+                {
+                    shouldPublishProfileReady = true;
+                }
+                else if (!InitialLogsRead && applicationInitialReadComplete && pendingInitialReads.Count == 0)
                 {
                     InitialLogsRead = true;
                     shouldPublish = true;
                 }
             }
 
-            if (shouldPublish)
+            if (shouldPublishProfileReady)
+            {
+                ProfileReady?.Invoke(this, new(CurrentProfile));
+            }
+            else if (shouldPublish)
             {
                 PublishMatchingStarted(false);
                 InitialReadComplete?.Invoke(this, new(CurrentProfile));

@@ -71,6 +71,8 @@ namespace TarkovMonitor
             Enabled = false, 
             Interval = TimeSpan.FromMinutes(20).TotalMilliseconds
         };
+        private static readonly object updateTimerLock = new();
+        private static bool updateTimerHandlerAttached;
 
         internal sealed class ApiDataSnapshot
         {
@@ -360,7 +362,32 @@ namespace TarkovMonitor
             }
 
             var snapshot = await LoadApiData(profileType, cancellationToken);
-            if (GameWatcher.CurrentProfile.Type != profileType)
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            if (!currentProfile.HasTarkovDevPlayerRoute
+                || currentProfile.Type != profileType)
+            {
+                return false;
+            }
+
+            PublishApiData(snapshot);
+            return true;
+        }
+
+        private async static System.Threading.Tasks.Task<bool> UpdateApiData(Profile expectedProfile, CancellationToken cancellationToken = default)
+        {
+            if (!expectedProfile.HasTarkovDevPlayerRoute
+                || expectedProfile.Type == ProfileType.Unknown)
+            {
+                return false;
+            }
+
+            var snapshot = await LoadApiData(expectedProfile.Type, cancellationToken);
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            if (!currentProfile.HasTarkovDevPlayerRoute
+                || currentProfile.Type != expectedProfile.Type
+                || currentProfile.SessionMode != expectedProfile.SessionMode
+                || !string.Equals(currentProfile.AccountId, expectedProfile.AccountId, StringComparison.Ordinal)
+                || !string.Equals(currentProfile.Id, expectedProfile.Id, StringComparison.Ordinal))
             {
                 return false;
             }
@@ -552,8 +579,23 @@ namespace TarkovMonitor
 
         public static void StartAutoUpdates()
         {
-            updateTimer.Enabled = true;
-            updateTimer.Elapsed += UpdateTimer_Elapsed;
+            lock (updateTimerLock)
+            {
+                if (!updateTimerHandlerAttached)
+                {
+                    updateTimer.Elapsed += UpdateTimer_Elapsed;
+                    updateTimerHandlerAttached = true;
+                }
+                updateTimer.Enabled = true;
+            }
+        }
+
+        public static void StopAutoUpdates()
+        {
+            lock (updateTimerLock)
+            {
+                updateTimer.Enabled = false;
+            }
         }
 
         private static async void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -562,15 +604,16 @@ namespace TarkovMonitor
             {
                 return;
             }
-            var profileType = GameWatcher.CurrentProfile.Type;
-            if (profileType == ProfileType.Unknown)
+            var profile = GameWatcher.CurrentProfile.Snapshot();
+            if (!profile.HasTarkovDevPlayerRoute || profile.Type == ProfileType.Unknown)
             {
                 return;
             }
+            var profileType = profile.Type;
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await UpdateApiData(profileType);
+                await UpdateApiData(profile);
             }
             catch (OperationCanceledException)
             {
@@ -578,7 +621,10 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                if (GameWatcher.CurrentProfile.Type != profileType)
+                if (GameWatcher.CurrentProfile.Type != profileType
+                    || GameWatcher.CurrentProfile.SessionMode != profile.SessionMode
+                    || GameWatcher.CurrentProfile.AccountId != profile.AccountId
+                    || GameWatcher.CurrentProfile.Id != profile.Id)
                 {
                     return;
                 }

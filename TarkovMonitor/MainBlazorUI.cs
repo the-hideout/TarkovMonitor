@@ -85,7 +85,7 @@ namespace TarkovMonitor
         private readonly object tarkovDevDataRefreshLock = new();
         private CancellationTokenSource? tarkovDevDataRefreshCancellation;
         private long tarkovDevDataRefreshGeneration;
-        private ProfileType tarkovDevDataRefreshProfileType = ProfileType.Unknown;
+        private Profile? tarkovDevDataProfile;
 
         private readonly record struct TrackerSessionNoticeIdentity(
             string AccountId,
@@ -173,19 +173,35 @@ namespace TarkovMonitor
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GameStarted;
+            eft.GameStopped += Eft_GameStopped;
             eft.MapLoading += Eft_MapLoading;
             eft.MapLoading += Eft_MapLoading_NavigateToMap;
             eft.MatchingStarted += Eft_MatchingStarted;
             eft.MatchFound += Eft_MatchFound;
             eft.PlayerPosition += Eft_PlayerPosition;
             eft.ProfileChanged += Eft_ProfileChanged;
+            eft.ProfileReady += Eft_ProfileReady;
             eft.ControlSettings += Eft_ControlSettings;
 
             eft.InitialReadComplete += (object? sender, ProfileEventArgs e) =>
             {
-                if (e.Profile.Type == ProfileType.Unknown)
+                if (!e.Profile.HasTarkovDevPlayerRoute)
                 {
                     TarkovTracker.ResetActiveState();
+                    TarkovDev.StopAutoUpdates();
+                    InvalidateTarkovDevData();
+                    return;
+                }
+
+                if (!eft.IsGameRunning)
+                {
+                    // The startup scan is historical, not a live EFT session.
+                    // It may still establish the read-only Tarkov.dev context so
+                    // the user does not need to launch EFT just to verify the
+                    // data connection. Tracker writes remain inactive.
+                    _ = RefreshTarkovDevApiData(e.Profile, allowPersistedProfile: true);
+                    TarkovTracker.ResetActiveState();
+                    TarkovDev.StopAutoUpdates();
                     return;
                 }
 
@@ -224,7 +240,6 @@ namespace TarkovMonitor
 
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
             TarkovDev.ExceptionThrown += TarkovDev_ExceptionThrown;
-            TarkovTracker.OrgKeyAutoAssigned += TarkovTracker_OrgKeyAutoAssigned;
 
             UpdateCheck.NewVersion += UpdateCheck_NewVersion;
             UpdateCheck.Error += UpdateCheck_Error;
@@ -467,7 +482,37 @@ namespace TarkovMonitor
         {
             var profileSnapshot = e.Profile.Snapshot();
             _ = RefreshTarkovDevApiData(profileSnapshot);
+            if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
+            {
+                TarkovDev.StartAutoUpdates();
+            }
+            else
+            {
+                TarkovDev.StopAutoUpdates();
+            }
             _ = InitializeProgress(profileSnapshot, announceSession: true);
+        }
+
+        private void Eft_ProfileReady(object? sender, ProfileEventArgs e)
+        {
+            var profileSnapshot = e.Profile.Snapshot();
+            _ = RefreshTarkovDevApiData(profileSnapshot);
+            if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
+            {
+                TarkovDev.StartAutoUpdates();
+            }
+            else
+            {
+                TarkovDev.StopAutoUpdates();
+            }
+            _ = InitializeProgress(profileSnapshot, announceSession: true);
+        }
+
+        private void Eft_GameStopped(object? sender, EventArgs e)
+        {
+            TarkovTracker.DeactivateProfile();
+            TarkovDev.StopAutoUpdates();
+            InvalidateTarkovDevData();
         }
 
         private void Eft_GameStarted(object? sender, EventArgs e)
@@ -622,6 +667,15 @@ namespace TarkovMonitor
             startupServicesStarted = true;
             try
             {
+                var lastKnownProfile = TarkovTracker.GetLastKnownOrgProfile();
+                if (lastKnownProfile != null)
+                {
+                    // Tarkov.dev data is read-only and can be preloaded from the
+                    // last complete profile without requiring EFT to be running.
+                    // Live EFT identity is still required before tracker writes
+                    // are activated.
+                    _ = RefreshTarkovDevApiData(lastKnownProfile, allowPersistedProfile: true);
+                }
                 gameWatcherStarted = eft.Start();
             }
             catch (Exception ex)
@@ -796,18 +850,6 @@ namespace TarkovMonitor
                 $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
         }
 
-        private void TarkovTracker_OrgKeyAutoAssigned(object? sender, TarkovTracker.OrgKeyAutoAssignedEventArgs e)
-        {
-            messageLog.AddProtectedMessage(
-                $"TarkovTracker.org API key assigned - Session: {TarkovTracker.GetSessionDisplayName(e.SessionMode)}.",
-                "info",
-                new[]
-                {
-                    new MonitorMessageProtectedValue("Account ID", e.AccountId),
-                    new MonitorMessageProtectedValue("Profile ID", e.ProfileId),
-                });
-        }
-
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
         {
             return;
@@ -849,29 +891,24 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task RefreshTarkovDevApiData(Profile profile)
+        private async Task RefreshTarkovDevApiData(Profile profile, bool allowPersistedProfile = false)
         {
             var profileSnapshot = profile.Snapshot();
-            if (profileSnapshot.Type == ProfileType.Unknown)
+            if (!profileSnapshot.HasTarkovDevPlayerRoute
+                || profileSnapshot.Type == ProfileType.Unknown)
             {
-                lock (tarkovDevDataRefreshLock)
-                {
-                    tarkovDevDataRefreshGeneration++;
-                    tarkovDevDataRefreshCancellation?.Cancel();
-                    tarkovDevDataRefreshCancellation = null;
-                    tarkovDevDataRefreshProfileType = ProfileType.Unknown;
-                    TarkovDev.ClearApiData();
-                }
+                InvalidateTarkovDevData();
                 return;
             }
 
             CancellationTokenSource refreshCancellation;
             long refreshGeneration;
+            Profile? previousProfile;
             lock (tarkovDevDataRefreshLock)
             {
-                if (tarkovDevDataRefreshProfileType == profileSnapshot.Type
-                    || (tarkovDevDataRefreshProfileType == ProfileType.Unknown
-                        && TarkovDev.LoadedProfileType == profileSnapshot.Type))
+                if (tarkovDevDataProfile != null
+                    && ProfilesMatch(tarkovDevDataProfile, profileSnapshot)
+                    && TarkovDev.LoadedProfileType == profileSnapshot.Type)
                 {
                     return;
                 }
@@ -881,14 +918,18 @@ namespace TarkovMonitor
                 tarkovDevDataRefreshCancellation?.Cancel();
                 refreshCancellation = new CancellationTokenSource();
                 tarkovDevDataRefreshCancellation = refreshCancellation;
-                tarkovDevDataRefreshProfileType = profileSnapshot.Type;
+                previousProfile = tarkovDevDataProfile;
+                tarkovDevDataProfile = profileSnapshot;
 
-                if (TarkovDev.LoadedProfileType != profileSnapshot.Type)
+                if (previousProfile == null
+                    || !ProfilesMatch(previousProfile, profileSnapshot)
+                    || TarkovDev.LoadedProfileType != profileSnapshot.Type)
                 {
                     TarkovDev.ClearApiData();
                 }
             }
 
+            var published = false;
             try
             {
                 var data = await TarkovDev.LoadApiData(profileSnapshot.Type, refreshCancellation.Token);
@@ -896,12 +937,13 @@ namespace TarkovMonitor
                 {
                     if (refreshGeneration != tarkovDevDataRefreshGeneration
                         || !ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation)
-                        || GameWatcher.CurrentProfile.Type != profileSnapshot.Type)
+                        || !IsTarkovDevRefreshOwnerCurrent(profileSnapshot, allowPersistedProfile))
                     {
                         return;
                     }
 
                     TarkovDev.PublishApiData(data);
+                    published = true;
                 }
 
                 messageLog.AddMessage(
@@ -925,7 +967,7 @@ namespace TarkovMonitor
                 {
                     if (refreshGeneration != tarkovDevDataRefreshGeneration
                         || !ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation)
-                        || GameWatcher.CurrentProfile.Type != profileSnapshot.Type)
+                        || !IsTarkovDevRefreshOwnerCurrent(profileSnapshot, allowPersistedProfile))
                     {
                         return;
                     }
@@ -940,10 +982,64 @@ namespace TarkovMonitor
                     if (refreshGeneration == tarkovDevDataRefreshGeneration
                         && ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation))
                     {
-                        tarkovDevDataRefreshProfileType = ProfileType.Unknown;
+                        if (!published)
+                        {
+                            tarkovDevDataProfile = null;
+                        }
                         tarkovDevDataRefreshCancellation = null;
                     }
                 }
+            }
+        }
+
+        private static bool ProfilesMatch(Profile left, Profile right)
+        {
+            return left.Type == right.Type
+                && left.SessionMode == right.SessionMode
+                && string.Equals(left.AccountId, right.AccountId, StringComparison.Ordinal)
+                && string.Equals(left.Id, right.Id, StringComparison.Ordinal);
+        }
+
+        private static bool IsCurrentProfile(Profile expectedProfile)
+        {
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            return currentProfile.HasTarkovDevPlayerRoute
+                && ProfilesMatch(currentProfile, expectedProfile);
+        }
+
+        private bool IsTarkovDevRefreshOwnerCurrent(Profile expectedProfile, bool allowPersistedProfile)
+        {
+            if (eft.IsGameRunning)
+            {
+                return IsCurrentProfile(expectedProfile);
+            }
+
+            if (!allowPersistedProfile)
+            {
+                return false;
+            }
+
+            var historicalProfile = GameWatcher.CurrentProfile.Snapshot();
+            if (historicalProfile.HasTarkovDevPlayerRoute
+                && ProfilesMatch(historicalProfile, expectedProfile))
+            {
+                return true;
+            }
+
+            var lastKnownProfile = TarkovTracker.GetLastKnownOrgProfile();
+            return lastKnownProfile != null
+                && ProfilesMatch(lastKnownProfile, expectedProfile);
+        }
+
+        private void InvalidateTarkovDevData()
+        {
+            lock (tarkovDevDataRefreshLock)
+            {
+                tarkovDevDataRefreshGeneration++;
+                tarkovDevDataRefreshCancellation?.Cancel();
+                tarkovDevDataRefreshCancellation = null;
+                tarkovDevDataProfile = null;
+                TarkovDev.ClearApiData();
             }
         }
 
