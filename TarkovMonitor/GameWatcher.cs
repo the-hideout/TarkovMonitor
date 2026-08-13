@@ -1617,10 +1617,14 @@ namespace TarkovMonitor
 	{
 		public Exception Exception { get; set; }
         public string Context { get; set; }
-		public ExceptionEventArgs(Exception ex, string context)
+		public string? Endpoint { get; set; }
+        public long? DurationMilliseconds { get; set; }
+		public ExceptionEventArgs(Exception ex, string context, string? endpoint = null, long? durationMilliseconds = null)
 		{
 			this.Exception = ex;
             Context = context;
+			Endpoint = endpoint;
+            DurationMilliseconds = durationMilliseconds;
 		}
 	}
 	public class DebugEventArgs : EventArgs

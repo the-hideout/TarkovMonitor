@@ -885,6 +885,10 @@
         {
             await TarkovTracker.SetProfile(GameWatcher.CurrentProfile);
         }
+        catch (ProfileActivationSupersededException)
+        {
+            // A newer profile/key/mode activation owns the result.
+        }
         catch (Exception ex)
         {
             messageLog.AddException("Tarkov Tracker profile could not be loaded.", "TM-API-TRACKER-005", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{TarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));

@@ -1,12 +1,15 @@
 using Newtonsoft.Json.Linq;
 using Refit;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
 
 namespace TarkovMonitor
 {
     public class TarkovDev
     {
         public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
+        private static readonly object playerNameCacheLock = new();
+        private static readonly ConcurrentDictionary<(ProfileType ProfileType, string AccountId), Lazy<Task<string>>> playerNameLookups = new();
         private static readonly HttpClient jsonClient = new(new HttpClientHandler
         {
             AutomaticDecompression = System.Net.DecompressionMethods.GZip
@@ -279,40 +282,77 @@ namespace TarkovMonitor
             }
         }
 
-        public async static Task<string> GetPlayerName(Profile profile)
+        public static async System.Threading.Tasks.Task<string> GetPlayerName(Profile profile)
         {
-            if (PlayerNames[profile.Type].ContainsKey(profile.AccountId))
-            {
-                return PlayerNames[profile.Type][profile.AccountId];
-            }
-            if (profile.Type == ProfileType.Unknown)
+            if (profile.Type == ProfileType.Unknown || string.IsNullOrWhiteSpace(profile.AccountId))
             {
                 return profile.AccountId;
             }
-            if (string.IsNullOrWhiteSpace(profile.AccountId))
+
+            lock (playerNameCacheLock)
             {
-                return profile.AccountId;
+                if (PlayerNames[profile.Type].TryGetValue(profile.AccountId, out var cachedName))
+                {
+                    return cachedName;
+                }
             }
+
+            var lookupKey = (profile.Type, profile.AccountId);
+            var lookup = playerNameLookups.GetOrAdd(
+                lookupKey,
+                static key => new Lazy<Task<string>>(
+                    () => LoadPlayerName(key.ProfileType, key.AccountId),
+                    LazyThreadSafetyMode.ExecutionAndPublication));
             try
             {
-                var p = await playerJsonApi.GetPlayerProfile(profile.Type.ToPlayersApiString(), profile.AccountId);
-                PlayerNames[profile.Type].Add(profile.AccountId, p.info.nickname);
-                return p.info.nickname;
+                return await lookup.Value;
+            }
+            finally
+            {
+                var pair = new KeyValuePair<(ProfileType ProfileType, string AccountId), Lazy<Task<string>>>(lookupKey, lookup);
+                ((ICollection<KeyValuePair<(ProfileType ProfileType, string AccountId), Lazy<Task<string>>>>)playerNameLookups).Remove(pair);
+            }
+        }
+
+        private static async Task<string> LoadPlayerName(ProfileType profileType, string accountId)
+        {
+            var startedUtc = DateTime.UtcNow;
+            try
+            {
+                var p = await playerJsonApi.GetPlayerProfile(profileType.ToPlayersApiString(), accountId);
+                var nickname = p.info.nickname;
+                lock (playerNameCacheLock)
+                {
+                    if (!PlayerNames[profileType].TryGetValue(accountId, out var cachedName))
+                    {
+                        PlayerNames[profileType][accountId] = nickname;
+                        cachedName = nickname;
+                    }
+                    return cachedName;
+                }
             }
             catch (Refit.ApiException ex)
             {
-                // don't throw an error if the profile isn't available
+                // A missing public profile is expected and should use the account ID.
                 if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    return profile.AccountId;
+                    return accountId;
                 }
-                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "player profile lookup"));
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(
+                    ex,
+                    "player profile lookup",
+                    "https://players.tarkov.dev",
+                    DiagnosticsService.ElapsedMilliseconds(startedUtc)));
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "player profile lookup"));
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(
+                    ex,
+                    "player profile lookup",
+                    "https://players.tarkov.dev",
+                    DiagnosticsService.ElapsedMilliseconds(startedUtc)));
             }
-            return profile.AccountId;
+            return accountId;
         }
 
         /*public async static Task<int> GetExperience(int accountId)
@@ -390,13 +430,18 @@ namespace TarkovMonitor
             {
                 return;
             }
+            var startedUtc = DateTime.UtcNow;
             try
             {
                 await UpdateApiData();
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "auto-updating tarkov.dev data"));
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(
+                    ex,
+                    "auto-updating tarkov.dev data",
+                    "https://json.tarkov.dev",
+                    DiagnosticsService.ElapsedMilliseconds(startedUtc)));
             }
         }
 

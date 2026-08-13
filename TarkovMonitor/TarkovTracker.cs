@@ -10,6 +10,14 @@ using Refit;
 
 namespace TarkovMonitor
 {
+    internal sealed class ProfileActivationSupersededException : OperationCanceledException
+    {
+        internal ProfileActivationSupersededException(Exception innerException)
+            : base("The tracker activation was superseded by a newer profile, key, or service activation.", innerException)
+        {
+        }
+    }
+
     internal class TarkovTracker
     {
         internal interface ITarkovTrackerAPI
@@ -71,6 +79,8 @@ namespace TarkovMonitor
         private static long activationGeneration;
         private static long serviceGeneration;
         private static CancellationTokenSource activeRequestCancellation = new();
+        private static Task<ProgressResponse>? activeActivationTask;
+        private static long activeActivationGeneration;
         private static string activeDomain = Properties.Settings.Default.tarkovTrackerDomain;
         private static ITarkovTrackerAPI api = InitAPI();
 
@@ -1491,6 +1501,9 @@ namespace TarkovMonitor
             ITarkovTrackerAPI targetApi = null!;
             CancellationToken requestCancellation = default;
             ProgressResponse? unchangedProgress = null;
+            Task<ProgressResponse>? activationTask = null;
+            TaskCompletionSource<ProgressResponse>? activationCompletion = null;
+            ActiveRequest? requestToStart = null;
             OrgKeyAutoAssignedEventArgs? autoAssignment = null;
             lock (stateLock)
             {
@@ -1523,12 +1536,22 @@ namespace TarkovMonitor
                     && currentAccountId == profileSnapshot.AccountId
                     && currentSessionMode == profileSnapshot.SessionMode
                     && activeToken == newToken
-                    && !forceRefresh
-                    && (ValidToken || string.IsNullOrWhiteSpace(newToken)))
+                    && !forceRefresh)
                 {
-                    unchangedProgress = Progress;
+                    if (ValidToken || string.IsNullOrWhiteSpace(newToken))
+                    {
+                        unchangedProgress = Progress;
+                    }
+                    else if (activeActivationTask != null
+                        && activeActivationGeneration == activationGeneration)
+                    {
+                        // Repeated ProfileChanged notifications for the same identity
+                        // share the in-flight activation instead of cancelling it.
+                        activationTask = activeActivationTask;
+                    }
                 }
-                else
+
+                if (unchangedProgress == null && activationTask == null)
                 {
                     currentProfile = profileSnapshot.Id;
                     currentAccountId = profileSnapshot.AccountId;
@@ -1542,6 +1565,23 @@ namespace TarkovMonitor
                     // inspection and progress retrieval finish, writes must remain disabled.
                     ValidToken = false;
                     Progress = new();
+
+                    if (!string.IsNullOrWhiteSpace(newToken))
+                    {
+                        activationCompletion = new TaskCompletionSource<ProgressResponse>(
+                            TaskCreationOptions.RunContinuationsAsynchronously);
+                        activeActivationTask = activationCompletion.Task;
+                        activeActivationGeneration = generation;
+                        activationTask = activationCompletion.Task;
+                        requestToStart = new ActiveRequest(
+                            profileSnapshot.Id,
+                            profileSnapshot.AccountId,
+                            profileSnapshot.SessionMode,
+                            newToken,
+                            generation,
+                            targetApi,
+                            requestCancellation);
+                    }
                 }
             }
 
@@ -1572,17 +1612,39 @@ namespace TarkovMonitor
                 return Progress;
             }
 
-            await ActivateProfile(new ActiveRequest(
-                profileSnapshot.Id,
-                profileSnapshot.AccountId,
-                profileSnapshot.SessionMode,
-                newToken,
-                generation,
-                targetApi,
-                requestCancellation));
-            lock (stateLock)
+            if (requestToStart.HasValue)
             {
-                return Progress;
+                _ = CompleteProfileActivationAsync(requestToStart.Value, activationCompletion!);
+            }
+
+            return await activationTask!;
+        }
+
+        private static async Task CompleteProfileActivationAsync(
+            ActiveRequest request,
+            TaskCompletionSource<ProgressResponse> completion)
+        {
+            try
+            {
+                await ActivateProfile(request);
+                lock (stateLock)
+                {
+                    completion.TrySetResult(Progress);
+                }
+            }
+            catch (Exception ex)
+            {
+                completion.TrySetException(ex);
+            }
+            finally
+            {
+                lock (stateLock)
+                {
+                    if (ReferenceEquals(activeActivationTask, completion.Task))
+                    {
+                        activeActivationTask = null;
+                    }
+                }
             }
         }
 
@@ -2112,11 +2174,19 @@ namespace TarkovMonitor
                 {
                     throw new Exception("Rate limited by Tarkov Tracker API");
                 }
-                throw new Exception($"Invalid TarkovTracker API response code: {ex.Message}");
+                throw new Exception($"Invalid TarkovTracker API response code: {ex.StatusCode}.", ex);
+            }
+            catch (OperationCanceledException ex) when (!IsCurrent(request))
+            {
+                throw new ProfileActivationSupersededException(ex);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new Exception("TarkovTracker API request was canceled.", ex);
             }
             catch (Exception ex)
             {
-                throw new Exception($"TarkovTracker API error: {ex.Message}");
+                throw new Exception("TarkovTracker API error.", ex);
             }
         }
 

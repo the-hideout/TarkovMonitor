@@ -668,7 +668,15 @@ namespace TarkovMonitor
             var displayMessage = e.Context == "player profile lookup"
                 ? "Player profile lookup failed; copy diagnostics for details."
                 : "Automatic Tarkov.dev refresh failed; copy diagnostics for details.";
-            RecordException(displayMessage, "TM-API-TARKOVDEV-002", e.Context, e.Exception, "TarkovDev", "Background", "https://json.tarkov.dev");
+            RecordException(
+                displayMessage,
+                e.Context == "player profile lookup" ? "TM-API-TARKOVDEV-002" : "TM-API-TARKOVDEV-001",
+                e.Context,
+                e.Exception,
+                "TarkovDev",
+                "Background",
+                e.Endpoint ?? "https://json.tarkov.dev",
+                e.DurationMilliseconds);
         }
 
         private void UpdateCheck_NewVersion(object? sender, NewVersionEventArgs e)
@@ -871,6 +879,12 @@ namespace TarkovMonitor
             try
             {
                 await TarkovTracker.SetProfile(profileSnapshot);
+            }
+            catch (ProfileActivationSupersededException)
+            {
+                // A newer profile/key/mode activation owns the result. This is
+                // expected latest-wins behavior, not a user-visible failure.
+                return;
             }
             catch (Exception ex)
             {
