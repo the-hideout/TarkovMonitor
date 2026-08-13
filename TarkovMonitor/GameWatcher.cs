@@ -238,7 +238,9 @@ namespace TarkovMonitor
                 }
             }
 
-            throw new DirectoryNotFoundException("No Escape from Tarkov logs folder was found in the installed game locations.");
+            // A missing installation is a valid first-run state. Callers keep
+            // monitoring dormant until the user configures a logs folder.
+            return "";
         }
 
         private static string? GetLogsFolder(string installPath)
