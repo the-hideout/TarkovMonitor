@@ -391,15 +391,15 @@
     <value>Quest</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev.</value>
+    <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev for {5}.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>To track task progress automatically, set your Tarkov Tracker token in Settings.</value>
+    <value>To track task progress automatically, assign your Tarkov Tracker token in Settings.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Using the {0} profile.</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Retrieved Tarkov Tracker progress for {0} (level {1}, {2}).</value>
+    <value>Retrieved Tarkov Tracker progress for {0} (level {1}, {2}) ({3}).</value>
   </data>
 </root>

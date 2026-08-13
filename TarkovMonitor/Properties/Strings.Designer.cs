@@ -583,7 +583,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from tarkov.dev.
+        ///   Looks up a localized string similar to Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev for {5}.
         /// </summary>
         internal static string RetrievedDataFromTarkovDev {
             get {
@@ -592,7 +592,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Retrieved {0} level {1} {2} progress from Tarkov Tracker.
+        ///   Looks up a localized string similar to Retrieved Tarkov Tracker progress for {0} (level {1}, {2}) ({3}).
         /// </summary>
         internal static string RetrievedDataFromTarkovTracker {
             get {
@@ -862,7 +862,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to To automatically track task progress, set your Tarkov Tracker token in Settings.
+        ///   Looks up a localized string similar to To track task progress automatically, assign your Tarkov Tracker token in Settings.
         /// </summary>
         internal static string ToAutomaticallyTrackTaskProgress {
             get {

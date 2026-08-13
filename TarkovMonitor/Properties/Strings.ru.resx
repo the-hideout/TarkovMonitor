@@ -391,10 +391,10 @@
     <value>Квест</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Получено {0} предметов, {1} карт, {2} торговцев, {3} заданий и {4} станций убежища с tarkov.dev</value>
+    <value>Получено {0} предметов, {1} карт, {2} торговцев, {3} заданий и {4} станций убежища с tarkov.dev для режима {5}</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>Для автоматического отслеживания прогресса заданий установите токен Tarkov Tracker в настройках</value>
+    <value>Для автоматического отслеживания прогресса заданий назначьте токен Tarkov Tracker в настройках</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Используется {0} профиль</value>

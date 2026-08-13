@@ -64,13 +64,15 @@ namespace TarkovMonitor
             public string ProfileId { get; }
             public string AccountId { get; }
             public EftSessionMode SessionMode { get; }
+            public string ApiKey { get; }
             public ProgressResponse Progress { get; }
 
-            public ProgressRetrievedEventArgs(string profileId, string accountId, EftSessionMode sessionMode, ProgressResponse progress)
+            public ProgressRetrievedEventArgs(string profileId, string accountId, EftSessionMode sessionMode, string apiKey, ProgressResponse progress)
             {
                 ProfileId = profileId;
                 AccountId = accountId;
                 SessionMode = sessionMode;
+                ApiKey = apiKey;
                 Progress = progress;
             }
         }
@@ -1269,11 +1271,11 @@ namespace TarkovMonitor
             }
             if (string.Equals(normalizedMode, "Regular", StringComparison.OrdinalIgnoreCase))
             {
-                return "Regular (PVP)";
+                return "Non-Seasonal PVP";
             }
             if (string.Equals(normalizedMode, "Seasonal", StringComparison.OrdinalIgnoreCase))
             {
-                return "Seasonal";
+                return "Seasonal PVP";
             }
             return "Unknown";
         }
@@ -2026,7 +2028,7 @@ namespace TarkovMonitor
                 var progress = await request.Api.GetProgress(Bearer(request.Token), request.CancellationToken);
                 if (TryPublishProgress(request, progress))
                 {
-                    ProgressRetrieved?.Invoke(null, new(request.ProfileId, request.AccountId, request.SessionMode, progress));
+                    ProgressRetrieved?.Invoke(null, new(request.ProfileId, request.AccountId, request.SessionMode, request.Token, progress));
                 }
                 return progress;
             }
@@ -2160,7 +2162,7 @@ namespace TarkovMonitor
                 if (TryPublishProgress(request, progress))
                 {
                     TokenValidated?.Invoke(null, new EventArgs());
-                    ProgressRetrieved?.Invoke(null, new(request.ProfileId, request.AccountId, request.SessionMode, progress));
+                    ProgressRetrieved?.Invoke(null, new(request.ProfileId, request.AccountId, request.SessionMode, request.Token, progress));
                 }
                 return response;
             }

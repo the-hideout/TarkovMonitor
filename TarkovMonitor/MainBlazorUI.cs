@@ -82,6 +82,10 @@ namespace TarkovMonitor
         private readonly object trackerSessionNoticeLock = new();
         private long trackerSessionNoticeGeneration;
         private TrackerSessionNoticeIdentity? lastAnnouncedTrackerSession;
+        private readonly object tarkovDevDataRefreshLock = new();
+        private CancellationTokenSource? tarkovDevDataRefreshCancellation;
+        private long tarkovDevDataRefreshGeneration;
+        private ProfileType tarkovDevDataRefreshProfileType = ProfileType.Unknown;
 
         private readonly record struct TrackerSessionNoticeIdentity(
             string AccountId,
@@ -185,9 +189,10 @@ namespace TarkovMonitor
                     return;
                 }
 
-                // Update tarkov.dev API data
-
-                UpdateTarkovDevApiData();
+                // Load the data set for the exact EFT session mode detected by
+                // the watcher. A later mode switch starts a new generation and
+                // invalidates this load before it can publish stale assets.
+                _ = RefreshTarkovDevApiData(e.Profile);
                 TarkovDev.StartAutoUpdates();
                 //TarkovDev.UpdatePlayerNames();
 
@@ -460,7 +465,9 @@ namespace TarkovMonitor
 
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
-            _ = InitializeProgress(e.Profile, announceSession: true);
+            var profileSnapshot = e.Profile.Snapshot();
+            _ = RefreshTarkovDevApiData(profileSnapshot);
+            _ = InitializeProgress(profileSnapshot, announceSession: true);
         }
 
         private void Eft_GameStarted(object? sender, EventArgs e)
@@ -779,12 +786,12 @@ namespace TarkovMonitor
                     localizationService.GetString("RetrievedDataFromTarkovTracker"),
                     e.Progress.data.displayName,
                     e.Progress.data.playerLevel,
-                    e.Progress.data.pmcFaction),
+                    e.Progress.data.pmcFaction,
+                    TarkovTracker.GetSessionDisplayName(e.SessionMode)),
                 "update",
                 new[]
                 {
-                    new MonitorMessageProtectedValue("Account ID", e.AccountId),
-                    new MonitorMessageProtectedValue("Profile ID", e.ProfileId),
+                    new MonitorMessageProtectedValue("API key", e.ApiKey),
                 },
                 $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
         }
@@ -792,7 +799,7 @@ namespace TarkovMonitor
         private void TarkovTracker_OrgKeyAutoAssigned(object? sender, TarkovTracker.OrgKeyAutoAssignedEventArgs e)
         {
             messageLog.AddProtectedMessage(
-                $"TarkovTracker.org API key assigned - Mode: {TarkovTracker.GetSessionDisplayName(e.SessionMode)}.",
+                $"TarkovTracker.org API key assigned - Session: {TarkovTracker.GetSessionDisplayName(e.SessionMode)}.",
                 "info",
                 new[]
                 {
@@ -842,17 +849,101 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task UpdateTarkovDevApiData()
+        private async Task RefreshTarkovDevApiData(Profile profile)
         {
-            var startedUtc = DateTime.UtcNow;
+            var profileSnapshot = profile.Snapshot();
+            if (profileSnapshot.Type == ProfileType.Unknown)
+            {
+                lock (tarkovDevDataRefreshLock)
+                {
+                    tarkovDevDataRefreshGeneration++;
+                    tarkovDevDataRefreshCancellation?.Cancel();
+                    tarkovDevDataRefreshCancellation = null;
+                    tarkovDevDataRefreshProfileType = ProfileType.Unknown;
+                    TarkovDev.ClearApiData();
+                }
+                return;
+            }
+
+            CancellationTokenSource refreshCancellation;
+            long refreshGeneration;
+            lock (tarkovDevDataRefreshLock)
+            {
+                if (tarkovDevDataRefreshProfileType == profileSnapshot.Type
+                    || (tarkovDevDataRefreshProfileType == ProfileType.Unknown
+                        && TarkovDev.LoadedProfileType == profileSnapshot.Type))
+                {
+                    return;
+                }
+
+                tarkovDevDataRefreshGeneration++;
+                refreshGeneration = tarkovDevDataRefreshGeneration;
+                tarkovDevDataRefreshCancellation?.Cancel();
+                refreshCancellation = new CancellationTokenSource();
+                tarkovDevDataRefreshCancellation = refreshCancellation;
+                tarkovDevDataRefreshProfileType = profileSnapshot.Type;
+
+                if (TarkovDev.LoadedProfileType != profileSnapshot.Type)
+                {
+                    TarkovDev.ClearApiData();
+                }
+            }
+
             try
             {
-                await TarkovDev.UpdateApiData();
-                messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovDev"), String.Format("{0:n0}", TarkovDev.Items.Count), TarkovDev.Maps.Count, TarkovDev.Traders.Count, TarkovDev.Tasks.Count, TarkovDev.Stations.Count), "update");
+                var data = await TarkovDev.LoadApiData(profileSnapshot.Type, refreshCancellation.Token);
+                lock (tarkovDevDataRefreshLock)
+                {
+                    if (refreshGeneration != tarkovDevDataRefreshGeneration
+                        || !ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation)
+                        || GameWatcher.CurrentProfile.Type != profileSnapshot.Type)
+                    {
+                        return;
+                    }
+
+                    TarkovDev.PublishApiData(data);
+                }
+
+                messageLog.AddMessage(
+                    string.Format(
+                        localizationService.GetString("RetrievedDataFromTarkovDev"),
+                        String.Format("{0:n0}", data.Items.Count),
+                        data.Maps.Count,
+                        data.Traders.Count,
+                        data.Tasks.Count,
+                        data.Stations.Count,
+                        TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)),
+                    "update");
+            }
+            catch (OperationCanceledException) when (refreshCancellation.IsCancellationRequested)
+            {
+                // A newer EFT session owns the next asset load.
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov.dev data update failed; copy diagnostics for details.", "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev", DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                lock (tarkovDevDataRefreshLock)
+                {
+                    if (refreshGeneration != tarkovDevDataRefreshGeneration
+                        || !ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation)
+                        || GameWatcher.CurrentProfile.Type != profileSnapshot.Type)
+                    {
+                        return;
+                    }
+                }
+
+                RecordException($"Tarkov.dev data update failed for {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}; copy diagnostics for details.", "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev");
+            }
+            finally
+            {
+                lock (tarkovDevDataRefreshLock)
+                {
+                    if (refreshGeneration == tarkovDevDataRefreshGeneration
+                        && ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation))
+                    {
+                        tarkovDevDataRefreshProfileType = ProfileType.Unknown;
+                        tarkovDevDataRefreshCancellation = null;
+                    }
+                }
             }
         }
 
@@ -913,7 +1004,7 @@ namespace TarkovMonitor
             }
 
             messageLog.AddProtectedMessage(
-                $"EFT session confirmed - Mode: {profileSnapshot.DisplayName}.",
+                $"EFT session confirmed - Session: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.",
                 "info",
                 new[]
                 {
