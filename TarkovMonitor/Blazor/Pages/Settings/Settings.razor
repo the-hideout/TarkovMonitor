@@ -181,7 +181,7 @@
                             <div class="tracker-drawer-content">
                                 <div class="tracker-state-note" role="note">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="tracker-state-note-icon" />
-                                    <span><b>Verified, but unassigned.</b> Tarkov Monitor assigns a key automatically when it is the only unassigned key for the active game mode. Otherwise, click Assign to choose the correct EFT profile.</span>
+                                    <span><b>Verified, but unassigned.</b> Tarkov Monitor automatically assigns one eligible key to the first complete EFT account, profile, and game mode it observes. If more than one key is eligible, or you intentionally unbound a key, click Assign for the manual fallback.</span>
                                 </div>
                                 @if (PendingOrgKeys.Count == 0)
                                 {
@@ -198,6 +198,12 @@
                                                     <span class="tracker-verification-badge @(key.IsVerified ? "tracker-verification-badge--verified" : "tracker-verification-badge--pending")">
                                                         @(key.IsVerified ? "Verified" : "Verify on assign")
                                                     </span>
+                                                    @if (key.IsAutoBindBlocked)
+                                                    {
+                                                        <span class="tracker-assignment-badge tracker-assignment-badge--manual" title="Automatic assignment is blocked for the account that previously owned this key.">
+                                                            MANUAL ASSIGNMENT ONLY
+                                                        </span>
+                                                    }
                                                 </div>
                                                 <MudText Typo="Typo.caption" Class="tracker-token">@key.MaskedToken</MudText>
                                                 @if (key.IsLegacyRecovery)
@@ -228,7 +234,7 @@
                                                 }
                                             </div>
                                         </div>
-                                        @if (key.HasPendingConflict || key.IsQuarantined)
+                                        @if (key.IsAutoBindBlocked || key.HasPendingConflict || key.IsQuarantined)
                                         {
                                             <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">@PendingKeyIssue(key)</MudAlert>
                                         }
@@ -484,6 +490,7 @@
         LocalizationService.LanguageChanged += OnLanguageChanged;
         ResolveCustomLogsFolder();
         eft.GameStarted += OnGameClientStateChanged;
+        eft.GameStopped += OnGameClientStateChanged;
         eft.ProfileChanged += OnGameClientStateChanged;
         _ = UpdateProfileName();
     }
@@ -506,6 +513,7 @@
     {
         LocalizationService.LanguageChanged -= OnLanguageChanged;
         eft.GameStarted -= OnGameClientStateChanged;
+        eft.GameStopped -= OnGameClientStateChanged;
         eft.ProfileChanged -= OnGameClientStateChanged;
     }
 
@@ -954,6 +962,11 @@
 
     private static string PendingKeyIssue(TarkovTracker.OrgKeySummary key)
     {
+        if (key.IsAutoBindBlocked)
+        {
+            return "MANUAL ASSIGNMENT ONLY: automatic assignment is blocked for the EFT account that previously owned this key. Use Assign to choose its account, profile, and game mode.";
+        }
+
         return key.HasPendingConflict
             ? $"Manual assignment required: more than one {key.DisplayName} key is waiting. Automatic assignment is paused for this mode."
             : "This key is inactive because its saved record is ambiguous or invalid.";
@@ -1028,7 +1041,9 @@
         if (result is { Canceled: false, Data: TarkovTracker.ImportedToken importedToken })
         {
             messageLog.AddMessage(
-                $"Imported and verified the {importedToken.DisplayName} TarkovTracker.org API key. It is ready to assign.",
+                importedToken.IsBound
+                    ? $"Imported, verified, and automatically assigned the {importedToken.DisplayName} TarkovTracker.org API key to the active EFT profile."
+                    : $"Imported and verified the {importedToken.DisplayName} TarkovTracker.org API key. It will auto-assign on the first matching EFT profile, or you can assign it manually.",
                 "update");
             await ReactivateCurrentTrackerProfile();
             StateHasChanged();
@@ -1209,8 +1224,8 @@
             $"Unbind {key.DisplayName} API key",
             "Keep the key, but stop using it.",
             string.IsNullOrWhiteSpace(key.ProfileNickname)
-                ? "The key will remain saved and move to Unassigned. You can assign it again later."
-                : "The key will remain saved and move to Unassigned. Its profile nickname will be cleared.",
+                ? "The key will remain saved and move to Unassigned and will be marked MANUAL ASSIGNMENT ONLY for its previous EFT account. Assign it explicitly to use it again."
+                : "The key will remain saved and move to Unassigned. Its profile nickname will be cleared, and it will be marked MANUAL ASSIGNMENT ONLY for its previous EFT account.",
             "Unbind",
             Icons.Material.Filled.LinkOff,
             false))

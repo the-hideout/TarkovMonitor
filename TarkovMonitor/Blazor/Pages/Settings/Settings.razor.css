@@ -344,6 +344,26 @@
     background: rgba(181, 123, 37, 0.14);
 }
 
+.tracker-assignment-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.15rem;
+    padding: 0.02rem 0.42rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.035em;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.tracker-assignment-badge--manual {
+    border-color: rgba(255, 112, 112, 0.62);
+    color: #ffd0d0;
+    background: rgba(177, 47, 47, 0.24);
+}
+
 .tracker-mode-badge--pve {
     border-color: rgba(87, 194, 142, 0.45);
     color: #8ce0b8;
