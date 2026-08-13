@@ -28,6 +28,7 @@ namespace TarkovMonitor
         private readonly object gate = new();
         private readonly Dictionary<string, (MonitorMessage Message, DateTime LastSeen)> recentDiagnostics = new(StringComparer.Ordinal);
         private readonly List<MonitorMessage> messages = new();
+        private readonly Dictionary<string, (MonitorMessage Message, DateTime LastSeen)> incidentDiagnostics = new(StringComparer.Ordinal);
 
         public event NewLogMessage newMessage = delegate { };
 
@@ -115,10 +116,11 @@ namespace TarkovMonitor
             string service,
             string stage,
             string? endpoint = null,
-            long? durationMilliseconds = null)
+            long? durationMilliseconds = null,
+            string? incidentId = null)
         {
             var snapshot = Diagnostics.Capture(
-                new DiagnosticContext(code, operation, service, stage, displayMessage, endpoint),
+                new DiagnosticContext(code, operation, service, stage, displayMessage, endpoint, IncidentId: incidentId),
                 exception,
                 durationMilliseconds);
             AddDiagnostic(snapshot);
@@ -133,8 +135,17 @@ namespace TarkovMonitor
 
             lock (gate)
             {
-                if (recentDiagnostics.TryGetValue(snapshot.DiagnosticKey, out var previous)
-                    && now - previous.LastSeen <= DeduplicationWindow)
+                var isIncidentDiagnostic = !string.IsNullOrWhiteSpace(snapshot.IncidentId);
+                var existing = isIncidentDiagnostic
+                    ? incidentDiagnostics.TryGetValue(snapshot.IncidentId!, out var incidentPrevious)
+                        ? incidentPrevious
+                        : ((MonitorMessage Message, DateTime LastSeen)?)null
+                    : recentDiagnostics.TryGetValue(snapshot.DiagnosticKey, out var recentPrevious)
+                        ? recentPrevious
+                        : null;
+
+                if (existing is { } previous
+                    && (isIncidentDiagnostic || now - previous.LastSeen <= DeduplicationWindow))
                 {
                     var occurrenceCount = Math.Max(previous.Message.DiagnosticOccurrenceCount, snapshot.OccurrenceCount);
                     if (snapshot.OccurrenceCount >= previous.Message.DiagnosticOccurrenceCount)
@@ -144,7 +155,14 @@ namespace TarkovMonitor
                     previous.Message.DiagnosticKey = snapshot.DiagnosticKey;
                     previous.Message.DiagnosticOccurrenceCount = occurrenceCount;
                     previous.Message.Message = $"{snapshot.DisplayMessage} (repeated {occurrenceCount} times)";
-                    recentDiagnostics[snapshot.DiagnosticKey] = (previous.Message, now);
+                    if (isIncidentDiagnostic)
+                    {
+                        incidentDiagnostics[snapshot.IncidentId!] = (previous.Message, now);
+                    }
+                    else
+                    {
+                        recentDiagnostics[snapshot.DiagnosticKey] = (previous.Message, now);
+                    }
                     isRepeat = true;
                     messageToRaise = previous.Message;
                 }
@@ -157,6 +175,10 @@ namespace TarkovMonitor
                     };
                     AddToBoundedList(message);
                     recentDiagnostics[snapshot.DiagnosticKey] = (message, now);
+                    if (isIncidentDiagnostic)
+                    {
+                        incidentDiagnostics[snapshot.IncidentId!] = (message, now);
+                    }
                     TrimRecentDiagnostics();
                     messageToRaise = message;
                 }
@@ -200,6 +222,12 @@ namespace TarkovMonitor
             {
                 var oldest = recentDiagnostics.MinBy(entry => entry.Value.LastSeen);
                 recentDiagnostics.Remove(oldest.Key);
+            }
+
+            while (incidentDiagnostics.Count > MaxRecentDiagnostics)
+            {
+                var oldest = incidentDiagnostics.MinBy(entry => entry.Value.LastSeen);
+                incidentDiagnostics.Remove(oldest.Key);
             }
         }
 
