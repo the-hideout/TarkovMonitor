@@ -75,7 +75,7 @@
       <Value Profile="(Default)">{}</Value>
     </Setting>
     <Setting Name="tarkovTrackerOrgTokenStore" Type="System.String" Scope="User">
-      <Value Profile="(Default)">{"version":4,"keys":[],"accounts":[],"profiles":[]}</Value>
+      <Value Profile="(Default)">{"version":6,"keys":[],"accounts":[],"profiles":[]}</Value>
     </Setting>
     <Setting Name="lastTarkovSessionMode" Type="System.String" Scope="User">
       <Value Profile="(Default)" />

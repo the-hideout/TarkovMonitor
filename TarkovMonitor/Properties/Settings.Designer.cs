@@ -313,7 +313,7 @@ namespace TarkovMonitor.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("{\"version\":4,\"keys\":[],\"accounts\":[],\"profiles\":[]}")]
+        [global::System.Configuration.DefaultSettingValueAttribute("{\"version\":6,\"keys\":[],\"accounts\":[],\"profiles\":[]}")]
         public string tarkovTrackerOrgTokenStore {
             get {
                 return ((string)(this["tarkovTrackerOrgTokenStore"]));
