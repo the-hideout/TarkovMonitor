@@ -333,15 +333,15 @@
     <value>Quête</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Récupéré {0} objets, {1} cartes, {2} marchands, {3} quêtes et {4} stations d'abri depuis tarkov.dev.</value>
+    <value>Récupéré {0} objets, {1} cartes, {2} marchands, {3} quêtes et {4} stations d'abri depuis tarkov.dev pour {5}.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>Pour suivre automatiquement la progression des quêtes, définissez votre jeton Tarkov Tracker dans Paramètres.</value>
+    <value>Pour suivre automatiquement la progression des quêtes, attribuez votre jeton Tarkov Tracker dans Paramètres.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Profil {0} utilisé</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Récupéré la progression {0} niveau {1} {2} depuis Tarkov Tracker</value>
+    <value>Récupéré la progression {0} niveau {1} {2} depuis Tarkov Tracker pour {3}</value>
   </data>
 </root>

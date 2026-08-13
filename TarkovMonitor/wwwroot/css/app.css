@@ -23,13 +23,422 @@ body {
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24);
 }
 
+.app-surface .tm-card-heading-text {
+    color: #c2b27e;
+}
+
+/* Consistent dropdown surfaces and option states across settings, dialogs, and messages. */
+.tm-select {
+    width: min(100%, 20rem);
+    min-width: 0;
+    margin-top: 0.18rem;
+    margin-bottom: 0.18rem;
+}
+
+.tm-select .mud-input-control {
+    width: 100%;
+    min-width: 0;
+}
+
+.tm-select--compact,
+.tm-message-select {
+    width: min(100%, 12rem);
+}
+
+.tm-select--dialog {
+    width: 100%;
+    max-width: none;
+}
+
+.tm-input {
+    width: min(100%, 20rem);
+    min-width: 0;
+    margin-top: 0.18rem;
+    margin-bottom: 0.18rem;
+}
+
+.tm-input--full {
+    width: 100%;
+    max-width: none;
+}
+
+.tm-input .mud-input-label,
+.tm-input .mud-input-label-inputcontrol,
+.tm-input .mud-input-label-outlined {
+    color: rgba(255, 255, 255, 0.68) !important;
+}
+
+.tm-input:focus-within .mud-input-label,
+.tm-input:focus-within .mud-input-label-inputcontrol,
+.tm-input:focus-within .mud-input-label-outlined {
+    color: #d7c996 !important;
+}
+
+/* MudTextField renders its label as a sibling of the input surface. Keep the
+   focused label in the same neutral/warm palette as the surrounding fields. */
+.tm-input .mud-input:focus-within ~ .mud-input-label,
+.tm-input .mud-input:focus-within ~ .mud-input-label-inputcontrol,
+.tm-input .mud-input:focus-within ~ .mud-input-label-outlined {
+    color: #d7c996 !important;
+}
+
+.tm-input .mud-input.mud-input-underline:before {
+    background-color: transparent;
+    border-bottom-color: rgba(255, 255, 255, 0.28);
+}
+
+.tm-input .mud-input.mud-input-underline:hover:not(.mud-disabled):before {
+    background-color: transparent;
+    border-bottom-color: rgba(152, 138, 102, 0.78);
+}
+
+.tm-input .mud-input.mud-input-underline:after {
+    background-color: transparent;
+    border-bottom-color: #988a66;
+}
+
+.tm-input:focus-within .mud-input.mud-input-underline:after {
+    background-color: transparent;
+    border-bottom-color: #c2b27e !important;
+}
+
+.tm-input .mud-input.mud-input-underline:focus-within:after {
+    background-color: transparent !important;
+    border-bottom-color: #c2b27e !important;
+}
+
+.tm-action-link {
+    color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.tm-action-link .mud-button-label {
+    text-decoration-line: underline;
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.16em;
+}
+
+.mud-link.tm-profile-link {
+    color: #d7c996 !important;
+}
+
+.tm-action-link:hover,
+.mud-link.tm-profile-link:hover {
+    color: #f8f2df !important;
+}
+
+.tm-section-link {
+    color: inherit !important;
+    text-decoration-line: underline !important;
+    text-decoration-color: currentColor !important;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.16em;
+}
+
+.tm-section-link:hover {
+    color: inherit !important;
+}
+
+.tm-section-suffix {
+    margin-left: 0.25rem;
+}
+
+.tm-select .mud-input-outlined-border {
+    border-color: rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tm-select .mud-select-input {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.tm-select .mud-select-input-icon,
+.tm-select .mud-select-icon {
+    color: #988a66 !important;
+}
+
+/* Keep underline-variant selects in the same warm Tarkov palette as outlined selects. */
+.tm-select .mud-input.mud-input-underline:before {
+    background-color: transparent;
+    border-bottom-color: rgba(255, 255, 255, 0.28);
+}
+
+.tm-select .mud-input.mud-input-underline:hover:not(.mud-disabled):before {
+    background-color: transparent;
+    border-bottom-color: rgba(152, 138, 102, 0.78);
+}
+
+.tm-select .mud-input.mud-input-underline:after {
+    background-color: transparent;
+    border-bottom-color: #988a66;
+}
+
+.tm-select:focus-within .mud-input.mud-input-underline:after {
+    background-color: transparent;
+    border-bottom-color: #c2b27e;
+}
+
+.tm-select .mud-input.mud-input-underline:focus-within:after {
+    background-color: transparent !important;
+    border-bottom-color: #c2b27e !important;
+}
+
+.tm-select .mud-input-label,
+.tm-select .mud-input-label-inputcontrol,
+.tm-select .mud-input-label-outlined {
+    color: rgba(255, 255, 255, 0.68) !important;
+}
+
+.tm-select:focus-within .mud-input-label,
+.tm-select:focus-within .mud-input-label-inputcontrol,
+.tm-select:focus-within .mud-input-label-outlined {
+    color: #d7c996 !important;
+}
+
+.tm-select .mud-input:focus-within ~ .mud-input-label,
+.tm-select .mud-input:focus-within ~ .mud-input-label-inputcontrol,
+.tm-select .mud-input:focus-within ~ .mud-input-label-outlined {
+    color: #d7c996 !important;
+}
+
+.tm-select .mud-input-adornment {
+    color: #988a66;
+}
+
+.tm-select:hover .mud-input-outlined-border {
+    border-color: rgba(152, 138, 102, 0.78);
+}
+
+.tm-select:focus-within .mud-input-outlined-border {
+    border-color: #988a66;
+    box-shadow: 0 0 0 2px rgba(194, 178, 126, 0.2);
+}
+
+.tm-select .mud-disabled .mud-input-outlined-border,
+.tm-select .mud-input-control.mud-disabled .mud-input-outlined-border {
+    border-color: rgba(255, 255, 255, 0.14);
+    background-color: rgba(255, 255, 255, 0.035);
+}
+
+.tm-select .mud-input-error .mud-input-outlined-border {
+    border-color: rgba(240, 93, 93, 0.82);
+}
+
+.tm-select-popover,
+.tm-menu-popover {
+    z-index: 1400;
+    max-width: min(34rem, calc(100vw - 1.5rem)) !important;
+    border: 1px solid rgba(132, 122, 94, 0.52);
+    border-radius: 10px;
+    background: linear-gradient(145deg, #232428, #16171a);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38), 0 3px 10px rgba(0, 0, 0, 0.24);
+    overflow: hidden;
+}
+
+.tm-select-popover {
+    /* MudBlazor owns height and viewport flipping; this keeps long labels readable. */
+    width: max-content !important;
+    min-width: min(18rem, calc(100vw - 1.5rem));
+    max-width: min(34rem, calc(100vw - 1.5rem)) !important;
+}
+
+.tm-select-list,
+.tm-menu-list {
+    padding: 0.3rem;
+    background: transparent;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    scrollbar-color: rgba(143, 132, 99, 0.78) rgba(255, 255, 255, 0.04);
+    scrollbar-width: thin;
+}
+
+.tm-select-list .mud-list-item,
+.tm-menu-list .mud-menu-item {
+    min-height: 2.15rem;
+    margin: 0.12rem 0;
+    padding: 0.42rem 0.68rem;
+    border-radius: 7px;
+    color: rgba(255, 255, 255, 0.82);
+    line-height: 1.25;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    transition: background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+
+.tm-select-list .mud-list-item:hover,
+.tm-select-list .mud-list-item:focus-visible,
+.tm-menu-list .mud-menu-item:hover,
+.tm-menu-list .mud-menu-item:focus-visible {
+    color: #f8f2df;
+    background-color: rgba(152, 138, 102, 0.18);
+}
+
+.tm-menu-activator {
+    border: 1px solid rgba(143, 130, 95, 0.58);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.tm-menu-activator:hover,
+.tm-menu-activator:focus-visible {
+    border-color: rgba(152, 138, 102, 0.82);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.38), 0 0 0 2px rgba(194, 178, 126, 0.16);
+    transform: translateY(-1px);
+}
+
+.tm-select-list .mud-list-item.mud-list-item-selected,
+.tm-select-list .mud-list-item.mud-selected,
+.tm-select-list .mud-list-item[aria-selected="true"],
+.tm-select-list .mud-list-item[data-selected="true"] {
+    color: rgba(255, 255, 255, 0.88) !important;
+    background: linear-gradient(90deg, rgba(74, 67, 48, 0.72), rgba(52, 48, 38, 0.56));
+    box-shadow: inset 3px 0 0 #c2b27e;
+    font-weight: 600;
+}
+
+.tm-select-list .mud-list-item.mud-list-item-selected .mud-list-item-text,
+.tm-select-list .mud-list-item.mud-selected .mud-list-item-text,
+.tm-select-list .mud-list-item[aria-selected="true"] .mud-list-item-text,
+.tm-select-list .mud-list-item[data-selected="true"] .mud-list-item-text,
+.tm-select-list .mud-list-item[aria-selected="true"] * {
+    color: rgba(255, 255, 255, 0.88) !important;
+    font-weight: 600;
+}
+
+.tm-select-list .mud-list-item.mud-list-item-selected:hover,
+.tm-select-list .mud-list-item.mud-selected:hover,
+.tm-select-list .mud-list-item[aria-selected="true"]:hover,
+.tm-select-list .mud-list-item[data-selected="true"]:hover {
+    background: linear-gradient(90deg, rgba(80, 72, 51, 0.74), rgba(57, 52, 40, 0.59));
+}
+
+html.tm-keyboard-input .tm-select-list .mud-list-item.mud-selected-item[tabindex="0"][aria-selected="false"] {
+    outline: 1px solid rgba(194, 178, 126, 0.62);
+    outline-offset: -2px;
+}
+
+html.tm-keyboard-input .tm-select-list .mud-list-item.mud-selected-item[tabindex="0"][aria-selected="false"] {
+    color: #f8f2df !important;
+    background-color: rgba(152, 138, 102, 0.18) !important;
+    background-image: none;
+    box-shadow: none;
+}
+
+.tm-select-list .mud-list-item .mud-list-item-text,
+.tm-menu-list .mud-menu-item .mud-menu-item-text {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    padding-right: 0.25rem;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-overflow: clip !important;
+    white-space: normal !important;
+}
+
+.tm-message-actions {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.tm-menu-host {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 1250;
+}
+
+@media (max-width: 520px) {
+    .tm-select,
+    .tm-select .mud-input-control {
+        width: 100%;
+    }
+
+    .tm-select--compact,
+    .tm-message-select {
+        width: 100%;
+    }
+
+    .tm-menu-host {
+        right: 0.75rem;
+        bottom: 0.75rem;
+    }
+}
+
 .settings-grid {
+    display: block !important;
+    column-count: 1;
+    column-gap: 0.5rem;
+    column-fill: balance;
     align-content: flex-start;
 }
 
+/* Dialogs opt in surface-by-surface so each can be reviewed without changing
+   unrelated MudBlazor dialogs. */
+.mud-dialog.tm-dialog-shell--read-past {
+    border: 1px solid rgba(132, 122, 94, 0.52);
+    border-radius: 12px;
+    background: linear-gradient(145deg, #232428, #16171a);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.48), 0 3px 10px rgba(0, 0, 0, 0.28);
+}
+
+.tm-dialog-shell--read-past .tm-dialog-title {
+    padding: 0.75rem 1.125rem 0.6rem;
+    border-bottom: 1px solid rgba(143, 130, 95, 0.22);
+    color: #c2b27e;
+    font-weight: 600;
+}
+
+.tm-dialog-shell--read-past .tm-dialog-content {
+    padding: 0.5rem 1.125rem 0.625rem;
+}
+
+.tm-dialog-shell--read-past .tm-dialog-content--read-past > p {
+    margin: 0.25rem 0;
+}
+
+.tm-dialog-shell--read-past .tm-dialog-actions {
+    padding: 0.5rem 0.75rem 0.625rem;
+    border-top: 1px solid rgba(143, 130, 95, 0.22);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Keep cards in a masonry-like flow on wider Settings windows. The regular
+   MudGrid flex rows reserve the height of the tallest card, which leaves large
+   blank shelves beside short cards such as Language and Initial setup. */
+.settings-grid > .mud-grid-item {
+    display: inline-block !important;
+    width: 100% !important;
+    max-width: none !important;
+    vertical-align: top;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+@media (min-width: 60rem) {
+    .settings-grid {
+        column-count: 2;
+    }
+}
+
+@media (min-width: 100rem) {
+    .settings-grid {
+        column-count: 3;
+    }
+}
+
 .dashboard-notification-surface {
-    min-height: calc(100% - 16px);
-    margin: 8px 16px;
+    min-height: calc(100% - 8px);
+    margin: 0 16px 8px;
 }
 
 .dashboard-page-grid,
@@ -93,4 +502,277 @@ body {
 
 .floating-timer-panel__timer .mud-typography-h5 {
     font-size: 1.1rem;
+}
+
+/* TarkovTracker.org key-management dialogs */
+.mud-dialog.tracker-assignment-dialog,
+.mud-dialog.tracker-settings-dialog {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(194, 178, 126, 0.72);
+    border-radius: 14px;
+    background: #1b1c1f;
+    box-shadow: 0 20px 56px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(0, 0, 0, 0.42);
+}
+
+.mud-dialog.tracker-assignment-dialog {
+    max-height: calc(100vh - 72px);
+}
+
+.mud-dialog.tracker-assignment-dialog::before,
+.mud-dialog.tracker-settings-dialog::before {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #68a4ff, #7ed7ad 58%, #c2b27e);
+    content: "";
+    pointer-events: none;
+}
+
+.mud-dialog.tracker-assignment-dialog .mud-dialog-title,
+.mud-dialog.tracker-settings-dialog .mud-dialog-title {
+    padding: 13px 18px 11px;
+    border-bottom: 1px solid rgba(194, 178, 126, 0.28);
+    background: linear-gradient(180deg, rgba(194, 178, 126, 0.09), rgba(255, 255, 255, 0.015));
+    color: #c2b27e;
+}
+
+.mud-dialog.tracker-assignment-dialog .mud-dialog-content {
+    min-height: 0;
+    overflow: hidden;
+    padding: 13px 18px 10px;
+}
+
+.mud-dialog.tracker-settings-dialog .mud-dialog-content {
+    min-height: 0;
+    padding: 16px 18px;
+}
+
+.mud-dialog.tracker-assignment-dialog .mud-dialog-actions,
+.mud-dialog.tracker-settings-dialog .mud-dialog-actions {
+    min-height: 52px;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(0, 0, 0, 0.16);
+}
+
+.mud-dialog.tracker-edit-key-dialog .mud-dialog-content {
+    padding: 8px 18px 7px;
+}
+
+.mud-dialog.tracker-edit-key-dialog .mud-dialog-actions {
+    min-height: 46px;
+    padding: 4px 10px;
+}
+
+.tracker-dialog-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.62rem;
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+    padding: 0.66rem 0.72rem;
+    border: 1px solid rgba(111, 166, 255, 0.3);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.76);
+    background: linear-gradient(135deg, rgba(61, 112, 194, 0.12), rgba(255, 255, 255, 0.018));
+    font-size: 0.76rem;
+    line-height: 1.38;
+}
+
+.tracker-dialog-note--assigned {
+    border-color: rgba(87, 194, 142, 0.32);
+    background: linear-gradient(135deg, rgba(48, 146, 99, 0.12), rgba(255, 255, 255, 0.018));
+}
+
+.tracker-dialog-note--warning {
+    border-color: rgba(242, 188, 87, 0.36);
+    background: linear-gradient(135deg, rgba(181, 123, 37, 0.14), rgba(255, 255, 255, 0.018));
+}
+
+.tracker-dialog-note--danger {
+    border-color: rgba(242, 105, 105, 0.38);
+    background: linear-gradient(135deg, rgba(181, 57, 57, 0.15), rgba(255, 255, 255, 0.018));
+}
+
+.tracker-dialog-note__icon { color: #9fc5ff; }
+.tracker-dialog-note--assigned .tracker-dialog-note__icon { color: #8ce0b8; }
+.tracker-dialog-note--warning .tracker-dialog-note__icon { color: #f2ca7f; }
+.tracker-dialog-note--danger .tracker-dialog-note__icon { color: #ff9b9b; }
+
+.tracker-dialog-note__copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.tracker-dialog-note__copy strong {
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 0.79rem;
+}
+
+.tracker-dialog-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    margin: 0 0 0.42rem;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.73rem;
+    font-weight: 750;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.tracker-dialog-detail-card {
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 11px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.038), rgba(0, 0, 0, 0.11));
+}
+
+.tracker-dialog-detail-row {
+    display: grid;
+    grid-template-columns: 7.25rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+    min-height: 1.95rem;
+    padding: 0.26rem 0.62rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.tracker-dialog-detail-row:last-child { border-bottom: 0; }
+.tracker-dialog-detail-row dt { color: rgba(255, 255, 255, 0.55); font-size: 0.72rem; font-weight: 650; }
+.tracker-dialog-detail-row dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: rgba(255, 255, 255, 0.92); font-size: 0.8rem; font-weight: 600; }
+
+.tracker-dialog-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.2rem;
+    padding: 0.02rem 0.4rem;
+    border: 1px solid rgba(111, 166, 255, 0.42);
+    border-radius: 999px;
+    color: #a9cbff;
+    background: rgba(61, 112, 194, 0.14);
+    font-size: 0.67rem;
+    font-weight: 750;
+}
+
+.tracker-dialog-mode-badge--pve { border-color: rgba(87, 194, 142, 0.42); color: #8ce0b8; background: rgba(48, 146, 99, 0.14); }
+.tracker-dialog-mode-badge--seasonal { border-color: rgba(212, 148, 255, 0.42); color: #deb0ff; background: rgba(139, 74, 180, 0.14); }
+
+.tracker-dialog-form-card {
+    padding: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.022);
+}
+
+.tracker-dialog-field-help {
+    display: block;
+    margin-top: 0.42rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.7rem;
+    line-height: 1.35;
+}
+
+.tracker-key-action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.tracker-key-action {
+    display: flex;
+    min-width: 0;
+    min-height: 4.45rem;
+    align-items: flex-start;
+    gap: 0.52rem;
+    padding: 0.54rem;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.88);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.038), rgba(0, 0, 0, 0.1));
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.tracker-key-action:hover,
+.tracker-key-action:focus-visible { border-color: rgba(111, 166, 255, 0.55); background-color: rgba(61, 112, 194, 0.12); outline: none; }
+.tracker-key-action:disabled { cursor: not-allowed; opacity: 0.48; }
+.tracker-key-action--warning:hover,
+.tracker-key-action--warning:focus-visible { border-color: rgba(242, 188, 87, 0.5); background-color: rgba(181, 123, 37, 0.11); }
+.tracker-key-action--danger:hover,
+.tracker-key-action--danger:focus-visible { border-color: rgba(242, 105, 105, 0.52); background-color: rgba(181, 57, 57, 0.12); }
+.tracker-key-action__icon { color: #9fc5ff; }
+.tracker-key-action--warning .tracker-key-action__icon { color: #f2ca7f; }
+.tracker-key-action--danger .tracker-key-action__icon { color: #ff9b9b; }
+.tracker-key-action__copy { display: flex; min-width: 0; flex-direction: column; gap: 0.16rem; }
+.tracker-key-action__title { font-size: 0.76rem; font-weight: 750; }
+.tracker-key-action__description { color: rgba(255, 255, 255, 0.56); font-size: 0.67rem; line-height: 1.28; }
+.mud-dialog .tracker-dialog-footer-button { min-width: 5.6rem; border-radius: 8px; }
+
+/* Message IDs stay masked unless the user deliberately hovers or focuses them. */
+.dashboard-message__protected-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.55rem;
+    margin-top: 0.4rem;
+}
+
+.dashboard-message__protected-detail {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.35rem;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.72rem;
+}
+
+.dashboard-message__protected-label { font-weight: 650; }
+
+.dashboard-message__protected-value {
+    display: inline-grid;
+    max-width: 100%;
+    min-height: 1.45rem;
+    align-items: center;
+    padding: 0.08rem 0.42rem;
+    overflow: hidden;
+    border: 1px solid rgba(194, 178, 126, 0.38);
+    border-radius: 999px;
+    color: #d7c996;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: help;
+    outline: none;
+}
+
+.dashboard-message__protected-mask,
+.dashboard-message__protected-reveal { grid-area: 1 / 1; }
+
+.dashboard-message__protected-reveal {
+    visibility: hidden;
+    overflow-wrap: anywhere;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: Consolas, monospace;
+    font-size: 0.7rem;
+    user-select: text;
+}
+
+.dashboard-message__protected-value:hover .dashboard-message__protected-mask,
+.dashboard-message__protected-value:focus .dashboard-message__protected-mask { visibility: hidden; }
+
+.dashboard-message__protected-value:hover .dashboard-message__protected-reveal,
+.dashboard-message__protected-value:focus .dashboard-message__protected-reveal { visibility: visible; }
+
+@media (max-width: 520px) {
+    .tracker-dialog-detail-row { grid-template-columns: 1fr; gap: 0.08rem; align-items: flex-start; }
+    .tracker-key-action-grid { grid-template-columns: 1fr; }
+    .tracker-key-action { min-height: auto; }
 }

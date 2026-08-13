@@ -1,0 +1,432 @@
+.tracker-key-manager {
+    --tracker-border: rgba(255, 255, 255, 0.11);
+    --tracker-border-hover: rgba(104, 164, 255, 0.42);
+    --tracker-surface: rgba(255, 255, 255, 0.025);
+    --tracker-surface-raised: rgba(255, 255, 255, 0.045);
+    margin-top: 0.42rem;
+}
+
+.tracker-key-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0 0 0.45rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.085);
+}
+
+.tracker-drawer,
+.tracker-account-drawer {
+    overflow: hidden;
+    border: 1px solid var(--tracker-border);
+    background: linear-gradient(135deg, rgba(32, 33, 37, 0.96), rgba(21, 22, 25, 0.96));
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tracker-drawer {
+    border-radius: 13px;
+}
+
+.tracker-account-drawer {
+    border-radius: 9px;
+}
+
+.tracker-drawer:hover,
+.tracker-account-drawer:hover {
+    border-color: var(--tracker-border-hover);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.tracker-drawer-toggle,
+.tracker-account-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+    flex: 1 1 auto;
+    padding: 0.68rem 0.8rem;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.tracker-drawer-toggle--primary {
+    width: 100%;
+    padding: 0.5rem 0.72rem;
+    background: transparent;
+}
+
+.tracker-drawer-toggle:hover,
+.tracker-account-toggle:hover,
+.tracker-drawer-toggle:focus-visible,
+.tracker-account-toggle:focus-visible {
+    background-color: rgba(94, 151, 235, 0.09);
+    outline: none;
+}
+
+.tracker-drawer-toggle:focus-visible,
+.tracker-account-toggle:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(104, 164, 255, 0.72);
+}
+
+.tracker-chevron {
+    flex: 0 0 auto;
+    color: #78aefb;
+}
+
+.tracker-drawer-title,
+.tracker-account-title {
+    overflow: hidden;
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.55rem;
+    height: 1.35rem;
+    padding: 0 0.38rem;
+    border: 1px solid rgba(120, 174, 251, 0.35);
+    border-radius: 999px;
+    color: #b9d4ff;
+    background: rgba(72, 126, 206, 0.16);
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.tracker-drawer-content {
+    padding: 0 0.65rem 0.65rem;
+}
+
+.tracker-state-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0 0 0.55rem;
+    padding: 0.48rem 0.58rem;
+    border: 1px solid rgba(143, 130, 95, 0.35);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.76);
+    background: rgba(143, 130, 95, 0.08);
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.tracker-state-note-icon {
+    flex: 0 0 auto;
+    margin-top: 0.03rem;
+    color: #c2b27e;
+}
+
+.tracker-state-note-icon--bound {
+    color: #8ce0b8;
+}
+
+.tracker-manager-warning {
+    margin-bottom: 0.45rem;
+    padding: 0.36rem 0.55rem;
+    border-color: rgba(229, 176, 70, 0.42);
+    background: rgba(159, 112, 28, 0.1);
+}
+
+.tracker-empty-state {
+    padding: 0.7rem 0.25rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.tracker-pending-card,
+.tracker-profile-row {
+    padding: 0.48rem 0.62rem;
+    border: 1px solid var(--tracker-border);
+    border-radius: 7px;
+    background: var(--tracker-surface);
+}
+
+.tracker-profile-row {
+    padding: 0.34rem 0.55rem;
+}
+
+.tracker-pending-card + .tracker-pending-card,
+.tracker-profile-row + .tracker-profile-row {
+    margin-top: 0.35rem;
+}
+
+.tracker-profile-row + .tracker-profile-row {
+    margin-top: 0.26rem;
+}
+
+.tracker-key-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.tracker-key-copy {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.tracker-key-actions,
+.tracker-account-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 0.05rem;
+}
+
+.tracker-filter {
+    margin: 0.05rem 0 0.5rem;
+}
+
+.tracker-account-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 0.1rem 0.28rem 0.1rem 0;
+    scrollbar-color: rgba(120, 174, 251, 0.7) rgba(255, 255, 255, 0.04);
+    scrollbar-width: thin;
+}
+
+.tracker-account-heading {
+    display: grid;
+    grid-template-columns: minmax(11rem, 1fr) 10rem 10.4rem;
+    align-items: center;
+    column-gap: 0.35rem;
+    min-height: 2.65rem;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent);
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tracker-account-heading:hover,
+.tracker-account-heading:focus-within {
+    background-color: rgba(94, 151, 235, 0.09);
+}
+
+.tracker-account-heading:focus-within {
+    box-shadow: inset 0 0 0 2px rgba(104, 164, 255, 0.72);
+}
+
+.tracker-account-drawer {
+    position: relative;
+}
+
+.tracker-account-drawer::before {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 2px;
+    background: linear-gradient(180deg, #78aefb, rgba(139, 92, 246, 0.55));
+    content: "";
+    opacity: 0.58;
+    pointer-events: none;
+}
+
+.tracker-account-toggle {
+    width: 100%;
+    padding: 0.34rem 0.62rem;
+}
+
+.tracker-account-toggle:hover,
+.tracker-account-toggle:focus-visible {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.tracker-account-actions {
+    display: grid;
+    width: 10.4rem;
+    grid-template-columns: 4.35rem 5.8rem;
+    gap: 0.25rem;
+    padding-right: 0.35rem;
+}
+
+.tracker-account-action-slot {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.tracker-account-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: baseline;
+    gap: 0.48rem;
+}
+
+.tracker-account-subtitle,
+.tracker-token {
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.7rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker-account-title {
+    flex: 0 1 auto;
+}
+
+.tracker-account-subtitle {
+    flex: 1 1 auto;
+}
+
+.tracker-profile-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.tracker-profile-identity .mud-typography {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tracker-profile-identity .tracker-token {
+    flex: 0 1 auto;
+}
+
+.tracker-mode-summary {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.2rem;
+}
+
+.tracker-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.22rem;
+    padding: 0.03rem 0.36rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+}
+
+.tracker-verification-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.15rem;
+    padding: 0.02rem 0.38rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.tracker-verification-badge--verified {
+    border-color: rgba(108, 203, 154, 0.32);
+    color: rgba(150, 226, 187, 0.92);
+    background: rgba(55, 137, 94, 0.12);
+}
+
+.tracker-verification-badge--pending {
+    border-color: rgba(242, 188, 87, 0.38);
+    color: #f2ca7f;
+    background: rgba(181, 123, 37, 0.14);
+}
+
+.tracker-assignment-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.15rem;
+    padding: 0.02rem 0.42rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.035em;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.tracker-assignment-badge--manual {
+    border-color: rgba(255, 112, 112, 0.62);
+    color: #ffd0d0;
+    background: rgba(177, 47, 47, 0.24);
+}
+
+.tracker-mode-badge--pve {
+    border-color: rgba(87, 194, 142, 0.45);
+    color: #8ce0b8;
+    background: rgba(48, 146, 99, 0.15);
+}
+
+.tracker-mode-badge--pvp {
+    border-color: rgba(111, 166, 255, 0.45);
+    color: #9fc5ff;
+    background: rgba(61, 112, 194, 0.16);
+}
+
+.tracker-mode-badge--seasonal {
+    border-color: rgba(212, 148, 255, 0.46);
+    color: #deb0ff;
+    background: rgba(139, 74, 180, 0.16);
+}
+
+.tracker-mode-badge--unknown {
+    border-color: rgba(255, 255, 255, 0.24);
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.tracker-profile-list {
+    padding: 0.28rem 0.5rem 0.42rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+@media (max-width: 640px) {
+    .tracker-account-heading {
+        grid-template-columns: minmax(0, 1fr) 10.4rem;
+    }
+
+    .tracker-mode-summary {
+        display: none;
+    }
+}
+
+@media (max-width: 520px) {
+    .tracker-account-heading,
+    .tracker-key-main {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tracker-account-actions,
+    .tracker-key-actions {
+        justify-content: flex-start;
+        padding: 0 0.45rem 0.35rem;
+    }
+
+    .tracker-account-actions {
+        width: auto;
+        grid-column: 1;
+    }
+
+    .tracker-account-heading {
+        min-height: auto;
+    }
+
+    .tracker-account-copy,
+    .tracker-profile-identity {
+        flex-wrap: wrap;
+        row-gap: 0.12rem;
+    }
+}

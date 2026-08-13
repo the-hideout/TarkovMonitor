@@ -1,0 +1,67 @@
+<MudDialog Class="tracker-settings-dialog">
+    <DialogContent>
+        <div class="tracker-dialog-note tracker-dialog-note--assigned" role="note">
+            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="tracker-dialog-note__icon" />
+            <span class="tracker-dialog-note__copy">
+                <strong>@(HasNickname ? $"Change this {Mode} profile's nickname." : $"Set a nickname for this {Mode} profile.")</strong>
+                <span>If you reassign this API key, the nickname moves with it. Unbinding the key clears the nickname. It does not change your EFT character name.</span>
+            </span>
+        </div>
+
+        <div class="tracker-dialog-section-heading">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" />
+            <span>Profile nickname</span>
+        </div>
+        <div class="tracker-dialog-form-card">
+            <MudTextField @bind-Value="nickname"
+                          Immediate="true"
+                          Label="Profile nickname"
+                          Placeholder="Character name"
+                          MaxLength="32"
+                          Counter="32"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          AutoFocus="true" />
+            <span class="tracker-dialog-field-help">Use 1-32 characters. You can change it while the key remains assigned.</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
+        <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Save" Disabled="@string.IsNullOrWhiteSpace(nickname)" StartIcon="@Icons.Material.Filled.Save" Class="tracker-dialog-footer-button">
+            @(HasNickname ? "Save name" : "Set name")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string ExistingNickname { get; set; } = "";
+    [Parameter] public string Mode { get; set; } = "";
+
+    private string nickname = "";
+    private string errorMessage = "";
+    private bool HasNickname => !string.IsNullOrWhiteSpace(ExistingNickname);
+
+    protected override void OnInitialized()
+    {
+        nickname = ExistingNickname;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Save()
+    {
+        var normalizedNickname = nickname.Trim();
+        if (normalizedNickname.Length is < 1 or > 32 || normalizedNickname.Any(char.IsControl))
+        {
+            errorMessage = "Enter a name between 1 and 32 characters.";
+            return;
+        }
+        MudDialog.Close(DialogResult.Ok(normalizedNickname));
+    }
+}

@@ -333,15 +333,15 @@
     <value>Zadanie</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Pobrano z tarkov.dev {0} przedmiotów, {1} map, {2} handlarzy, {3} zadań i {4} stacji kryjówki.</value>
+    <value>Pobrano z tarkov.dev {0} przedmiotów, {1} map, {2} handlarzy, {3} zadań i {4} stacji kryjówki dla {5}.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>Aby automatycznie śledzić postęp zadań, ustaw token Tarkov Tracker w Ustawieniach.</value>
+    <value>Aby automatycznie śledzić postęp zadań, przypisz token Tarkov Tracker w Ustawieniach.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Używany profil {0}</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Pobrano z Tarkov Tracker postęp {0} poziomu {1} {2}</value>
+    <value>Pobrano z Tarkov Tracker postęp {0} poziomu {1} {2} dla {3}</value>
   </data>
 </root>

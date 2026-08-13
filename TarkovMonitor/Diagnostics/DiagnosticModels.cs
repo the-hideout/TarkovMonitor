@@ -50,6 +50,10 @@ public static class DiagnosticRedactor
         @"(?ix)(?<key>\b(?:authorization|bearer|token|api[_-]?key|sessionid|accountid|profileid|remoteid|cookie)\b\s*(?:[:=]|=>)\s*)(?<value>Bearer\s+[^\s,;}&]+|[^\s,;}&]+)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex DictionaryKey = new(
+        @"(?ix)(?<key>\bkey\b\s*:\s*)(?<value>\d+)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly Regex JsonSensitiveKeyValue = new(
         @"(?ix)(?<key>(?<![a-z0-9_])""?(?:authorization|bearer|token|api[_-]?key|sessionid|accountid|profileid|remoteid|cookie)""?\s*:\s*)""?(?<value>[^""\s,}]+)""?",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -92,6 +96,7 @@ public static class DiagnosticRedactor
         sanitized = sanitized.Replace("%TMP%", "<temp>", StringComparison.OrdinalIgnoreCase);
         sanitized = ApiKey.Replace(sanitized, "[REDACTED_API_KEY]");
         sanitized = SensitiveKeyValue.Replace(sanitized, match => $"{match.Groups["key"].Value}[REDACTED]");
+        sanitized = DictionaryKey.Replace(sanitized, match => $"{match.Groups["key"].Value}[REDACTED_ID]");
         sanitized = JsonSensitiveKeyValue.Replace(sanitized, match => $"{match.Groups["key"].Value}\"[REDACTED]\"");
         sanitized = BearerToken.Replace(sanitized, "Bearer [REDACTED]");
         sanitized = QueryString.Replace(sanitized, "$url?[REDACTED_QUERY]");

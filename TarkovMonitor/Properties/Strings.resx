@@ -124,118 +124,118 @@
     <value>Notifications</value>
   </data>
   <data name="NotificationsPlaybackDevice" xml:space="preserve">
-    <value>Notifications playback device</value>
+    <value>Notification playback device</value>
   </data>
   <data name="RaidStartingAudioNotification" xml:space="preserve">
-    <value>Raid Starting Audio Notification</value>
+    <value>Raid start notification</value>
   </data>
   <data name="MatchFoundAudioNotification" xml:space="preserve">
-    <value>Match Found Audio Notification</value>
+    <value>Match found notification</value>
   </data>
   <data name="RestartTasksAudioReminder" xml:space="preserve">
-    <value>Restart Tasks Audio Reminder</value>
+    <value>Task restart reminder</value>
   </data>
   <data name="RunthroughPeriodAudioReminder" xml:space="preserve">
-    <value>Runthrough Period Audio Reminder</value>
+    <value>Run-through reminder</value>
   </data>
   <data name="AirFilterAudioReminders" xml:space="preserve">
-    <value>Air Filter Audio Reminders</value>
+    <value>Air filter reminders</value>
   </data>
   <data name="QuestItemReminderAudioNotification" xml:space="preserve">
-    <value>Quest Item Reminder Audio Notification</value>
+    <value>Quest item reminder</value>
   </data>
   <data name="ScavCooldownReminders" xml:space="preserve">
-    <value>Scav Cooldown Reminders</value>
+    <value>Scav cooldown reminders</value>
   </data>
   <data name="ScavKarma" xml:space="preserve">
-    <value>Scav Karma</value>
+    <value>Scav karma</value>
   </data>
   <data name="RunthroughTime" xml:space="preserve">
-    <value>Runthrough Time (HH:MM:SS)</value>
+    <value>Run-through time (HH:MM:SS)</value>
   </data>
   <data name="WindowBehavior" xml:space="preserve">
-    <value>Window Behavior</value>
+    <value>Window behavior</value>
   </data>
   <data name="StartTarkovMonitorMinimized" xml:space="preserve">
-    <value>Start Tarkov Monitor Minimized</value>
+    <value>Start Tarkov Monitor minimized</value>
   </data>
   <data name="MinimizeToSystemTray" xml:space="preserve">
-    <value>Minimize to System Tray</value>
+    <value>Minimize to the system tray</value>
   </data>
   <data name="StayOnTop" xml:space="preserve">
-    <value>Stay on Top</value>
+    <value>Stay on top</value>
   </data>
   <data name="SkipTarkovDevSplashLogo" xml:space="preserve">
-    <value>Skip Tarkov.dev Splash Logo</value>
+    <value>Skip the Tarkov.dev splash logo</value>
   </data>
   <data name="DataCollection" xml:space="preserve">
-    <value>Data Collection</value>
+    <value>Data collection</value>
   </data>
   <data name="SubmitQueueTimeData" xml:space="preserve">
-    <value>Submit Queue Time Data</value>
+    <value>Submit queue-time data</value>
   </data>
   <data name="TarkovTracker" xml:space="preserve">
     <value>TarkovTracker</value>
   </data>
   <data name="GetAToken" xml:space="preserve">
-    <value>Get A Token</value>
+    <value>Get a token</value>
   </data>
   <data name="TestToken" xml:space="preserve">
-    <value>Test Token</value>
+    <value>Test token</value>
   </data>
   <data name="APIToken" xml:space="preserve">
-    <value>API Token</value>
+    <value>API token</value>
   </data>
   <data name="TarkovTrackerService" xml:space="preserve">
-    <value>Tarkov Tracker Service</value>
+    <value>Tarkov Tracker service</value>
   </data>
   <data name="TarkovTrackerServiceHelperText" xml:space="preserve">
-    <value>Tarkov Tracker service to use</value>
+    <value>Choose the Tarkov Tracker service</value>
   </data>
   <data name="TarkovDevWebsiteRemote" xml:space="preserve">
-    <value>Tarkov.dev Website Remote</value>
+    <value>Tarkov.dev website remote</value>
   </data>
   <data name="RemoteID" xml:space="preserve">
     <value>Remote ID</value>
   </data>
   <data name="SwitchToTarkovDevMapOnRaidLoad" xml:space="preserve">
-    <value>Switch to Tarkov.dev map on raid load</value>
+    <value>Switch to the Tarkov.dev map when a raid loads</value>
   </data>
   <data name="SwitchToTarkovDevMapOnPositionUpdate" xml:space="preserve">
-    <value>Switch to Tarkov.dev map on position update (via screenshot)</value>
+    <value>Switch to the Tarkov.dev map when your position updates (via screenshot)</value>
   </data>
   <data name="AutomaticallyDeleteScreenshotsAfterRaid" xml:space="preserve">
-    <value>Automatically delete taken screenshots after raid</value>
+    <value>Delete raid screenshots automatically</value>
   </data>
   <data name="OfflineMap" xml:space="preserve">
-    <value>Offline Map</value>
+    <value>Offline map</value>
   </data>
   <data name="MapToUseForOfflineRaids" xml:space="preserve">
-    <value>Map to use for offline raids</value>
+    <value>Map used for offline raids</value>
   </data>
   <data name="None" xml:space="preserve">
     <value>None</value>
   </data>
   <data name="LogsFolder" xml:space="preserve">
-    <value>Logs Folder</value>
+    <value>Logs folder</value>
   </data>
   <data name="DontChangeThisUnlessYouReallyKnowWhatYoureDoing" xml:space="preserve">
     <value>Don't change this unless you really know what you're doing.</value>
   </data>
   <data name="ResetToDefault" xml:space="preserve">
-    <value>Reset to Default</value>
+    <value>Reset to default</value>
   </data>
   <data name="InitialSetup" xml:space="preserve">
-    <value>Initial Setup</value>
+    <value>Initial setup</value>
   </data>
   <data name="ReadPastLogs" xml:space="preserve">
-    <value>Read Past Logs</value>
+    <value>Read past logs</value>
   </data>
   <data name="Language" xml:space="preserve">
     <value>Language</value>
   </data>
   <data name="SelectLanguage" xml:space="preserve">
-    <value>Select Language</value>
+    <value>Language</value>
   </data>
   <data name="Dashboard" xml:space="preserve">
     <value>Dashboard</value>
@@ -247,7 +247,7 @@
     <value>Group</value>
   </data>
   <data name="RawLogs" xml:space="preserve">
-    <value>Raw Logs</value>
+    <value>Raw logs</value>
   </data>
   <data name="Sounds" xml:space="preserve">
     <value>Sounds</value>
@@ -292,28 +292,28 @@
     <value>Submit</value>
   </data>
   <data name="Ok" xml:space="preserve">
-    <value>Ok</value>
+    <value>OK</value>
   </data>
   <data name="ClearData" xml:space="preserve">
-    <value>Clear Data</value>
+    <value>Clear data</value>
   </data>
   <data name="FleaMarketSales" xml:space="preserve">
-    <value>Flea Market Sales</value>
+    <value>Flea market sales</value>
   </data>
   <data name="Raids" xml:space="preserve">
     <value>Raids</value>
   </data>
   <data name="CustomLogData" xml:space="preserve">
-    <value>Custom Log Data</value>
+    <value>Custom log data</value>
   </data>
   <data name="ReadPreviousLogs" xml:space="preserve">
-    <value>Read Previous Logs</value>
+    <value>Read previous logs</value>
   </data>
   <data name="OpenLogsFolder" xml:space="preserve">
-    <value>Open Logs Folder</value>
+    <value>Open logs folder</value>
   </data>
   <data name="CurrentProfile" xml:space="preserve">
-    <value>Current profile</value>
+    <value>Active profile</value>
   </data>
   <data name="IfYouWantToUpdateProgressForDifferentProfile" xml:space="preserve">
     <value>If you want to update progress for a different profile, activate that profile in the game.</value>
@@ -322,16 +322,16 @@
     <value>Read previous logs</value>
   </data>
   <data name="ChooseStartingPointHelperText" xml:space="preserve">
-    <value>Choose the starting point from which to read logs</value>
+    <value>Choose where to start reading logs</value>
   </data>
   <data name="SelectStartingPointDescription" xml:space="preserve">
-    <value>Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same profile will be read and that cumulative progress will be synced to Tarkov Tracker.</value>
+    <value>Choose a starting point. Tarkov Monitor will read logs from that point forward for the active profile and sync the resulting quest progress to Tarkov Tracker.</value>
   </data>
   <data name="WarningMessage" xml:space="preserve">
-    <value>WARNING: You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution.</value>
+    <value>Warning: Choosing the wrong starting date can overwrite your saved Tarkov Tracker quest progress.</value>
   </data>
   <data name="CouldNotFindEFTInstallation" xml:space="preserve">
-    <value>Could not find the Escape From Tarkov installation location, or no logs exist.</value>
+    <value>Couldn’t find the Escape from Tarkov installation or any log files.</value>
   </data>
   <data name="NotFound" xml:space="preserve">
     <value>Not found</value>
@@ -340,43 +340,43 @@
     <value>Are you sure you want to clear all data? This cannot be undone.</value>
   </data>
   <data name="CustomRaidStartingSound" xml:space="preserve">
-    <value>Custom Raid Starting Sound</value>
+    <value>Custom sound for raid start</value>
   </data>
   <data name="CustomMatchFoundSound" xml:space="preserve">
-    <value>Custom Match Found Sound</value>
+    <value>Custom sound for match found</value>
   </data>
   <data name="CustomRestartTasksSound" xml:space="preserve">
-    <value>Custom Restart Tasks Sound</value>
+    <value>Custom sound for task restart</value>
   </data>
   <data name="CustomRunthroughPeriodSound" xml:space="preserve">
-    <value>Custom Runthrough Period Sound</value>
+    <value>Custom sound for run-through</value>
   </data>
   <data name="CustomAirFilterOnSound" xml:space="preserve">
-    <value>Custom Air Filter On Sound</value>
+    <value>Custom sound for air filter on</value>
   </data>
   <data name="CustomAirFilterOffSound" xml:space="preserve">
-    <value>Custom Air Filter Off Sound</value>
+    <value>Custom sound for air filter off</value>
   </data>
   <data name="CustomScavCooldownSound" xml:space="preserve">
-    <value>Custom Scav Cooldown Sound</value>
+    <value>Custom sound for Scav availability</value>
   </data>
   <data name="YouArentInAGroupOrHavePartyMembersYet" xml:space="preserve">
-    <value>You aren't in a group or have party members yet.</value>
+    <value>You are not in a group, and no party members are available.</value>
   </data>
   <data name="TimeInRaid" xml:space="preserve">
-    <value>Time In Raid</value>
+    <value>Time in raid</value>
   </data>
   <data name="RunthroughPeriod" xml:space="preserve">
-    <value>Runthrough Period</value>
+    <value>Run-through period</value>
   </data>
   <data name="ScavCooldown" xml:space="preserve">
-    <value>Scav Cooldown</value>
+    <value>Scav cooldown</value>
   </data>
   <data name="ThereArentAnyMessagesYet" xml:space="preserve">
-    <value>There aren't any messages yet.</value>
+    <value>No messages yet.</value>
   </data>
   <data name="FleaMarketSale" xml:space="preserve">
-    <value>Flea Market Sale</value>
+    <value>Flea market sale</value>
   </data>
   <data name="Debug" xml:space="preserve">
     <value>Debug</value>
@@ -391,15 +391,15 @@
     <value>Quest</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from tarkov.dev</value>
+    <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev for {5}.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>To automatically track task progress, set your Tarkov Tracker token in Settings</value>
+    <value>To track task progress automatically, assign your Tarkov Tracker token in Settings.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
-    <value>Using {0} profile</value>
+    <value>Using the {0} profile.</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Retrieved {0} level {1} {2} progress from Tarkov Tracker</value>
+    <value>Retrieved Tarkov Tracker progress for {0} (level {1}, {2}) ({3}).</value>
   </data>
 </root>

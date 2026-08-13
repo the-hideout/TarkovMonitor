@@ -333,15 +333,15 @@
     <value>Quest</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Es wurden {0} Gegenstände, {1} Karten, {2} Händler, {3} Aufgaben und {4} Versteckstationen von tarkov.dev abgerufen.</value>
+    <value>Es wurden {0} Gegenstände, {1} Karten, {2} Händler, {3} Aufgaben und {4} Versteckstationen von tarkov.dev für {5} abgerufen.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>Um den Aufgabenfortschritt automatisch zu verfolgen, lege deinen Tarkov-Tracker-Token in den Einstellungen fest.</value>
+    <value>Um den Aufgabenfortschritt automatisch zu verfolgen, weise deinen Tarkov-Tracker-Token in den Einstellungen zu.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Profil {0} wird verwendet</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Fortschritt von {0} Level {1} {2} aus Tarkov Tracker abgerufen</value>
+    <value>Fortschritt von {0} Level {1} {2} aus Tarkov Tracker für {3} abgerufen</value>
   </data>
 </root>

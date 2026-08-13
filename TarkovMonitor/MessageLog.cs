@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace TarkovMonitor
 {
-    // An Event Delegate and Arguments for when a new event is added to the MessageLog
     public delegate void NewLogMessage(object source, NewLogMessageArgs e);
 
     public class NewLogMessageArgs : EventArgs
@@ -21,22 +20,24 @@ namespace TarkovMonitor
 
     internal class MessageLog
     {
-        private const int MaxMessages = 200;
+        internal const int MaxMessageLength = 2048;
+        internal const int MaxMessages = 200;
+        private const string ShortenedMessageSuffix = "\n[Message shortened by Tarkov Monitor.]";
         private const int MaxRecentDiagnostics = 500;
         private static readonly TimeSpan DeduplicationWindow = TimeSpan.FromSeconds(30);
         private readonly object gate = new();
         private readonly Dictionary<string, (MonitorMessage Message, DateTime LastSeen)> recentDiagnostics = new(StringComparer.Ordinal);
+        private readonly List<MonitorMessage> messages = new();
 
         public event NewLogMessage newMessage = delegate { };
 
-        public MessageLog(DiagnosticsService diagnostics)
+        public MessageLog(DiagnosticsService? diagnostics = null)
         {
-            Diagnostics = diagnostics;
-            messages = new List<MonitorMessage>();
+            Diagnostics = diagnostics ?? new DiagnosticsService();
         }
 
         public DiagnosticsService Diagnostics { get; }
-        private readonly List<MonitorMessage> messages;
+
         public IReadOnlyList<MonitorMessage> Messages
         {
             get
@@ -47,20 +48,63 @@ namespace TarkovMonitor
                 }
             }
         }
-        
+
+        public IReadOnlyList<MonitorMessage> GetSnapshot() => Messages;
+
         public void AddMessage(MonitorMessage message)
         {
-            lock (gate)
-            {
-                AddToBoundedList(message);
-            }
-
-            RaiseMessageAdded(message);
+            message.Message = LimitMessageLength(message.Message);
+            AddMessageCore(message);
         }
 
-        public void AddMessage(string message, string? type = "", string? url = null)
+        public void AddMessage(string message, string? type = "", string? url = null, string? linkText = null)
         {
-            AddMessage(new MonitorMessage(message, type, url));
+            AddMessage(new MonitorMessage(LimitMessageLength(message), type, url, linkText));
+        }
+
+        public void AddMessages(IEnumerable<MonitorMessage> messageBatch, bool preserveDisplayOrder = false)
+        {
+            var batch = messageBatch.ToList();
+            if (batch.Count == 0)
+            {
+                return;
+            }
+
+            var batchId = preserveDisplayOrder ? Guid.NewGuid() : (Guid?)null;
+            foreach (var message in batch)
+            {
+                message.Message = LimitMessageLength(message.Message);
+                message.DisplayBatchId = batchId;
+                message.PreserveDisplayBatchOrder = preserveDisplayOrder;
+            }
+
+            lock (gate)
+            {
+                messages.AddRange(batch);
+                while (messages.Count > MaxMessages)
+                {
+                    messages.RemoveAt(0);
+                }
+            }
+
+            RaiseMessageAdded(batch[^1]);
+        }
+
+        public void AddProtectedMessage(
+            string message,
+            string? type,
+            IEnumerable<MonitorMessageProtectedValue> protectedValues,
+            string? url = null,
+            string? linkText = null)
+        {
+            var monMessage = new MonitorMessage(LimitMessageLength(message), type, url, linkText);
+            foreach (var protectedValue in protectedValues
+                .Where(value => !string.IsNullOrWhiteSpace(value.Label)
+                    && !string.IsNullOrWhiteSpace(value.Value)))
+            {
+                monMessage.ProtectedValues.Add(protectedValue);
+            }
+            AddMessageCore(monMessage);
         }
 
         public DiagnosticSnapshot AddException(
@@ -119,6 +163,26 @@ namespace TarkovMonitor
             }
 
             RaiseMessageAdded(messageToRaise, isRepeat);
+        }
+
+        private void AddMessageCore(MonitorMessage message)
+        {
+            lock (gate)
+            {
+                AddToBoundedList(message);
+            }
+
+            RaiseMessageAdded(message);
+        }
+
+        private static string LimitMessageLength(string message)
+        {
+            if (message.Length <= MaxMessageLength)
+            {
+                return message;
+            }
+
+            return message[..(MaxMessageLength - ShortenedMessageSuffix.Length)] + ShortenedMessageSuffix;
         }
 
         private void AddToBoundedList(MonitorMessage message)

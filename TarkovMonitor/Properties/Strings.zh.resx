@@ -363,15 +363,15 @@
 
   <!-- Dynamic Messages -->
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>从 tarkov.dev 获取了 {0} 个物品, {1} 张地图, {2} 个商人, {3} 个任务, 和 {4} 个藏身处工作站</value>
+    <value>从 tarkov.dev 获取了 {0} 个物品, {1} 张地图, {2} 个商人, {3} 个任务, 和 {4} 个藏身处工作站（{5}）</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>要自动追踪任务进度，请在设置中设置你的 Tarkov Tracker 令牌</value>
+    <value>要自动追踪任务进度，请在设置中分配你的 Tarkov Tracker 令牌</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>正在使用 {0} 档案</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>从 Tarkov Tracker 获取了 {0} 等级 {1} {2} 进度</value>
+    <value>从 Tarkov Tracker 获取了 {0} 等级 {1} {2}（{3}）进度</value>
   </data>
 </root>

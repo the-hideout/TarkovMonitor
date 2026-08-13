@@ -1,0 +1,131 @@
+<MudDialog Class="tracker-settings-dialog tracker-edit-key-dialog">
+    <DialogContent>
+        <div class="tracker-dialog-note tracker-dialog-note--assigned" role="note">
+            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" Class="tracker-dialog-note__icon" />
+            <span class="tracker-dialog-note__copy">
+                <strong>Linked to this EFT profile.</strong>
+                <span>Tarkov Monitor uses this key when the account, profile, and game mode below are active.</span>
+            </span>
+        </div>
+
+        <div class="tracker-dialog-section-heading">
+            <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Small" />
+            <span>Binding details</span>
+        </div>
+        <div class="tracker-key-binding-grid" role="group" aria-label="API key binding details">
+            <div class="tracker-key-binding-item">
+                <span class="tracker-key-binding-label">Mode</span>
+                <span class="tracker-key-binding-value"><span class="tracker-dialog-mode-badge @ModeBadgeClass">@Mode</span></span>
+            </div>
+            <div class="tracker-key-binding-item">
+                <span class="tracker-key-binding-label">Account ID</span>
+                <span class="tracker-key-binding-value">@AccountId</span>
+            </div>
+            <div class="tracker-key-binding-item">
+                <span class="tracker-key-binding-label">API key</span>
+                <span class="tracker-key-binding-value tracker-key-edit-token">@MaskedToken</span>
+            </div>
+            <div class="tracker-key-binding-item">
+                <span class="tracker-key-binding-label">Last played</span>
+                <span class="tracker-key-binding-value">@LastPlayed</span>
+            </div>
+            <div class="tracker-key-binding-item tracker-key-binding-item--wide">
+                <span class="tracker-key-binding-label">Profile ID</span>
+                <span class="tracker-key-binding-value">@ProfileId</span>
+            </div>
+            <div class="tracker-key-binding-item tracker-key-binding-item--wide tracker-key-nickname-item">
+                <span class="tracker-key-binding-label">Profile nickname</span>
+                <span class="tracker-key-nickname-value">
+                    <span class="tracker-key-binding-value @(HasProfileNickname ? "" : "tracker-key-binding-value--muted")">
+                        @(HasProfileNickname ? ProfileNickname : "Character name")
+                    </span>
+                    <MudButton OnClick="SetProfileNickname" Variant="Variant.Text" Color="Color.Info" Size="Size.Small" Class="tracker-profile-nickname-button" Disabled="@KeyChangesDisabled">
+                        @(HasProfileNickname ? "Rename" : "Set name")
+                    </MudButton>
+                </span>
+            </div>
+        </div>
+        @if (IsQuarantined)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">
+                This key has conflicting or invalid profile information. Remove it and import it again before assigning it.
+            </MudAlert>
+        }
+        @if (KeyChangesDisabled)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-3">@KeyChangesDisabledReason</MudAlert>
+        }
+
+        <div class="tracker-dialog-section-heading">
+            <MudIcon Icon="@Icons.Material.Filled.Tune" Size="Size.Small" />
+            <span>Manage key</span>
+        </div>
+        <div class="tracker-key-action-grid">
+            <button type="button" class="tracker-key-action" @onclick="Reassign" disabled="@(IsQuarantined || KeyChangesDisabled)" title="@ReassignTitle">
+                <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" Class="tracker-key-action__icon" />
+                <span class="tracker-key-action__copy">
+                    <span class="tracker-key-action__title">Reassign</span>
+                <span class="tracker-key-action__description">Move this key and its nickname, or swap it with the key already there.</span>
+                </span>
+            </button>
+            <button type="button" class="tracker-key-action tracker-key-action--warning" @onclick="Unbind" disabled="@KeyChangesDisabled" title="@(KeyChangesDisabled ? KeyChangesDisabledReason : "Keep this key saved, but stop using it")">
+                <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Small" Class="tracker-key-action__icon" />
+                <span class="tracker-key-action__copy">
+                    <span class="tracker-key-action__title">Unbind</span>
+                    <span class="tracker-key-action__description">Keep the key saved, but stop using it.</span>
+                </span>
+            </button>
+            <button type="button" class="tracker-key-action tracker-key-action--danger" @onclick="Remove" disabled="@KeyChangesDisabled" title="@(KeyChangesDisabled ? KeyChangesDisabledReason : "Delete this saved key from this PC")">
+                <MudIcon Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Class="tracker-key-action__icon" />
+                <span class="tracker-key-action__copy">
+                    <span class="tracker-key-action__title">Remove</span>
+                    <span class="tracker-key-action__description">Delete this saved key from this PC.</span>
+                </span>
+            </button>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    public enum KeyAction
+    {
+        Reassign,
+        SetProfileNickname,
+        Unbind,
+        Remove,
+    }
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string Mode { get; set; } = "";
+    [Parameter] public string MaskedToken { get; set; } = "";
+    [Parameter] public string AccountId { get; set; } = "";
+    [Parameter] public string ProfileId { get; set; } = "";
+    [Parameter] public string ProfileNickname { get; set; } = "";
+    [Parameter] public string LastPlayed { get; set; } = "Unknown";
+    [Parameter] public bool IsQuarantined { get; set; }
+    [Parameter] public bool KeyChangesDisabled { get; set; }
+    [Parameter] public string KeyChangesDisabledReason { get; set; } = "Saved key storage must be repaired before this action is available.";
+
+    private string ModeBadgeClass => Mode.Contains("PVE", StringComparison.OrdinalIgnoreCase)
+        ? "tracker-dialog-mode-badge--pve"
+        : Mode.Contains("Seasonal", StringComparison.OrdinalIgnoreCase)
+            ? "tracker-dialog-mode-badge--seasonal"
+            : "";
+
+    private bool HasProfileNickname => !string.IsNullOrWhiteSpace(ProfileNickname);
+    private string ReassignTitle => KeyChangesDisabled
+        ? KeyChangesDisabledReason
+        : IsQuarantined
+            ? "Repair or remove this invalid binding before reassigning it"
+            : "Move this key to another saved profile, or swap it with a key already assigned there";
+
+    private void Close() => MudDialog.Close();
+    private void Reassign() => MudDialog.Close(DialogResult.Ok(KeyAction.Reassign));
+    private void SetProfileNickname() => MudDialog.Close(DialogResult.Ok(KeyAction.SetProfileNickname));
+    private void Unbind() => MudDialog.Close(DialogResult.Ok(KeyAction.Unbind));
+    private void Remove() => MudDialog.Close(DialogResult.Ok(KeyAction.Remove));
+}

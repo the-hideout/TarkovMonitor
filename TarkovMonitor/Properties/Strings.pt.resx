@@ -333,15 +333,15 @@
     <value>Missão</value>
   </data>
   <data name="RetrievedDataFromTarkovDev" xml:space="preserve">
-    <value>Foram obtidos {0} itens, {1} mapas, {2} comerciantes, {3} tarefas e {4} estações do abrigo de tarkov.dev.</value>
+    <value>Foram obtidos {0} itens, {1} mapas, {2} comerciantes, {3} tarefas e {4} estações do abrigo de tarkov.dev para {5}.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>Para rastrear automaticamente o progresso das tarefas, defina seu token do Tarkov Tracker em Configurações.</value>
+    <value>Para rastrear automaticamente o progresso das tarefas, atribua seu token do Tarkov Tracker em Configurações.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Usando o perfil {0}</value>
   </data>
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
-    <value>Progresso {0} nível {1} {2} recuperado do Tarkov Tracker</value>
+    <value>Progresso {0} nível {1} {2} recuperado do Tarkov Tracker para {3}</value>
   </data>
 </root>

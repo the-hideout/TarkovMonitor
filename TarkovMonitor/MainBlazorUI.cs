@@ -24,6 +24,11 @@ namespace TarkovMonitor
         private const int WsThickFrame = 0x00040000;
         private const int WsMinimizeBox = 0x00020000;
         private const int WsMaximizeBox = 0x00010000;
+        private const uint SwpNoSize = 0x0001;
+        private const uint SwpNoMove = 0x0002;
+        private const uint SwpNoZOrder = 0x0004;
+        private const uint SwpNoActivate = 0x0010;
+        private const uint SwpFrameChanged = 0x0020;
         private const int DwmWindowCornerPreference = 33;
         private const int DwmBorderColor = 34;
         private const int DwmCaptionColor = 35;
@@ -38,6 +43,9 @@ namespace TarkovMonitor
 
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int message, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int width, int height, uint flags);
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr windowHandle, int attribute, ref int value, int valueSize);
@@ -63,24 +71,46 @@ namespace TarkovMonitor
         private LocalizationService localizationService;
         private bool inRaid;
         private bool gameWatcherStarted;
+        private int trackerStatusTransitionDepth;
+        private FormWindowState lastPublishedWindowState = FormWindowState.Normal;
+        private bool windowStateNotificationPending;
+        private bool uiReady;
+        private bool uiHostRevealed;
+        private bool uiHostRevealQueued;
+        private bool startupHeldForSplash;
+        private bool startupServicesStarted;
+        private readonly object trackerSessionNoticeLock = new();
+        private long trackerSessionNoticeGeneration;
+        private TrackerSessionNoticeIdentity? lastAnnouncedTrackerSession;
+        private readonly object tarkovDevDataRefreshLock = new();
+        private CancellationTokenSource? tarkovDevDataRefreshCancellation;
+        private long tarkovDevDataRefreshGeneration;
+        private Profile? tarkovDevDataProfile;
 
-        public MainBlazorUI()
+        private readonly record struct TrackerSessionNoticeIdentity(
+            string AccountId,
+            string ProfileId,
+            EftSessionMode SessionMode);
+
+        public event EventHandler? UiReady;
+        public bool IsUiReady => uiReady;
+
+        public MainBlazorUI(bool holdUntilSplashCompletes = false, DiagnosticsService? diagnosticsService = null)
         {
             InitializeComponent();
-            Shown += MainBlazorUI_Shown;
-            if (Properties.Settings.Default.upgradeRequired)
-            {
-                Properties.Settings.Default.Upgrade();
-                Properties.Settings.Default.upgradeRequired = false;
-                Properties.Settings.Default.Save();
-            }
+            startupHeldForSplash = holdUntilSplashCompletes;
+            // The splash is an independent startup window. Unless a caller
+            // explicitly asks for a gate, keep the main window visible while
+            // WebView2 paints so both windows launch together with no reveal
+            // delay or second native-host repaint.
+            Opacity = startupHeldForSplash ? 0 : 1;
             this.TopMost = Properties.Settings.Default.stayOnTop;
             inRaid = false;
 
             // Singleton message log used to record and display messages for TarkovMonitor
-            diagnostics = new DiagnosticsService();
+            diagnostics = diagnosticsService ?? new DiagnosticsService();
             messageLog = new MessageLog(diagnostics);
-            messageLog.AddMessage($"TarkovMonitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
+            messageLog.AddMessage($"Tarkov Monitor v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
 
             // Singleton log repository to record, display, and analyze logs for TarkovMonitor
             logRepository = new LogRepository();
@@ -101,6 +131,8 @@ namespace TarkovMonitor
             services.AddMudServices(configuration =>
             {
                 configuration.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopCenter;
+                configuration.PopoverOptions.FlipMargin = 8;
+                configuration.PopoverOptions.OverflowPadding = 8;
             });
             services.AddLocalization();
             services.AddSingleton<DiagnosticsService>(diagnostics);
@@ -140,42 +172,58 @@ namespace TarkovMonitor
             eft.GroupDisbanded += Eft_GroupDisbanded;
             eft.MatchingAborted += Eft_GroupStaleEvent;
             eft.GameStarted += Eft_GroupStaleEvent;
+            eft.GameStarted += Eft_GameStarted;
+            eft.GameStopped += Eft_GameStopped;
             eft.MapLoading += Eft_MapLoading;
             eft.MapLoading += Eft_MapLoading_NavigateToMap;
             eft.MatchingStarted += Eft_MatchingStarted;
             eft.MatchFound += Eft_MatchFound;
             eft.PlayerPosition += Eft_PlayerPosition;
             eft.ProfileChanged += Eft_ProfileChanged;
+            eft.ProfileReady += Eft_ProfileReady;
             eft.ControlSettings += Eft_ControlSettings;
 
             eft.InitialReadComplete += (object? sender, ProfileEventArgs e) =>
             {
-                if (e.Profile.Type == ProfileType.Unknown)
+                if (!e.Profile.HasTarkovDevPlayerRoute)
                 {
                     TarkovTracker.ResetActiveState();
+                    TarkovDev.StopAutoUpdates();
+                    InvalidateTarkovDevData();
                     return;
                 }
 
-                // Update tarkov.dev API data
+                if (!eft.IsGameRunning)
+                {
+                    // The startup scan is historical, not a live EFT session.
+                    // It may still establish the read-only Tarkov.dev context so
+                    // the user does not need to launch EFT just to verify the
+                    // data connection. Tracker writes remain inactive.
+                    _ = RefreshTarkovDevApiData(e.Profile, allowPersistedProfile: true);
+                    TarkovTracker.ResetActiveState();
+                    TarkovDev.StopAutoUpdates();
+                    return;
+                }
 
-                UpdateTarkovDevApiData();
+                // Load the data set for the exact EFT session mode detected by
+                // the watcher. A later mode switch starts a new generation and
+                // invalidates this load before it can publish stale assets.
+                _ = RefreshTarkovDevApiData(e.Profile);
                 TarkovDev.StartAutoUpdates();
                 //TarkovDev.UpdatePlayerNames();
 
-                // Update Tarkov Tracker
-                if (Properties.Settings.Default.tarkovTrackerToken != "" && e.Profile.Id != "")
+                // Historical profile identity remains available through GameWatcher for
+                // Settings and Read Past Logs, but it must not activate or auto-bind a
+                // tracker key while EFT is not running.
+                if (!eft.IsGameRunning)
                 {
-                    var startedUtc = DateTime.UtcNow;
-                    try {
-                        TarkovTracker.SetToken(e.Profile.Id, Properties.Settings.Default.tarkovTrackerToken);
-                    } catch (Exception ex) {
-                        RecordException("Saved tracker settings could not be applied.", "TM-SETTINGS-001", "SetSavedTrackerToken", ex, "Settings", "Startup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
-                    }
-
-                    Properties.Settings.Default.tarkovTrackerToken = "";
-                    Properties.Settings.Default.Save();
+                    TarkovTracker.DeactivateProfile();
+                    return;
                 }
-                InitializeProgress();
+
+                // The versioned .org store performs guarded legacy recovery. Keep the
+                // original settings intact until a recovered key is explicitly assigned.
+                _ = InitializeProgress(e.Profile);
             };
 
             Properties.Settings.Default.PropertyChanged += (object? sender, PropertyChangedEventArgs e) => {
@@ -197,8 +245,6 @@ namespace TarkovMonitor
             UpdateCheck.Error += UpdateCheck_Error;
 
             SocketClient.ExceptionThrown += SocketClient_ExceptionThrown;
-
-            UpdateCheck.CheckForNewVersion();
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
 
@@ -222,7 +268,13 @@ namespace TarkovMonitor
 
         public void ToggleMaximizeWindow()
         {
-            WindowState = IsMaximized ? FormWindowState.Normal : FormWindowState.Maximized;
+            if (!IsMaximized)
+            {
+                WindowState = FormWindowState.Maximized;
+                return;
+            }
+
+            WindowState = FormWindowState.Normal;
         }
 
         public void CloseWindow() => Close();
@@ -240,15 +292,86 @@ namespace TarkovMonitor
             messageLog.AddException(displayMessage, code, operation, exception, service, stage, endpoint, durationMilliseconds);
         }
 
-        public void BeginWindowDrag()
+        public void MarkUiReady()
         {
-            if (IsMaximized)
+            if (uiReady)
             {
                 return;
             }
 
+            uiReady = true;
+            UiReady?.Invoke(this, EventArgs.Empty);
+            RevealUiHostIfReady(revealImmediately: !startupHeldForSplash);
+        }
+
+        public void ReleaseSplashGate()
+        {
+            if (!startupHeldForSplash)
+            {
+                return;
+            }
+
+            startupHeldForSplash = false;
+            RevealUiHostIfReady(revealImmediately: true);
+        }
+
+        private void RevealUiHostIfReady(bool revealImmediately = false)
+        {
+            if (IsDisposed || !IsHandleCreated || !uiReady || startupHeldForSplash || uiHostRevealed || uiHostRevealQueued)
+            {
+                return;
+            }
+
+            if (revealImmediately && !InvokeRequired)
+            {
+                RevealUiHost();
+                return;
+            }
+
+            // WebView2 and Blazor are allowed to finish painting while the
+            // splash is on top, but the native host must be revealed exactly
+            // once. Multiple opacity changes can produce a full -> black ->
+            // full repaint when the WebView surface is restored.
+            uiHostRevealQueued = true;
+            BeginInvoke(new Action(() =>
+            {
+                uiHostRevealQueued = false;
+                RevealUiHost();
+            }));
+        }
+
+        private void RevealUiHost()
+        {
+            if (IsDisposed || startupHeldForSplash || !uiReady || uiHostRevealed)
+            {
+                return;
+            }
+
+            uiHostRevealed = true;
+            ShowInTaskbar = true;
+            Opacity = 1;
+            if (WindowState != FormWindowState.Minimized)
+            {
+                Activate();
+            }
+        }
+
+        public void BeginWindowDrag()
+        {
             ReleaseCapture();
             SendMessage(Handle, WmNcLButtonDown, (IntPtr)HtCaption, IntPtr.Zero);
+        }
+
+        private void RefreshNormalWindowFrame()
+        {
+            SetWindowPos(
+                Handle,
+                IntPtr.Zero,
+                0,
+                0,
+                0,
+                0,
+                SwpNoSize | SwpNoMove | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
         }
 
         public void BeginWindowResize(int hitTest)
@@ -334,7 +457,7 @@ namespace TarkovMonitor
                 JsonNode screenshotBind = keyBindings.FirstOrDefault((n) => n.AsObject()["keyName"].ToString() == "MakeScreenshot" && n.AsObject()["variants"].AsArray().Any(variant => variant.AsObject()["isAxis"]?.GetValue<bool>() == true || variant.AsObject()["keyCode"].AsArray().Count > 0));
                 if (screenshotBind == null)
                 {
-                    messageLog.AddMessage($"Screenshot key is not bound in EFT. Using this keybind is required to update tarkov.dev map position.", "info");
+            messageLog.AddMessage("EFT has no screenshot key bound. Bind one to update your position on the Tarkov.dev map.", "info");
                     return;
                 }
                 var variant = screenshotBind["variants"].AsArray().FirstOrDefault(variant => variant.AsObject()["keyCode"].AsArray().Count > 0);
@@ -346,7 +469,7 @@ namespace TarkovMonitor
                 var keys = variant["keyCode"].AsArray().Select(n => n.GetValue<string>());
                 if (keys.Any(key => key == "SysReq"))
                 {
-                    messageLog.AddMessage($"Screenshot key is not properly bound in EFT. Please re-bind your screenshot key in EFT for use with updating tarkov.dev map position.", "info");
+                    messageLog.AddMessage("The EFT screenshot key is not bound correctly. Rebind it to update your position on the Tarkov.dev map.", "info");
                 }
             }
             catch (Exception ex)
@@ -355,27 +478,49 @@ namespace TarkovMonitor
             }
         }
 
-        private async void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
+        private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
-            if (e.Profile.Type == ProfileType.Unknown)
+            var profileSnapshot = e.Profile.Snapshot();
+            _ = RefreshTarkovDevApiData(profileSnapshot);
+            if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
             {
-                TarkovTracker.ResetActiveState();
-                return;
+                TarkovDev.StartAutoUpdates();
             }
+            else
+            {
+                TarkovDev.StopAutoUpdates();
+            }
+            _ = InitializeProgress(profileSnapshot, announceSession: true);
+        }
 
-            if (e.Profile.Id == TarkovTracker.CurrentProfileId)
+        private void Eft_ProfileReady(object? sender, ProfileEventArgs e)
+        {
+            var profileSnapshot = e.Profile.Snapshot();
+            _ = RefreshTarkovDevApiData(profileSnapshot);
+            if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
             {
-                return;
+                TarkovDev.StartAutoUpdates();
             }
-            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), e.Profile.Type));
-            var startedUtc = DateTime.UtcNow;
-            try
+            else
             {
-                await TarkovTracker.SetProfile(e.Profile.Id);
+                TarkovDev.StopAutoUpdates();
             }
-            catch (Exception ex)
+            _ = InitializeProgress(profileSnapshot, announceSession: true);
+        }
+
+        private void Eft_GameStopped(object? sender, EventArgs e)
+        {
+            TarkovTracker.DeactivateProfile();
+            TarkovDev.StopAutoUpdates();
+            InvalidateTarkovDevData();
+        }
+
+        private void Eft_GameStarted(object? sender, EventArgs e)
+        {
+            lock (trackerSessionNoticeLock)
             {
-                RecordException("Tarkov Tracker profile switching failed.", "TM-API-TRACKER-008", "SetProfile", ex, "TarkovTracker", "Profile", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                trackerSessionNoticeGeneration++;
+                lastAnnouncedTrackerSession = null;
             }
         }
 
@@ -397,7 +542,7 @@ namespace TarkovMonitor
             {
                 Sound.Play("scav_available");
             }
-            messageLog.AddMessage("Player scav available", "info");
+            messageLog.AddMessage("Your Scav is available.", "info");
         }
 
         private void RunthroughTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -405,12 +550,14 @@ namespace TarkovMonitor
             if (Properties.Settings.Default.runthroughAlert)
             {
                 Sound.Play("runthrough_over");
-                messageLog.AddMessage("Runthrough period over", "info");
+                messageLog.AddMessage("The run-through period is over.", "info");
             }
         }
 
         private void Delete_Screenshots(RaidInfoEventArgs e, MonitorMessage? monMessage = null, MonitorMessageButton? screenshotButton = null)
         {
+            var screenshotCount = e.RaidInfo.Screenshots.Count;
+            var screenshotLabel = screenshotCount == 1 ? "screenshot" : "screenshots";
             var startedUtc = DateTime.UtcNow;
             try
             {
@@ -418,7 +565,7 @@ namespace TarkovMonitor
                 {
                     File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
                 }
-                messageLog.AddMessage($"Deleted {e.RaidInfo.Screenshots.Count} screenshots");
+                messageLog.AddMessage($"Deleted {screenshotCount} raid {screenshotLabel}.");
             }
             catch (Exception ex)
             {
@@ -442,7 +589,9 @@ namespace TarkovMonitor
                 return;
             }
 
-            MonitorMessageButton screenshotButton = new($"Delete {e.RaidInfo.Screenshots.Count} Screenshots", Icons.Material.Filled.Delete);
+            var screenshotCount = e.RaidInfo.Screenshots.Count;
+            var screenshotLabel = screenshotCount == 1 ? "raid screenshot" : "raid screenshots";
+            MonitorMessageButton screenshotButton = new($"Deleted {screenshotCount} {screenshotLabel}", Icons.Material.Filled.Delete);
             screenshotButton.OnClick = () =>
             {
                 Delete_Screenshots(e, monMessage, screenshotButton);
@@ -457,7 +606,7 @@ namespace TarkovMonitor
             await ResumeMediaAfterRaid();
             
             //groupManager.Stale = true;
-            MonitorMessage monMessage = new($"Ended {e.RaidInfo.Map?.name} raid");
+            MonitorMessage monMessage = new($"Raid ended on {e.RaidInfo.Map?.name}.");
 
             if (e.RaidInfo.Screenshots.Count > 0) {
                 Handle_Screenshots(e, monMessage);
@@ -496,10 +645,51 @@ namespace TarkovMonitor
 
                     WindowState = FormWindowState.Minimized;
                 }
+
+                // Let WebView2 render the startup shell before watcher and
+                // update-check work begins. This keeps startup responsive and
+                // lets the application initialize behind the splash.
+                BeginInvoke(new Action(StartStartupServices));
             }
             catch (Exception ex)
             {
                 RecordException("The window could not minimize at startup.", "TM-UI-001", "MinimizeAtStartup", ex, "UI", "Startup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+            }
+        }
+
+        private void StartStartupServices()
+        {
+            if (startupServicesStarted || IsDisposed)
+            {
+                return;
+            }
+
+            startupServicesStarted = true;
+            try
+            {
+                var lastKnownProfile = TarkovTracker.GetLastKnownOrgProfile();
+                if (lastKnownProfile != null)
+                {
+                    // Tarkov.dev data is read-only and can be preloaded from the
+                    // last complete profile without requiring EFT to be running.
+                    // Live EFT identity is still required before tracker writes
+                    // are activated.
+                    _ = RefreshTarkovDevApiData(lastKnownProfile, allowPersistedProfile: true);
+                }
+                gameWatcherStarted = eft.Start();
+            }
+            catch (Exception ex)
+            {
+                RecordException("Game log monitoring could not start.", "TM-WATCHER-001", "StartGameWatcher", ex, "GameWatcher", "Startup");
+            }
+
+            try
+            {
+                UpdateCheck.CheckForNewVersion();
+            }
+            catch (Exception ex)
+            {
+                RecordException("Update checking could not start.", "TM-UPDATE-002", "CheckForNewVersion", ex, "UpdateCheck", "Startup");
             }
         }
 
@@ -509,7 +699,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Player position on {e.RaidInfo.Map.name}: x: {e.Position.X}, y: {e.Position.Y}, z: {e.Position.Z}");
+            messageLog.AddMessage($"Current position on {e.RaidInfo.Map.name}: x={e.Position.X}, y={e.Position.Y}, z={e.Position.Z}.");
             List<JsonObject> socketMessages = new();
             socketMessages.Add(SocketClient.GetPlayerPositionMessage(e));
             //await SocketClient.UpdatePlayerPosition(e);
@@ -539,12 +729,20 @@ namespace TarkovMonitor
             var displayMessage = e.Context == "player profile lookup"
                 ? "Player profile lookup failed; copy diagnostics for details."
                 : "Automatic Tarkov.dev refresh failed; copy diagnostics for details.";
-            RecordException(displayMessage, "TM-API-TARKOVDEV-002", e.Context, e.Exception, "TarkovDev", "Background", "https://json.tarkov.dev");
+            RecordException(
+                displayMessage,
+                e.Context == "player profile lookup" ? "TM-API-TARKOVDEV-002" : "TM-API-TARKOVDEV-001",
+                e.Context,
+                e.Exception,
+                "TarkovDev",
+                "Background",
+                e.Endpoint ?? "https://json.tarkov.dev",
+                e.DurationMilliseconds);
         }
 
         private void UpdateCheck_NewVersion(object? sender, NewVersionEventArgs e)
         {
-            messageLog.AddMessage($"New TarkovMonitor version available ({e.Version})! Click here to open the download page. Please update to this new version before reporting any bugs.", null, e.Uri.ToString());
+            messageLog.AddMessage($"A new Tarkov Monitor version is available ({e.Version}). Click to open the download page, and update before reporting a bug.", null, e.Uri.ToString());
         }
 
         private async void Eft_MapLoading(object? sender, EventArgs e)
@@ -588,7 +786,7 @@ namespace TarkovMonitor
                 }
                 foreach (var task in failedTasks)
                 {
-                    messageLog.AddMessage($"Failed task {task.name} should be restarted", "quest", task.wikiLink);
+                    messageLog.AddMessage($"Task failed: {task.name}. Restart required.", "quest", task.wikiLink);
                 }
                 if (Properties.Settings.Default.restartTaskAlert)
                 {
@@ -626,7 +824,7 @@ namespace TarkovMonitor
 
         private void Eft_GroupInviteAccept(object? sender, LogContentEventArgs<GroupLogContent> e)
         {
-            messageLog.AddMessage($"{e.LogContent.Info.Nickname} ({e.LogContent.Info.Side.ToUpper()} {e.LogContent.Info.Level}) accepted group invite.", "group");
+            messageLog.AddMessage($"{e.LogContent.Info.Nickname} ({e.LogContent.Info.Side.ToUpper()} {e.LogContent.Info.Level}) accepted the group invite.", "group");
         }
 
         private void Eft_GroupDisbanded(object? sender, EventArgs e)
@@ -635,9 +833,21 @@ namespace TarkovMonitor
             groupManager.ClearGroup();
         }
 
-        private void TarkovTracker_ProgressRetrieved(object? sender, EventArgs e)
+        private void TarkovTracker_ProgressRetrieved(object? sender, TarkovTracker.ProgressRetrievedEventArgs e)
         {
-            messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovTracker"), TarkovTracker.Progress.data.displayName, TarkovTracker.Progress.data.playerLevel, TarkovTracker.Progress.data.pmcFaction), "update", $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+            messageLog.AddProtectedMessage(
+                string.Format(
+                    localizationService.GetString("RetrievedDataFromTarkovTracker"),
+                    e.Progress.data.displayName,
+                    e.Progress.data.playerLevel,
+                    e.Progress.data.pmcFaction,
+                    TarkovTracker.GetSessionDisplayName(e.SessionMode)),
+                "update",
+                new[]
+                {
+                    new MonitorMessageProtectedValue("API key", e.ApiKey),
+                },
+                $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
@@ -649,6 +859,14 @@ namespace TarkovMonitor
         private void WebView_CoreWebView2InitializationCompleted(object? sender, CoreWebView2InitializationCompletedEventArgs e)
         {
             if (Debugger.IsAttached) blazorWebView1.WebView.CoreWebView2.OpenDevToolsWindow();
+
+            if (!e.IsSuccess)
+            {
+                // Do not leave the native host invisible if WebView2 cannot
+                // initialize; the normal Blazor error surface must remain
+                // reachable for diagnosis.
+                MarkUiReady();
+            }
         }
 
         private void MainBlazorUI_Shown(object? sender, EventArgs e)
@@ -673,40 +891,223 @@ namespace TarkovMonitor
             }
         }
 
-        private async Task UpdateTarkovDevApiData()
+        private async Task RefreshTarkovDevApiData(Profile profile, bool allowPersistedProfile = false)
         {
-            var startedUtc = DateTime.UtcNow;
-            try
+            var profileSnapshot = profile.Snapshot();
+            if (!profileSnapshot.HasTarkovDevPlayerRoute
+                || profileSnapshot.Type == ProfileType.Unknown)
             {
-                await TarkovDev.UpdateApiData();
-                messageLog.AddMessage(string.Format(localizationService.GetString("RetrievedDataFromTarkovDev"), String.Format("{0:n0}", TarkovDev.Items.Count), TarkovDev.Maps.Count, TarkovDev.Traders.Count, TarkovDev.Tasks.Count, TarkovDev.Stations.Count), "update");
-            }
-            catch (Exception ex)
-            {
-                RecordException("Tarkov.dev data update failed; copy diagnostics for details.", "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev", DiagnosticsService.ElapsedMilliseconds(startedUtc));
-            }
-        }
-
-        private async Task InitializeProgress()
-        {
-            if (GameWatcher.CurrentProfile.Type == ProfileType.Unknown)
-            {
-                TarkovTracker.ResetActiveState();
+                InvalidateTarkovDevData();
                 return;
             }
 
+            CancellationTokenSource refreshCancellation;
+            long refreshGeneration;
+            Profile? previousProfile;
+            lock (tarkovDevDataRefreshLock)
+            {
+                if (tarkovDevDataProfile != null
+                    && ProfilesMatch(tarkovDevDataProfile, profileSnapshot)
+                    && TarkovDev.LoadedProfileType == profileSnapshot.Type)
+                {
+                    return;
+                }
+
+                tarkovDevDataRefreshGeneration++;
+                refreshGeneration = tarkovDevDataRefreshGeneration;
+                tarkovDevDataRefreshCancellation?.Cancel();
+                refreshCancellation = new CancellationTokenSource();
+                tarkovDevDataRefreshCancellation = refreshCancellation;
+                previousProfile = tarkovDevDataProfile;
+                tarkovDevDataProfile = profileSnapshot;
+
+                if (previousProfile == null
+                    || !ProfilesMatch(previousProfile, profileSnapshot)
+                    || TarkovDev.LoadedProfileType != profileSnapshot.Type)
+                {
+                    TarkovDev.ClearApiData();
+                }
+            }
+
+            var published = false;
+            try
+            {
+                var data = await TarkovDev.LoadApiData(profileSnapshot.Type, refreshCancellation.Token);
+                lock (tarkovDevDataRefreshLock)
+                {
+                    if (refreshGeneration != tarkovDevDataRefreshGeneration
+                        || !ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation)
+                        || !IsTarkovDevRefreshOwnerCurrent(profileSnapshot, allowPersistedProfile))
+                    {
+                        return;
+                    }
+
+                    TarkovDev.PublishApiData(data);
+                    published = true;
+                }
+
+                messageLog.AddMessage(
+                    string.Format(
+                        localizationService.GetString("RetrievedDataFromTarkovDev"),
+                        String.Format("{0:n0}", data.Items.Count),
+                        data.Maps.Count,
+                        data.Traders.Count,
+                        data.Tasks.Count,
+                        data.Stations.Count,
+                        TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)),
+                    "update");
+            }
+            catch (OperationCanceledException) when (refreshCancellation.IsCancellationRequested)
+            {
+                // A newer EFT session owns the next asset load.
+            }
+            catch (Exception ex)
+            {
+                lock (tarkovDevDataRefreshLock)
+                {
+                    if (refreshGeneration != tarkovDevDataRefreshGeneration
+                        || !ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation)
+                        || !IsTarkovDevRefreshOwnerCurrent(profileSnapshot, allowPersistedProfile))
+                    {
+                        return;
+                    }
+                }
+
+                RecordException($"Tarkov.dev data update failed for {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}; copy diagnostics for details.", "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev");
+            }
+            finally
+            {
+                lock (tarkovDevDataRefreshLock)
+                {
+                    if (refreshGeneration == tarkovDevDataRefreshGeneration
+                        && ReferenceEquals(refreshCancellation, tarkovDevDataRefreshCancellation))
+                    {
+                        if (!published)
+                        {
+                            tarkovDevDataProfile = null;
+                        }
+                        tarkovDevDataRefreshCancellation = null;
+                    }
+                }
+            }
+        }
+
+        private static bool ProfilesMatch(Profile left, Profile right)
+        {
+            return left.Type == right.Type
+                && left.SessionMode == right.SessionMode
+                && string.Equals(left.AccountId, right.AccountId, StringComparison.Ordinal)
+                && string.Equals(left.Id, right.Id, StringComparison.Ordinal);
+        }
+
+        private static bool IsCurrentProfile(Profile expectedProfile)
+        {
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            return currentProfile.HasTarkovDevPlayerRoute
+                && ProfilesMatch(currentProfile, expectedProfile);
+        }
+
+        private bool IsTarkovDevRefreshOwnerCurrent(Profile expectedProfile, bool allowPersistedProfile)
+        {
+            if (eft.IsGameRunning)
+            {
+                return IsCurrentProfile(expectedProfile);
+            }
+
+            if (!allowPersistedProfile)
+            {
+                return false;
+            }
+
+            var historicalProfile = GameWatcher.CurrentProfile.Snapshot();
+            if (historicalProfile.HasTarkovDevPlayerRoute
+                && ProfilesMatch(historicalProfile, expectedProfile))
+            {
+                return true;
+            }
+
+            var lastKnownProfile = TarkovTracker.GetLastKnownOrgProfile();
+            return lastKnownProfile != null
+                && ProfilesMatch(lastKnownProfile, expectedProfile);
+        }
+
+        private void InvalidateTarkovDevData()
+        {
+            lock (tarkovDevDataRefreshLock)
+            {
+                tarkovDevDataRefreshGeneration++;
+                tarkovDevDataRefreshCancellation?.Cancel();
+                tarkovDevDataRefreshCancellation = null;
+                tarkovDevDataProfile = null;
+                TarkovDev.ClearApiData();
+            }
+        }
+
+        private async Task InitializeProgress(Profile? profile = null, bool announceSession = true)
+        {
+            var profileSnapshot = (profile ?? GameWatcher.CurrentProfile).Snapshot();
+            long noticeGeneration = 0;
+            if (announceSession)
+            {
+                lock (trackerSessionNoticeLock)
+                {
+                    noticeGeneration = trackerSessionNoticeGeneration;
+                }
+            }
+
+            if (TarkovTracker.IsLegacyService
+                || !profileSnapshot.HasIdentity
+                || !profileSnapshot.SupportsTarkovTrackerWrites)
+            {
+                TarkovTracker.DeactivateProfile();
+                return;
+            }
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
+                await TarkovTracker.SetProfile(profileSnapshot);
+            }
+            catch (ProfileActivationSupersededException)
+            {
+                // A newer profile/key/mode activation owns the result. This is
+                // expected latest-wins behavior, not a user-visible failure.
+                return;
             }
             catch (Exception ex)
             {
                 RecordException("Tarkov Tracker profile retrieval failed; copy diagnostics for details.", "TM-API-TRACKER-001", "GetProfile", ex, "TarkovTracker", "Profile", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
                 return;
             }
-            messageLog.AddMessage(string.Format(localizationService.GetString("UsingProfile"), GameWatcher.CurrentProfile.Type));
-            if (TarkovTracker.GetToken(GameWatcher.CurrentProfile.Id) == "")
+
+            if (!announceSession)
+            {
+                return;
+            }
+
+            var identity = new TrackerSessionNoticeIdentity(
+                profileSnapshot.AccountId,
+                profileSnapshot.Id,
+                profileSnapshot.SessionMode);
+            lock (trackerSessionNoticeLock)
+            {
+                if (noticeGeneration != trackerSessionNoticeGeneration
+                    || lastAnnouncedTrackerSession == identity)
+                {
+                    return;
+                }
+
+                lastAnnouncedTrackerSession = identity;
+            }
+
+            messageLog.AddProtectedMessage(
+                $"EFT session confirmed - Session: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.",
+                "info",
+                new[]
+                {
+                    new MonitorMessageProtectedValue("Account ID", profileSnapshot.AccountId),
+                    new MonitorMessageProtectedValue("Profile ID", profileSnapshot.Id),
+                });
+            if (TarkovTracker.GetTokenForProfile(profileSnapshot) == "")
             {
                 messageLog.AddMessage(localizationService.GetString("ToAutomaticallyTrackTaskProgress"));
                 return;
@@ -716,7 +1117,7 @@ namespace TarkovMonitor
                 var tokenResponse = await TarkovTracker.TestToken(TarkovTracker.GetToken(eft.CurrentProfile.Id));
                 if (!tokenResponse.permissions.Contains("WP"))
                 {
-                    messageLog.AddMessage("Your Tarkov Tracker token is missing the required write permissions");
+                    messageLog.AddMessage("Your Tarkov Tracker token does not have the required write permissions.", "warning");
                 }
             }
             catch (Exception ex)
@@ -726,6 +1127,22 @@ namespace TarkovMonitor
             }*/
         }
 
+        internal void BeginTrackerStatusTransition()
+        {
+            Interlocked.Increment(ref trackerStatusTransitionDepth);
+            TarkovTracker.DeactivateProfile();
+        }
+
+        internal void CompleteTrackerStatusTransition()
+        {
+            if (Interlocked.Decrement(ref trackerStatusTransitionDepth) < 0)
+            {
+                Interlocked.Exchange(ref trackerStatusTransitionDepth, 0);
+                throw new InvalidOperationException(
+                    "TarkovTracker status transition completed without a matching start.");
+            }
+        }
+
         private void Eft_MatchFound(object? sender, RaidInfoEventArgs e)
         {
             if (Properties.Settings.Default.matchFoundAlert)
@@ -733,7 +1150,7 @@ namespace TarkovMonitor
                 Sound.Play("match_found");
             }
             var mapName = e.RaidInfo.Map?.name ?? "unknown map";
-            messageLog.AddMessage($"Matching complete on {mapName} after {e.RaidInfo.QueueTime} seconds");
+            messageLog.AddMessage($"Matching complete on {mapName} after {e.RaidInfo.QueueTime:0.##} seconds.");
         }
 
         private void Eft_MatchingStarted(object? sender, RaidInfoEventArgs e)
@@ -763,7 +1180,7 @@ namespace TarkovMonitor
         {
             return;
             groupManager.UpdateGroupMember(e.LogContent);
-            messageLog.AddMessage($"{e.LogContent.extendedProfile.Info.Nickname} ({e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Side.ToUpper()} {e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Level}) ready.", "group");
+            messageLog.AddMessage($"{e.LogContent.extendedProfile.Info.Nickname} ({e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Side.ToUpper()} {e.LogContent.extendedProfile.PlayerVisualRepresentation.Info.Level}) is ready.", "group");
         }
 
         private async void Eft_TaskFinished(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
@@ -776,7 +1193,7 @@ namespace TarkovMonitor
                 return;
             }
 
-            messageLog.AddMessage($"Completed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+            messageLog.AddMessage($"Task completed: {task.name}.", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
             if (!TarkovTracker.ValidToken)
             {
@@ -785,7 +1202,11 @@ namespace TarkovMonitor
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetTaskComplete(task.id);
+                await TarkovTracker.SetTaskComplete(
+                    task.id,
+                    e.Profile.Id,
+                    e.Profile.SessionMode,
+                    e.Profile.AccountId);
                 //messageLog.AddMessage(response, "quest");
             }
             catch (Exception ex)
@@ -802,7 +1223,7 @@ namespace TarkovMonitor
                 return;
             }
 
-            messageLog.AddMessage($"Failed task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+            messageLog.AddMessage($"Task failed: {task.name}.", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
             if (!TarkovTracker.ValidToken)
             {
@@ -811,7 +1232,11 @@ namespace TarkovMonitor
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetTaskFailed(task.id);
+                await TarkovTracker.SetTaskFailed(
+                    task.id,
+                    e.Profile.Id,
+                    e.Profile.SessionMode,
+                    e.Profile.AccountId);
                 //messageLog.AddMessage(response, "quest");
             }
             catch (Exception ex)
@@ -827,7 +1252,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Started task {task.name}", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+            messageLog.AddMessage($"Task started: {task.name}.", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
             if (!TarkovTracker.ValidToken)
             {
@@ -836,7 +1261,11 @@ namespace TarkovMonitor
             var startedUtc = DateTime.UtcNow;
             try
             {
-                await TarkovTracker.SetTaskStarted(e.LogContent.TaskId);
+                await TarkovTracker.SetTaskStarted(
+                    e.LogContent.TaskId,
+                    e.Profile.Id,
+                    e.Profile.SessionMode,
+                    e.Profile.AccountId);
             }
             catch (Exception ex)
             {
@@ -896,7 +1325,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.LogContent.ItemCount}) expired", "flea", unsoldItem.link);
+            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.LogContent.ItemCount}) has expired.", "flea", unsoldItem.link);
         }
 
         private void Eft_DebugMessage(object? sender, DebugEventArgs e)
@@ -928,7 +1357,8 @@ namespace TarkovMonitor
             try
             {
                 int pausedSessions = await MediaController.PauseAsync();
-                messageLog.AddMessage($"Paused {pausedSessions} music session(s)", "info");
+                var sessionLabel = pausedSessions == 1 ? "session" : "sessions";
+                messageLog.AddMessage($"Paused {pausedSessions} music {sessionLabel}.", "info");
             }
             catch (Exception ex)
             {
@@ -951,7 +1381,8 @@ namespace TarkovMonitor
                 int resumedSessions = await MediaController.ResumeAsync();
                 if (resumedSessions > 0)
                 {
-                    messageLog.AddMessage($"Resumed {resumedSessions} music session(s)", "info");
+                    var sessionLabel = resumedSessions == 1 ? "session" : "sessions";
+                    messageLog.AddMessage($"Resumed {resumedSessions} music {sessionLabel}.", "info");
                 }
             }
             catch (Exception ex)
@@ -973,29 +1404,29 @@ namespace TarkovMonitor
             
             if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
             {
-                MonitorMessage monMessage = new($"Starting {e.RaidInfo.RaidType} raid on {e.RaidInfo.Map?.name}");
+                MonitorMessage monMessage = new($"Starting a {e.RaidInfo.RaidType} raid on {e.RaidInfo.Map?.name}.");
                 if (e.RaidInfo.Map != null && e.RaidInfo.StartedTime != null && e.RaidInfo.Map.HasGoons())
                 {
                     AddGoonsButton(monMessage, e.RaidInfo);
                 }
                 else if (e.RaidInfo.Map == null)
                 {
-                    monMessage.Message = $"Starting {e.RaidInfo.RaidType} raid on:";
+                    monMessage.Message = $"Starting a {e.RaidInfo.RaidType} raid. Choose a map:";
                     MonitorMessageSelect select = new();
                     foreach (var gameMap in TarkovDev.Maps)
                     {
                         select.Options.Add(new(gameMap.name, gameMap.id));
                     }
-                    select.Placeholder = "Select map";
+                    select.Placeholder = "Choose a map";
                     monMessage.Selects.Add(select);
-                    MonitorMessageButton mapButton = new("Set map", Icons.Material.Filled.Map);
+                     MonitorMessageButton mapButton = new("Set map", Icons.Material.Filled.Map);
                     mapButton.OnClick += () => {
                         if (select.Selected == null)
                         {
                             return;
                         }
                         e.RaidInfo.Map = TarkovDev.Maps.Find(m => m.id == select.Selected.Value);
-                        monMessage.Message = $"Starting {e.RaidInfo.RaidType} raid on {select.Selected.Text}";
+                        monMessage.Message = $"Starting a {e.RaidInfo.RaidType} raid on {select.Selected.Text}.";
                         monMessage.Buttons.Clear();
                         monMessage.Selects.Clear();
                         //AddGoonsButton(monMessage, e.RaidInfo); // offline raids have goons on all goons maps
@@ -1019,7 +1450,7 @@ namespace TarkovMonitor
             }
             else
             {
-                messageLog.AddMessage($"Re-entering raid on {e.RaidInfo.Map?.name}");
+                messageLog.AddMessage($"Re-entering the raid on {e.RaidInfo.Map?.name}.");
             }
             if (Properties.Settings.Default.runthroughAlert && !e.RaidInfo.Reconnected && (e.RaidInfo.RaidType == RaidType.PMC || e.RaidInfo.RaidType == RaidType.PVE))
             {
@@ -1046,13 +1477,13 @@ namespace TarkovMonitor
         {
             if (raidInfo.Map != null && raidInfo.StartedTime != null && raidInfo.Map.HasGoons())
             {
-                MonitorMessageButton goonsButton = new($"Report Goons", Icons.Material.Filled.Groups);
+                MonitorMessageButton goonsButton = new("Report Goons", Icons.Material.Filled.Groups);
                 goonsButton.OnClick = async () => {
                     var startedUtc = DateTime.UtcNow;
                     try
                     {
                         await TarkovDev.PostGoonsSighting(raidInfo.Map?.nameId, (DateTime)raidInfo.StartedTime, Int32.Parse(raidInfo.Profile.AccountId), GameWatcher.CurrentProfile.Type);
-                        messageLog.AddMessage($"Goons reported on {raidInfo.Map?.name}", "info");
+                        messageLog.AddMessage($"Reported Goons on {raidInfo.Map?.name}.", "info");
                     }
                     catch (Exception ex)
                     {
@@ -1062,7 +1493,7 @@ namespace TarkovMonitor
                 };
                 goonsButton.Confirm = new(
                     $"Report Goons on {raidInfo.Map?.name}",
-                    "<p>Please only submit a report if you saw the goons in this raid.</p><p><strong>Notice:</strong> By submitting a goons report, you consent to collection of your IP address and EFT account id for report verification purposes.</p>",
+                    "<p>Submit a report only if you saw the Goons during this raid.</p><p><strong>Notice:</strong> By submitting a report, you consent to the collection of your IP address and EFT account ID for verification.</p>",
                     "Submit report", "Cancel"
                 );
                 goonsButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
@@ -1082,7 +1513,7 @@ namespace TarkovMonitor
                 var mapName = e.Map;
                 var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
                 if (map != null) mapName = map.name;
-                messageLog.AddMessage($"Exited {mapName} raid", "raidleave");
+                messageLog.AddMessage($"Left the {mapName} raid.", "raidleave");
             }
             catch (Exception ex)
             {
@@ -1101,6 +1532,33 @@ namespace TarkovMonitor
                     Hide();
                     notifyIconTarkovMonitor.Visible = true;
                 }
+
+                if (WindowState == lastPublishedWindowState || windowStateNotificationPending)
+                {
+                    return;
+                }
+
+                windowStateNotificationPending = true;
+                BeginInvoke(new Action(() =>
+                {
+                    windowStateNotificationPending = false;
+
+                    if (IsDisposed || !IsHandleCreated || WindowState == lastPublishedWindowState)
+                    {
+                        return;
+                    }
+
+                    var previousWindowState = lastPublishedWindowState;
+                    var nextWindowState = WindowState;
+                    lastPublishedWindowState = nextWindowState;
+
+                    if (previousWindowState == FormWindowState.Maximized && nextWindowState == FormWindowState.Normal)
+                    {
+                        RefreshNormalWindowFrame();
+                    }
+
+                    WindowStateChanged?.Invoke(this, EventArgs.Empty);
+                }));
             }
             catch (Exception ex)
             {

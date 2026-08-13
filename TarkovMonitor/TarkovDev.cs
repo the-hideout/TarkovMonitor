@@ -1,12 +1,15 @@
 using Newtonsoft.Json.Linq;
 using Refit;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
 
 namespace TarkovMonitor
 {
     public class TarkovDev
     {
         public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
+        private static readonly object playerNameCacheLock = new();
+        private static readonly ConcurrentDictionary<(ProfileType ProfileType, string AccountId), Lazy<Task<string>>> playerNameLookups = new();
         private static readonly HttpClient jsonClient = new(new HttpClientHandler
         {
             AutomaticDecompression = System.Net.DecompressionMethods.GZip
@@ -68,24 +71,83 @@ namespace TarkovMonitor
             Enabled = false, 
             Interval = TimeSpan.FromMinutes(20).TotalMilliseconds
         };
+        private static readonly object updateTimerLock = new();
+        private static bool updateTimerHandlerAttached;
 
-        public static List<Task> Tasks { get; private set; } = new();
-        public static List<Map> Maps { get; private set; } = new();
-        public static List<Item> Items { get; private set; } = new();
-        public static List<Trader> Traders { get; private set; } = new();
-        public static List<HideoutStation> Stations { get; private set; } = new();
-        public static List<PlayerLevel> PlayerLevels { get; private set; } = new();
+        internal sealed class ApiDataSnapshot
+        {
+            internal ApiDataSnapshot(
+                ProfileType profileType,
+                List<Task> tasks,
+                List<Map> maps,
+                List<Item> items,
+                List<Trader> traders,
+                List<HideoutStation> stations,
+                List<PlayerLevel> playerLevels,
+                int scavCooldownSeconds)
+            {
+                ProfileType = profileType;
+                Tasks = tasks;
+                Maps = maps;
+                Items = items;
+                Traders = traders;
+                Stations = stations;
+                PlayerLevels = playerLevels;
+                ScavCooldownSeconds = scavCooldownSeconds;
+            }
+
+            internal ProfileType ProfileType { get; }
+            internal List<Task> Tasks { get; }
+            internal List<Map> Maps { get; }
+            internal List<Item> Items { get; }
+            internal List<Trader> Traders { get; }
+            internal List<HideoutStation> Stations { get; }
+            internal List<PlayerLevel> PlayerLevels { get; }
+            internal int ScavCooldownSeconds { get; }
+
+            internal static ApiDataSnapshot Empty => new(
+                ProfileType.Unknown,
+                new(),
+                new(),
+                new(),
+                new(),
+                new(),
+                new(),
+                1500);
+        }
+
+        private sealed class ItemsData
+        {
+            internal ItemsData(List<Item> items, List<PlayerLevel> playerLevels, int scavCooldownSeconds)
+            {
+                Items = items;
+                PlayerLevels = playerLevels;
+                ScavCooldownSeconds = scavCooldownSeconds;
+            }
+
+            internal List<Item> Items { get; }
+            internal List<PlayerLevel> PlayerLevels { get; }
+            internal int ScavCooldownSeconds { get; }
+        }
+
+        private static ApiDataSnapshot apiData = ApiDataSnapshot.Empty;
+        private static ApiDataSnapshot CurrentApiData => Volatile.Read(ref apiData);
+
+        public static List<Task> Tasks => CurrentApiData.Tasks;
+        public static List<Map> Maps => CurrentApiData.Maps;
+        public static List<Item> Items => CurrentApiData.Items;
+        public static List<Trader> Traders => CurrentApiData.Traders;
+        public static List<HideoutStation> Stations => CurrentApiData.Stations;
+        public static List<PlayerLevel> PlayerLevels => CurrentApiData.PlayerLevels;
+        public static ProfileType LoadedProfileType => CurrentApiData.ProfileType;
         public static DateTime ScavAvailableTime { get; set; } = DateTime.Now;
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
         public static Dictionary<ProfileType, Dictionary<string, string>> PlayerNames { get; private set; } = new();
-
-        private static Dictionary<ProfileType, int> ScavCooldownBaseValues = new();
 
         static TarkovDev()
         {
             foreach (ProfileType profileType in Enum.GetValues<ProfileType>())
             {
-                ScavCooldownBaseValues[profileType] = 1500;
                 PlayerNames.Add(profileType, new());
             }
         }
@@ -96,11 +158,11 @@ namespace TarkovMonitor
             NullValueHandling = NullValueHandling.Ignore,
         };
 
-        private async static Task<T> GetJson<T>(string path)
+        private async static Task<T> GetJson<T>(string path, CancellationToken cancellationToken = default)
         {
-            using var response = await jsonClient.GetAsync(path, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await jsonClient.GetAsync(path, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
             using var jsonReader = new JsonTextReader(reader);
             var serializer = JsonSerializer.Create(jsonSerializerSettings);
@@ -108,23 +170,23 @@ namespace TarkovMonitor
                 ?? throw new InvalidDataException($"The tarkov.dev response for '{path}' was empty.");
         }
 
-        private async static Task<T> JsonApiRequest<T>(string path, string? lang = null) where T : class
+        private async static Task<T> JsonApiRequest<T>(string path, string? lang = null, CancellationToken cancellationToken = default) where T : class
         {
             if (string.IsNullOrWhiteSpace(lang))
             {
                 lang = null;
             }
 
-            var dataTask = GetJson<JsonApiEnvelope<T>>(path);
+            var dataTask = GetJson<JsonApiEnvelope<T>>(path, cancellationToken);
             if (lang == null)
             {
                 var response = await dataTask;
                 return RequireApiData(response.data, path);
             }
 
-            var langDataTask = GetJson<JsonApiEnvelope<Dictionary<string, string>>>($"{path}_{lang}");
+            var langDataTask = GetJson<JsonApiEnvelope<Dictionary<string, string>>>($"{path}_{lang}", cancellationToken);
             var langDataFallbackTask = lang != "en"
-                ? GetJson<JsonApiEnvelope<Dictionary<string, string>>>($"{path}_en")
+                ? GetJson<JsonApiEnvelope<Dictionary<string, string>>>($"{path}_en", cancellationToken)
                 : System.Threading.Tasks.Task.FromResult<JsonApiEnvelope<Dictionary<string, string>>>(null!);
             await System.Threading.Tasks.Task.WhenAll(dataTask, langDataTask, langDataFallbackTask);
 
@@ -178,28 +240,49 @@ namespace TarkovMonitor
 
         public async static Task<List<Task>> GetTasks()
         {
-            var response = await JsonApiRequest<TasksResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/tasks", Properties.Settings.Default.language);
-            Tasks = response.tasks.Values.ToList();
-            return Tasks;
+            return await GetTasks(GameWatcher.CurrentProfile.Type);
+        }
+
+        public async static Task<List<Task>> GetTasks(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            var response = await JsonApiRequest<TasksResponse>($"{profileType.ToApiString()}/tasks", Properties.Settings.Default.language, cancellationToken);
+            return response.tasks.Values.ToList();
         }
 
         public async static Task<List<Map>> GetMaps()
         {
-            var response = await JsonApiRequest<MapsResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/maps", Properties.Settings.Default.language);
-            Maps = response.maps.Values.ToList();
-            return Maps;
+            return await GetMaps(GameWatcher.CurrentProfile.Type);
         }
+
+        public async static Task<List<Map>> GetMaps(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            var response = await JsonApiRequest<MapsResponse>($"{profileType.ToApiString()}/maps", Properties.Settings.Default.language, cancellationToken);
+            return response.maps.Values.ToList();
+        }
+
         public async static Task<List<Item>> GetItems()
         {
-            var response = await JsonApiRequest<ItemsResponse>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/items", Properties.Settings.Default.language);
-            Items = response.items.Values.ToList();
-            foreach (var item in Items)
+            var data = await GetItemsData(GameWatcher.CurrentProfile.Type);
+            return data.Items;
+        }
+
+        public async static Task<List<Item>> GetItems(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            var data = await GetItemsData(profileType, cancellationToken);
+            return data.Items;
+        }
+
+        private async static Task<ItemsData> GetItemsData(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            var response = await JsonApiRequest<ItemsResponse>($"{profileType.ToApiString()}/items", Properties.Settings.Default.language, cancellationToken);
+            var items = response.items.Values.ToList();
+            foreach (var item in items)
             {
                 if (item.types?.Contains("gun") == true)
                 {
                     if (item.properties?.defaultPreset != null)
                     {
-                        var defaultPreset = Items.Find(i => i.id == item.properties.defaultPreset);
+                        var defaultPreset = items.Find(i => i.id == item.properties.defaultPreset);
                         if (defaultPreset == null)
                         {
                             continue;
@@ -211,32 +294,111 @@ namespace TarkovMonitor
                     }
                 }
             }
-            PlayerLevels = response.playerLevels;
-            ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type] = response.settings.scavCooldownSeconds;
-            return Items;
+            return new ItemsData(items, response.playerLevels, response.settings.scavCooldownSeconds);
         }
+
         public async static Task<List<Trader>> GetTraders()
         {
-            var response = await JsonApiRequest<Dictionary<string, Trader>>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/traders", Properties.Settings.Default.language);
-            Traders = response.Values.ToList();
-            return Traders;
+            return await GetTraders(GameWatcher.CurrentProfile.Type);
         }
+
+        public async static Task<List<Trader>> GetTraders(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            var response = await JsonApiRequest<Dictionary<string, Trader>>($"{profileType.ToApiString()}/traders", Properties.Settings.Default.language, cancellationToken);
+            return response.Values.ToList();
+        }
+
         public async static Task<List<HideoutStation>> GetHideout()
         {
-            var response = await JsonApiRequest<Dictionary<string, HideoutStation>>($"{GameWatcher.CurrentProfile.Type.ToApiString()}/hideout", Properties.Settings.Default.language);
-            Stations = response.Values.ToList();
-            return Stations;
+            return await GetHideout(GameWatcher.CurrentProfile.Type);
         }
+
+        public async static Task<List<HideoutStation>> GetHideout(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            var response = await JsonApiRequest<Dictionary<string, HideoutStation>>($"{profileType.ToApiString()}/hideout", Properties.Settings.Default.language, cancellationToken);
+            return response.Values.ToList();
+        }
+
+        internal async static System.Threading.Tasks.Task<ApiDataSnapshot> LoadApiData(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            if (profileType == ProfileType.Unknown)
+            {
+                throw new InvalidOperationException("Tarkov.dev data cannot be loaded for an unknown EFT session.");
+            }
+
+            var tasksTask = GetTasks(profileType, cancellationToken);
+            var mapsTask = GetMaps(profileType, cancellationToken);
+            var itemsTask = GetItemsData(profileType, cancellationToken);
+            var tradersTask = GetTraders(profileType, cancellationToken);
+            var hideoutTask = GetHideout(profileType, cancellationToken);
+            await System.Threading.Tasks.Task.WhenAll(tasksTask, mapsTask, itemsTask, tradersTask, hideoutTask);
+            var items = await itemsTask;
+            return new ApiDataSnapshot(
+                profileType,
+                await tasksTask,
+                await mapsTask,
+                items.Items,
+                await tradersTask,
+                await hideoutTask,
+                items.PlayerLevels,
+                items.ScavCooldownSeconds);
+        }
+
+        internal static void PublishApiData(ApiDataSnapshot snapshot)
+        {
+            Volatile.Write(ref apiData, snapshot);
+        }
+
+        internal static void ClearApiData()
+        {
+            Volatile.Write(ref apiData, ApiDataSnapshot.Empty);
+        }
+
+        public async static System.Threading.Tasks.Task<bool> UpdateApiData(ProfileType profileType, CancellationToken cancellationToken = default)
+        {
+            if (profileType == ProfileType.Unknown)
+            {
+                return false;
+            }
+
+            var snapshot = await LoadApiData(profileType, cancellationToken);
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            if (!currentProfile.HasTarkovDevPlayerRoute
+                || currentProfile.Type != profileType)
+            {
+                return false;
+            }
+
+            PublishApiData(snapshot);
+            return true;
+        }
+
+        private async static System.Threading.Tasks.Task<bool> UpdateApiData(Profile expectedProfile, CancellationToken cancellationToken = default)
+        {
+            if (!expectedProfile.HasTarkovDevPlayerRoute
+                || expectedProfile.Type == ProfileType.Unknown)
+            {
+                return false;
+            }
+
+            var snapshot = await LoadApiData(expectedProfile.Type, cancellationToken);
+            var currentProfile = GameWatcher.CurrentProfile.Snapshot();
+            if (!currentProfile.HasTarkovDevPlayerRoute
+                || currentProfile.Type != expectedProfile.Type
+                || currentProfile.SessionMode != expectedProfile.SessionMode
+                || !string.Equals(currentProfile.AccountId, expectedProfile.AccountId, StringComparison.Ordinal)
+                || !string.Equals(currentProfile.Id, expectedProfile.Id, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            PublishApiData(snapshot);
+            return true;
+        }
+
         public async static System.Threading.Tasks.Task UpdateApiData()
         {
-            List<System.Threading.Tasks.Task> tasks = new() { 
-                GetTasks(),
-                GetMaps(),
-                GetItems(),
-                GetTraders(),
-                GetHideout(),
-            };
-            await System.Threading.Tasks.Task.WhenAll(tasks);
+            await UpdateApiData(GameWatcher.CurrentProfile.Type);
         }
 
         public async static Task<DataSubmissionResponse> PostQueueTime(string mapNameId, int queueTime, string type, ProfileType gameMode)
@@ -279,40 +441,77 @@ namespace TarkovMonitor
             }
         }
 
-        public async static Task<string> GetPlayerName(Profile profile)
+        public static async System.Threading.Tasks.Task<string> GetPlayerName(Profile profile)
         {
-            if (PlayerNames[profile.Type].ContainsKey(profile.AccountId))
-            {
-                return PlayerNames[profile.Type][profile.AccountId];
-            }
-            if (profile.Type == ProfileType.Unknown)
+            if (profile.Type == ProfileType.Unknown || string.IsNullOrWhiteSpace(profile.AccountId))
             {
                 return profile.AccountId;
             }
-            if (string.IsNullOrWhiteSpace(profile.AccountId))
+
+            lock (playerNameCacheLock)
             {
-                return profile.AccountId;
+                if (PlayerNames[profile.Type].TryGetValue(profile.AccountId, out var cachedName))
+                {
+                    return cachedName;
+                }
             }
+
+            var lookupKey = (profile.Type, profile.AccountId);
+            var lookup = playerNameLookups.GetOrAdd(
+                lookupKey,
+                static key => new Lazy<Task<string>>(
+                    () => LoadPlayerName(key.ProfileType, key.AccountId),
+                    LazyThreadSafetyMode.ExecutionAndPublication));
             try
             {
-                var p = await playerJsonApi.GetPlayerProfile(profile.Type.ToPlayersApiString(), profile.AccountId);
-                PlayerNames[profile.Type].Add(profile.AccountId, p.info.nickname);
-                return p.info.nickname;
+                return await lookup.Value;
+            }
+            finally
+            {
+                var pair = new KeyValuePair<(ProfileType ProfileType, string AccountId), Lazy<Task<string>>>(lookupKey, lookup);
+                ((ICollection<KeyValuePair<(ProfileType ProfileType, string AccountId), Lazy<Task<string>>>>)playerNameLookups).Remove(pair);
+            }
+        }
+
+        private static async Task<string> LoadPlayerName(ProfileType profileType, string accountId)
+        {
+            var startedUtc = DateTime.UtcNow;
+            try
+            {
+                var p = await playerJsonApi.GetPlayerProfile(profileType.ToPlayersApiString(), accountId);
+                var nickname = p.info.nickname;
+                lock (playerNameCacheLock)
+                {
+                    if (!PlayerNames[profileType].TryGetValue(accountId, out var cachedName))
+                    {
+                        PlayerNames[profileType][accountId] = nickname;
+                        cachedName = nickname;
+                    }
+                    return cachedName;
+                }
             }
             catch (Refit.ApiException ex)
             {
-                // don't throw an error if the profile isn't available
+                // A missing public profile is expected and should use the account ID.
                 if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    return profile.AccountId;
+                    return accountId;
                 }
-                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "player profile lookup"));
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(
+                    ex,
+                    "player profile lookup",
+                    "https://players.tarkov.dev",
+                    DiagnosticsService.ElapsedMilliseconds(startedUtc)));
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "player profile lookup"));
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(
+                    ex,
+                    "player profile lookup",
+                    "https://players.tarkov.dev",
+                    DiagnosticsService.ElapsedMilliseconds(startedUtc)));
             }
-            return profile.AccountId;
+            return accountId;
         }
 
         /*public async static Task<int> GetExperience(int accountId)
@@ -380,8 +579,23 @@ namespace TarkovMonitor
 
         public static void StartAutoUpdates()
         {
-            updateTimer.Enabled = true;
-            updateTimer.Elapsed += UpdateTimer_Elapsed;
+            lock (updateTimerLock)
+            {
+                if (!updateTimerHandlerAttached)
+                {
+                    updateTimer.Elapsed += UpdateTimer_Elapsed;
+                    updateTimerHandlerAttached = true;
+                }
+                updateTimer.Enabled = true;
+            }
+        }
+
+        public static void StopAutoUpdates()
+        {
+            lock (updateTimerLock)
+            {
+                updateTimer.Enabled = false;
+            }
         }
 
         private static async void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -390,13 +604,35 @@ namespace TarkovMonitor
             {
                 return;
             }
+            var profile = GameWatcher.CurrentProfile.Snapshot();
+            if (!profile.HasTarkovDevPlayerRoute || profile.Type == ProfileType.Unknown)
+            {
+                return;
+            }
+            var profileType = profile.Type;
+            var startedUtc = DateTime.UtcNow;
             try
             {
-                await UpdateApiData();
+                await UpdateApiData(profile);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
             }
             catch (Exception ex)
             {
-                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(ex, "auto-updating tarkov.dev data"));
+                if (GameWatcher.CurrentProfile.Type != profileType
+                    || GameWatcher.CurrentProfile.SessionMode != profile.SessionMode
+                    || GameWatcher.CurrentProfile.AccountId != profile.AccountId
+                    || GameWatcher.CurrentProfile.Id != profile.Id)
+                {
+                    return;
+                }
+                ExceptionThrown?.Invoke(null, new ExceptionEventArgs(
+                    ex,
+                    "auto-updating tarkov.dev data",
+                    "https://json.tarkov.dev",
+                    DiagnosticsService.ElapsedMilliseconds(startedUtc)));
             }
         }
 
@@ -564,7 +800,7 @@ namespace TarkovMonitor
 
         public static int ScavCooldownSeconds()
         {
-            decimal baseTimer = Convert.ToDecimal(ScavCooldownBaseValues[GameWatcher.CurrentProfile.Type]);
+            decimal baseTimer = Convert.ToDecimal(CurrentApiData.ScavCooldownSeconds);
 
             decimal hideoutBonus = 0;
             foreach (var station in Stations)
