@@ -657,28 +657,22 @@ namespace TarkovMonitor
                     DateTime.TryParseExact(logMessage.Groups["date"].Value + " " + logMessage.Groups["time"].Value.Split(" ")[0], "yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out eventDate);
                     var eventLine = logMessage.Groups["message"].Value;
                     //System.Diagnostics.Debug.WriteLine(eventLine);
-                    if (eventLine.Contains("Session mode: "))
+                    if (eventLine.Contains("Session mode:", StringComparison.Ordinal))
                     {
-                        var modeMatch = Regex.Match(eventLine, @"Session mode: (?<mode>[^\s|]+)");
-                        if (!modeMatch.Success)
+                        var modeMatch = Regex.Match(eventLine, @"Session mode:\s*(?<mode>[^\s|]+)");
+                        var rawSessionMode = modeMatch.Success
+                            ? modeMatch.Groups["mode"].Value
+                            : "(missing)";
+                        var transition = ProfileIdentity.ApplyMode(CurrentProfile, rawSessionMode);
+                        raidInfo.Profile = CurrentProfile.Snapshot();
+                        if (!transition.Recognized)
                         {
-                            continue;
-                        }
-                        var rawSessionMode = modeMatch.Groups["mode"].Value;
-                        if (!Enum.TryParse<ProfileType>(rawSessionMode, true, out var profileType)
-                            || !Enum.IsDefined(profileType)
-                            || profileType == ProfileType.Unknown)
-                        {
-                            CurrentProfile.Id = "";
-                            CurrentProfile.AccountId = "";
-                            CurrentProfile.Type = ProfileType.Unknown;
-                            raidInfo.Profile = CurrentProfile;
                             ReportUnsupportedSessionMode(rawSessionMode);
-                            ProfileChanged?.Invoke(this, new(CurrentProfile));
-                            continue;
                         }
-                        CurrentProfile.Type = profileType;
-                        raidInfo.Profile = CurrentProfile;
+                        if (!e.InitialRead && transition.Changed)
+                        {
+                            ProfileChanged?.Invoke(this, new(CurrentProfile.Snapshot()));
+                        }
                         continue;
                     }
                     // Profile selection messages have changed names across EFT versions.
@@ -700,11 +694,8 @@ namespace TarkovMonitor
                                 raidInfo.EndedTime = eventDate;
                                 RaidEnded?.Invoke(this, new(raidInfo, CurrentProfile));
                             }
-                            else
-                            {
-                                System.Diagnostics.Debug.WriteLine("PROFILE CHANGED");
-                                ProfileChanged?.Invoke(this, new(CurrentProfile));
-                            }
+                            System.Diagnostics.Debug.WriteLine("PROFILE CHANGED");
+                            ProfileChanged?.Invoke(this, new(CurrentProfile.Snapshot()));
                         }
                         continue;
                     }
@@ -902,18 +893,19 @@ namespace TarkovMonitor
                         if (systemMessageEvent.message.type >= MessageType.TaskStarted && systemMessageEvent.message.type <= MessageType.TaskFinished)
                         {
                             var args = jsonNode?.AsObject().Deserialize<TaskStatusMessageLogContent>() ?? throw new Exception("Error parsing TaskStatusMessageLogContent");
-                            TaskModified?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                            var eventProfile = CurrentProfile.Snapshot();
+                            TaskModified?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             if (args.Status == TaskStatus.Started)
                             {
-                                TaskStarted?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskStarted?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             }
                             if (args.Status == TaskStatus.Failed)
                             {
-                                TaskFailed?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskFailed?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             }
                             if (args.Status == TaskStatus.Finished)
                             {
-                                TaskFinished?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = CurrentProfile });
+                                TaskFinished?.Invoke(this, new LogContentEventArgs<TaskStatusMessageLogContent>() { LogContent = args, Profile = eventProfile });
                             }
                         }
                     }
@@ -951,131 +943,16 @@ namespace TarkovMonitor
             return folderDictionary.OrderByDescending(key => key.Key).ToDictionary(x => x.Key, x => x.Value);
         }
 
-        // Process the log files in the specified folder
-        public void ProcessLogs(LogDetails target, List<LogDetails> profiles)
-        {
-            for (var i = 0; i < profiles.Count; i++)
-            {
-                var logProfile = profiles[i];
-                if (logProfile.Profile.Id != target.Profile.Id)
-                {
-                    continue;
-                }
-                var endDate = DateTime.Now.AddYears(1);
-                if (profiles.Count > 1 && i + 1 < profiles.Count)
-                {
-                    endDate = profiles[i + 1].Date;
-                }
-                var logFiles = Directory.GetFiles(logProfile.Folder);
-                // TODO: This could be improved by processing lines in the order they were created
-                // rather than a full file at a time, this could be valuable for future features
-                foreach (string logFile in logFiles)
-                {
-                    GameLogType logType;
-                    // Check which type of log file this is by the filename
-                    if (logFile.Contains("application.log") || logFile.Contains("application_000.log"))
-                    {
-                        logType = GameLogType.Application;
-                    }
-                    else if (logFile.Contains("notifications.log") || logFile.Contains("notifications_000.log"))
-                    {
-                        logType = GameLogType.Notifications;
-                    }
-                    else if (logFile.Contains("traces.log") || logFile.Contains("traces_000.log"))
-                    {
-                        // logType = GameLogType.Traces;
-                        // Traces are not currently used, so skip them
-                        continue;
-                    }
-                    else
-                    {
-                        // We're not a known log type, so skip this file
-                        continue;
-                    }
-
-                    // Read the file into memory using UTF-8 encoding
-                    using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var textReader = new StreamReader(fileStream, Encoding.UTF8);
-                    var fileContents = textReader.ReadToEnd();
-
-                    var logMessages = Regex.Matches(fileContents, logPattern, RegexOptions.Multiline);
-
-                    foreach (Match match in logMessages)
-                    {
-                        var dateTimeString = match.Groups["date"].Value + " " + match.Groups["time"].Value;
-                        DateTime logMessageDate = DateTime.ParseExact(dateTimeString, "yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
-
-                        if (logMessageDate < logProfile.Date || logMessageDate >= endDate)
-                        {
-                            continue;
-                        }
-
-                        GameWatcher_NewLogData(this, new NewLogDataEventArgs { Type = logType, Data = match.Value });
-                    }
-                }
-            }
-        }
-
         public List<LogDetails> GetLogDetails(string folderPath)
         {
-            List<LogDetails> logDetails = new();
             if (!Directory.Exists(folderPath))
             {
-                return logDetails;
+                return new();
             }
-            var appLogPath = "";
-            foreach (var file in Directory.GetFiles(folderPath))
-            {
-                if (file.EndsWith("application.log") || file.EndsWith("application_000.log"))
-                {
-                    appLogPath = file;
-                    break;
-                }
-            }
-            if (appLogPath == "")
-            {
-                return logDetails;
-            }
-            using var fileStream = new FileStream(appLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var textReader = new StreamReader(fileStream, Encoding.UTF8);
-            var applicationLog = textReader.ReadToEnd();
-            var matches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|(?:SelectProfile|CompleteSelectedProfile) ProfileId:(?<profileId>[a-f0-9]+) AccountId:(?<accountId>\d+)", RegexOptions.Multiline);
-            if (matches.Count == 0)
-            {
-                return logDetails;
-            }
-            var profileTypeMatches = Regex.Matches(applicationLog, @$"{logPatternPrefix}(?<version>\d+\.\d+\.\d+\.\d+)\.\d+\|(?<logLevel>[^|]+)\|(?<logType>[^|]+)\|Session mode: (?<profileType>[^\s|]+)", RegexOptions.Multiline);
-            for (var i = 0; i < matches.Count; i++)
-            {
-                Match match = matches[i];
-                var dateTimeString = match.Groups["date"].Value + " " + match.Groups["time"].Value;
-                DateTime profileDate = DateTime.ParseExact(dateTimeString, "yyyy-MM-dd HH:mm:ss.fff", System.Globalization.CultureInfo.InvariantCulture);
-                ProfileType profileType = ProfileType.Regular;
-                if (matches.Count == profileTypeMatches.Count)
-                {
-                    if (!Enum.TryParse<ProfileType>(profileTypeMatches[i].Groups["profileType"].Value, true, out var parsedProfileType)
-                        || !Enum.IsDefined(parsedProfileType))
-                    {
-                        profileType = ProfileType.Unknown;
-                    }
-                    else
-                    {
-                        profileType = parsedProfileType;
-                    }
-                }
-                logDetails.Add(new LogDetails()
-                {
-                    Profile = new() { Id = match.Groups["profileId"].Value, Type = profileType },
-                    AccountId = Int32.Parse(match.Groups["accountId"].Value),
-                    Date = profileDate,
-                    Version = new Version(match.Groups["version"].Value),
-                    Folder = folderPath,
-                });
-            }
-            return logDetails;
+            return TaskLifecycle.GetLogDetails(ReadLifecycleSources(new[] { folderPath }, applicationOnly: true));
         }
 
-        public List<LogDetails> GetLogBreakpoints(string profileId)
+        public List<LogDetails> GetLogBreakpoints(string profileId, ProfileType? profileType = null)
         {
             List<LogDetails> breakpoints = new();
             if (profileId == "")
@@ -1087,11 +964,16 @@ namespace TarkovMonitor
                 List<LogDetails> folderBreakpoints = GetLogDetails(kvp.Value);
                 foreach(var breakpoint in folderBreakpoints)
                 {
-                    if (breakpoint.Profile.Id != profileId)
+                    if (breakpoint.Profile.Id != profileId
+                        || breakpoint.Profile.Type == ProfileType.Unknown
+                        || (profileType != null && breakpoint.Profile.Type != profileType))
                     {
                         continue;
                     }
-                    var matchingBreakpoint = breakpoints.Where((bp) => bp.Version == breakpoint.Version && bp.Profile.Id == breakpoint.Profile.Id).FirstOrDefault();
+                    var matchingBreakpoint = breakpoints.FirstOrDefault(bp =>
+                        bp.Version == breakpoint.Version
+                        && bp.Profile.Id == breakpoint.Profile.Id
+                        && bp.Profile.Type == breakpoint.Profile.Type);
                     if (matchingBreakpoint == null)
                     {
                         breakpoints.Add(breakpoint);
@@ -1101,33 +983,39 @@ namespace TarkovMonitor
             return breakpoints;
         }
 
-        public void ProcessLogsFromBreakpoint(LogDetails breakpoint)
+        public TaskLifecycleReplayResult ProcessLogsFromBreakpoint(LogDetails breakpoint)
         {
-            List<List<LogDetails>> logDetails = new();
-            var logFolders = Directory.GetDirectories(LogsPath);
-            // For each log folder, get the details
-            foreach (string folderName in logFolders)
+            if (string.IsNullOrWhiteSpace(LogsPath) || !Directory.Exists(LogsPath))
             {
-                var details = GetLogDetails(folderName);
-                if (details.Count == 0)
-                {
-                    continue;
-                }
-                if (!details.Any(d => d.Profile.Id == breakpoint.Profile.Id))
-                {
-                    continue;
-                }
-                if (!details.Any(d => d.Date >= breakpoint.Date))
-                {
-                    continue;
-                }
-                logDetails.Add(details);
+                return new TaskLifecycleReplayResult();
             }
-            logDetails = logDetails.OrderBy(det => det[0].Date).ToList();
-            foreach (var details in logDetails)
+            return TaskLifecycle.Replay(
+                ReadLifecycleSources(Directory.GetDirectories(LogsPath), applicationOnly: false),
+                TaskLifecycle.ToLocalOffset(breakpoint.Date));
+        }
+
+        private static List<TaskLifecycleLogSource> ReadLifecycleSources(
+            IEnumerable<string> folders,
+            bool applicationOnly)
+        {
+            var sources = new List<TaskLifecycleLogSource>();
+            foreach (var folder in folders.OrderBy(folder => folder, StringComparer.OrdinalIgnoreCase))
             {
-                ProcessLogs(breakpoint, details);
+                foreach (var path in Directory.GetFiles(folder, "*.log").OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+                {
+                    var filename = Path.GetFileName(path);
+                    var isApplication = filename.StartsWith("application", StringComparison.OrdinalIgnoreCase);
+                    var isNotifications = filename.StartsWith("notifications", StringComparison.OrdinalIgnoreCase);
+                    if (!isApplication && (applicationOnly || !isNotifications))
+                    {
+                        continue;
+                    }
+                    using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var textReader = new StreamReader(fileStream, Encoding.UTF8);
+                    sources.Add(new TaskLifecycleLogSource(folder, path, textReader.ReadToEnd()));
+                }
             }
+            return sources;
         }
 
         private void UpdateProcess()
@@ -1240,6 +1128,8 @@ namespace TarkovMonitor
             if (newType == GameLogType.Application)
             {
                 CurrentProfile = new();
+                raidInfo.Profile = CurrentProfile.Snapshot();
+                ProfileChanged?.Invoke(this, new(CurrentProfile.Snapshot()));
             }
             if (newType == GameLogType.Output)
             {
@@ -1339,7 +1229,7 @@ namespace TarkovMonitor
             if (shouldPublish)
             {
                 PublishMatchingStarted(false);
-                InitialReadComplete?.Invoke(this, new(CurrentProfile));
+                InitialReadComplete?.Invoke(this, new(CurrentProfile.Snapshot()));
             }
         }
 
@@ -1371,24 +1261,6 @@ namespace TarkovMonitor
 		Notifications,
 		Output,
 		Traces
-	}
-    public enum MessageType
-	{
-		PlayerMessage = 1,
-        Insurance = 2,
-        FleaMarket = 4,
-        InsuranceReturn = 8,
-		TaskStarted = 10,
-		TaskFailed = 11,
-		TaskFinished = 12,
-        TwitchDrop = 13,
-	}
-	public enum TaskStatus
-	{
-        None = 0,
-		Started = 10,
-		Failed = 11,
-		Finished = 12
 	}
 	public enum RaidType
 	{
@@ -1512,47 +1384,6 @@ namespace TarkovMonitor
             this.Rotation = rotation;
             this.Filename = filename;
         }
-    }
-
-    public class LogDetails
-    {
-        public Profile Profile { get; set; }
-        public int AccountId { get; set; }
-        public DateTime Date { get; set; }
-        public Version Version { get; set; }
-        public string Folder { get; set; }
-    }
-
-    public enum ProfileType
-    {
-        PVE,
-        Regular,
-        PvpSeason,
-        Unknown,
-    }
-
-    public static class ProfileTypeExtensions
-    {
-        public static string ToApiString(this ProfileType profileType) => profileType switch
-        {
-            ProfileType.PvpSeason => "pvp-season",
-            ProfileType.Unknown => "unknown",
-            _ => profileType.ToString().ToLower(),
-        };
-        public static string ToPlayersApiString(this ProfileType profileType) => profileType switch
-        {
-            ProfileType.PvpSeason => "pvp-season",
-            ProfileType.Regular => "profile",
-            ProfileType.Unknown => "unknown",
-            _ => profileType.ToString().ToLower(),
-        };
-    }
-
-    public class Profile
-    {
-        public string Id { get; set; } = "";
-        public ProfileType Type { get; set; } = ProfileType.Regular;
-        public string AccountId { get; set; } = "";
     }
 
     public class ProfileEventArgs : EventArgs

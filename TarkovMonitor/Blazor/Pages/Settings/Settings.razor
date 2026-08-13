@@ -645,7 +645,7 @@
         var startedUtc = DateTime.UtcNow;
         try
         {
-            await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Id);
+            await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Snapshot());
         }
         catch (Exception ex)
         {
@@ -694,6 +694,7 @@
                     messageLog.AddMessage("You do not have write permissions with this token.", "warning");
                     return;
                 }
+                await TarkovTracker.SetProfile(GameWatcher.CurrentProfile.Snapshot());
             }
             catch (Exception ex)
             {
