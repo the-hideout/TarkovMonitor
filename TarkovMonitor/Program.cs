@@ -43,6 +43,12 @@ namespace TarkovMonitor
 				Properties.Settings.Default.upgradeRequired = false;
 				Properties.Settings.Default.Save();
 			}
+
+			// WebView2 and the executable working directory are prerequisites for
+			// every startup path, including skip-splash and minimized startup.
+			Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+			Splash.EnsureWebView2Runtime(diagnostics);
+
 			// Initialize the application behind the branding splash. The native
 			// window stays hidden, but WebView2 and Blazor are allowed to render
 			// immediately so the first revealed frame is complete.

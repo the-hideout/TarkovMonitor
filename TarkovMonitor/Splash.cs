@@ -10,7 +10,7 @@ class Splash : Form
     private float _opacity = 1.0f;
     public Bitmap? BackgroundBitmap;
 
-    private readonly string[] _webview2RegKeys = new[]
+    private static readonly string[] _webview2RegKeys = new[]
     {
         @"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
         @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
@@ -57,13 +57,6 @@ class Splash : Form
 		this.BackgroundBitmap = bitmap;
 		this.SelectBitmap(BackgroundBitmap);
 		this.BackColor = Color.Black;
-
-		// Set current working directory to executable location
-		Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-
-        // Install webview2 runtime if it is not already
-        var existing = _webview2RegKeys.Any(key => Registry.GetValue(key, "pv", null) != null);
-        if (!existing) InstallWebview2Runtime();
 
 		splashTimer = new System.Windows.Forms.Timer { Interval = splashTime };
 		splashTimer.Tick += (sender, e) =>
@@ -118,7 +111,16 @@ class Splash : Form
         }
     }
 
-    private void InstallWebview2Runtime()
+    public static void EnsureWebView2Runtime(DiagnosticsService diagnostics)
+    {
+        var existing = _webview2RegKeys.Any(key => Registry.GetValue(key, "pv", null) != null);
+        if (!existing)
+        {
+            InstallWebview2Runtime(diagnostics);
+        }
+    }
+
+    private static void InstallWebview2Runtime(DiagnosticsService diagnostics)
     {
         try
         {
