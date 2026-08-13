@@ -1,5 +1,6 @@
 ﻿@using Humanizer;
 @using System.Diagnostics;
+@using System.Collections.Specialized;
 @using System.Threading
 @implements IDisposable
 @inject MessageLog messageLog
@@ -87,6 +88,7 @@
     // Refresh once per minute to update relative timestamps.
     Timer? timer;  
     IReadOnlyList<MonitorMessage> messages = Array.Empty<MonitorMessage>();
+    private readonly HashSet<MonitorMessage> subscribedMessages = new();
 
     protected override void OnInitialized()
     {
@@ -97,6 +99,7 @@
         // as soon as a message is recorded.
         messageLog.newMessage += MessageLog_NewMessage;
         messages = PrepareForReverseStack(messageLog.GetSnapshot());
+        SubscribeToMessageActions(messages);
         timer = new Timer(RefreshCallback, null, 60000, 60000);
     }
 
@@ -104,6 +107,27 @@
     {
         // Log callbacks are not guaranteed to run on Blazor's renderer thread.
         // InvokeAsync safely schedules the redraw on the correct dispatcher.
+        _ = InvokeAsync(() =>
+        {
+            messages = PrepareForReverseStack(messageLog.GetSnapshot());
+            SubscribeToMessageActions(messages);
+            StateHasChanged();
+        });
+    }
+
+    private void SubscribeToMessageActions(IEnumerable<MonitorMessage> snapshot)
+    {
+        foreach (var message in snapshot)
+        {
+            if (subscribedMessages.Add(message))
+            {
+                message.Buttons.CollectionChanged += MessageActions_CollectionChanged;
+            }
+        }
+    }
+
+    private void MessageActions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
         _ = InvokeAsync(() =>
         {
             messages = PrepareForReverseStack(messageLog.GetSnapshot());
@@ -217,8 +241,19 @@
         var startedUtc = DateTime.UtcNow;
         try
         {
+            if (button.IsExpired)
+            {
+                button.Expire();
+                return;
+            }
+
             if (button.ResultAction != null)
             {
+                if (button.IsExpired)
+                {
+                    button.Expire();
+                    return;
+                }
                 var copyResult = button.ResultAction();
                 Snackbar.Add(copyResult.Message, copyResult.Succeeded ? Severity.Success : Severity.Error);
                 return;
@@ -237,6 +272,11 @@
             );
             if (result != null)
             {
+                if (button.IsExpired)
+                {
+                    button.Expire();
+                    return;
+                }
                 button.OnClick?.Invoke();
             }
         }
@@ -267,6 +307,11 @@
     public void Dispose()
     {
         messageLog.newMessage -= MessageLog_NewMessage;
+        foreach (var message in subscribedMessages)
+        {
+            message.Buttons.CollectionChanged -= MessageActions_CollectionChanged;
+        }
+        subscribedMessages.Clear();
         timer?.Dispose();
     }
 }

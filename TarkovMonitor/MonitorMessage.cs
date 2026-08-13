@@ -194,6 +194,9 @@ namespace TarkovMonitor
         public MonitorMessageButtonConfirm? Confirm { get; set; }
         private System.Timers.Timer? buttonTimer;
         private double? timeout = null;
+        private DateTimeOffset? expiresAtUtc;
+        private int expirationRaised;
+        public bool IsExpired => expiresAtUtc.HasValue && DateTimeOffset.UtcNow >= expiresAtUtc.Value;
         public double? Timeout {
             get
             {
@@ -202,6 +205,10 @@ namespace TarkovMonitor
             set
             {
                 timeout = value;
+                expiresAtUtc = value is > 0
+                    ? DateTimeOffset.UtcNow.AddMilliseconds(value.Value)
+                    : null;
+                Interlocked.Exchange(ref expirationRaised, 0);
                 if (buttonTimer != null)
                 {
                     buttonTimer.Stop();
@@ -219,7 +226,7 @@ namespace TarkovMonitor
                     };
                     buttonTimer.Elapsed += (object? sender, ElapsedEventArgs e) =>
                     {
-                        Expired?.Invoke(this, e);
+                        RaiseExpired(e);
                     };
 
                 }
@@ -243,7 +250,16 @@ namespace TarkovMonitor
         public void Expire()
         {
             buttonTimer?.Stop();
-            Expired?.Invoke(this, new());
+            expiresAtUtc = DateTimeOffset.UtcNow;
+            RaiseExpired(EventArgs.Empty);
+        }
+
+        private void RaiseExpired(EventArgs args)
+        {
+            if (Interlocked.Exchange(ref expirationRaised, 1) == 0)
+            {
+                Expired?.Invoke(this, args);
+            }
         }
     }
 
