@@ -81,9 +81,6 @@
         }
     }
     List<LogDetails>? breakpoints;
-    Dictionary<string, TarkovMonitor.TaskStatus> TaskStatuses = new();
-    Dictionary<string, int> TaskSequence = new();
-    int nextTaskSequence;
     bool SubmitDisabled { get; set; } = true;
     bool IsProcessing { get; set; }
 
@@ -180,6 +177,11 @@
         var updateTasks = new Dictionary<string, TarkovMonitor.TaskStatus>();
         var totalTasks = 0;
         var startedUtc = DateTime.UtcNow;
+        var observedTaskStatuses = new Dictionary<string, TarkovMonitor.TaskStatus>();
+        var observedTaskSequence = new Dictionary<string, int>();
+        var observedTaskLock = new object();
+        var nextObservedTaskSequence = 0;
+        EventHandler<LogContentEventArgs<TaskStatusMessageLogContent>>? taskHandler = null;
         IsProcessing = true;
         SubmitDisabled = true;
         await InvokeAsync(StateHasChanged);
@@ -196,21 +198,41 @@
                     return;
                 }
 
+                var historicalTasks = await TarkovDev.GetTasks(breakpoint.Profile.Type);
                 GameWatcher.ReadingPastLogs = true;
-                TaskStatuses.Clear();
-                TaskSequence.Clear();
-                nextTaskSequence = 0;
-                customWatcher.TaskModified += UpdateTaskStatus;
-                handlerAttached = true;
-                customWatcher.ProcessLogsFromBreakpoint(breakpoint);
+                taskHandler = (_, e) =>
+                {
+                    if (!string.Equals(e.Profile.AccountId, breakpoint.Profile.AccountId, StringComparison.Ordinal)
+                        || !string.Equals(e.Profile.Id, breakpoint.Profile.Id, StringComparison.Ordinal)
+                        || e.Profile.SessionMode != breakpoint.Profile.SessionMode)
+                    {
+                        return;
+                    }
 
-                foreach (var kvp in TaskStatuses.OrderBy(item => TaskSequence[item.Key]))
+                    lock (observedTaskLock)
+                    {
+                        observedTaskStatuses[e.LogContent.TaskId] = e.LogContent.Status;
+                        observedTaskSequence[e.LogContent.TaskId] = nextObservedTaskSequence++;
+                    }
+                };
+                customWatcher.TaskModified += taskHandler;
+                handlerAttached = true;
+                await Task.Run(() => customWatcher.ProcessLogsFromBreakpoint(breakpoint));
+
+                KeyValuePair<string, TarkovMonitor.TaskStatus>[] observedTasks;
+                lock (observedTaskLock)
+                {
+                    observedTasks = observedTaskStatuses
+                        .OrderBy(item => observedTaskSequence[item.Key])
+                        .ToArray();
+                }
+                foreach (var kvp in observedTasks)
                 {
                     if (kvp.Value == TarkovMonitor.TaskStatus.Started)
                     {
                         continue;
                     }
-                    var task = TarkovDev.Tasks.Find((t) => t.id == kvp.Key);
+                    var task = historicalTasks.Find((t) => t.id == kvp.Key);
                     if (task == null)
                     {
                         continue;
@@ -257,7 +279,10 @@
             GameWatcher.ReadingPastLogs = false;
             if (handlerAttached)
             {
-                customWatcher.TaskModified -= UpdateTaskStatus;
+                if (taskHandler != null)
+                {
+                    customWatcher.TaskModified -= taskHandler;
+                }
                 handlerAttached = false;
             }
 
@@ -289,7 +314,10 @@
         {
             if (handlerAttached)
             {
-                customWatcher.TaskModified -= UpdateTaskStatus;
+                if (taskHandler != null)
+                {
+                    customWatcher.TaskModified -= taskHandler;
+                }
             }
             GameWatcher.ReadingPastLogs = false;
             if (trackerLease != null)
@@ -302,18 +330,6 @@
         }
     }
 
-    private void UpdateTaskStatus(object? sender, LogContentEventArgs<TaskStatusMessageLogContent> e)
-    {
-        if (selectedBreakpoint == null
-            || !string.Equals(e.Profile.AccountId, selectedBreakpoint.Profile.AccountId, StringComparison.Ordinal)
-            || !string.Equals(e.Profile.Id, selectedBreakpoint.Profile.Id, StringComparison.Ordinal)
-            || e.Profile.SessionMode != selectedBreakpoint.Profile.SessionMode)
-        {
-            return;
-        }
-        TaskStatuses[e.LogContent.TaskId] = e.LogContent.Status;
-        TaskSequence[e.LogContent.TaskId] = nextTaskSequence++;
-    }
     private void Settings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == "customLogsPath")
