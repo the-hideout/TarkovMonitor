@@ -174,9 +174,12 @@ namespace TarkovMonitor
             {
                 throw new Exception("No PVP or PVE profile initialized, please launch Escape from Tarkov first");
             }
-            var tokensSnapshot = profileTokenState.ReplaceToken(profileId, token);
-            Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokensSnapshot);
-            Properties.Settings.Default.Save();
+            var replacement = profileTokenState.ReplaceToken(profileId, token);
+            profileTokenState.PersistIfCurrent(replacement, tokensSnapshot =>
+            {
+                Properties.Settings.Default.tarkovTrackerTokens = JsonSerializer.Serialize(tokensSnapshot);
+                Properties.Settings.Default.Save();
+            });
         }
 
         public static async Task<ProgressResponse> SetProfile(Profile profile)

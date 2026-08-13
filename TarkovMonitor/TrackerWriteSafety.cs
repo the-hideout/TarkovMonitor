@@ -20,6 +20,10 @@ namespace TarkovMonitor
         internal string AuthorizationHeader => $"Bearer {Token}";
     }
 
+    internal readonly record struct TrackerTokenReplacement(
+        long Generation,
+        Dictionary<string, string> Tokens);
+
     internal static class TrackerTokenFormat
     {
         internal static bool IsSupportedOrgToken(string? token)
@@ -246,8 +250,10 @@ namespace TarkovMonitor
     internal sealed class TrackerProfileTokenState<TProgress> where TProgress : class
     {
         private readonly object gate = new();
+        private readonly object persistenceGate = new();
         private readonly TrackerAuthorizationState<TProgress> authorizationState;
         private readonly Dictionary<string, string> tokens;
+        private long generation;
 
         internal TrackerProfileTokenState(
             TrackerAuthorizationState<TProgress> authorizationState,
@@ -278,17 +284,33 @@ namespace TarkovMonitor
             }
         }
 
-        internal Dictionary<string, string> ReplaceToken(
-            string profileId,
-            string token,
-            Action? afterInvalidationBeforeStore = null)
+        internal TrackerTokenReplacement ReplaceToken(string profileId, string token)
         {
             lock (gate)
             {
                 authorizationState.InvalidateProfile(profileId);
-                afterInvalidationBeforeStore?.Invoke();
                 tokens[profileId] = token;
-                return new(tokens);
+                generation++;
+                return new(generation, new(tokens));
+            }
+        }
+
+        internal bool PersistIfCurrent(
+            TrackerTokenReplacement replacement,
+            Action<Dictionary<string, string>> persist)
+        {
+            lock (persistenceGate)
+            {
+                lock (gate)
+                {
+                    if (replacement.Generation != generation)
+                    {
+                        return false;
+                    }
+                }
+
+                persist(replacement.Tokens);
+                return true;
             }
         }
     }

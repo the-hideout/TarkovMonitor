@@ -13,6 +13,8 @@ var tests = new (string Name, Action Run)[]
     ("profile switch authorization is atomic", ProfileSwitchAuthorizationIsAtomic),
     ("token replacement cancels pending validation", TokenReplacementCancelsPendingValidation),
     ("token replacement and switch registration are atomic", TokenReplacementAndSwitchRegistrationAreAtomic),
+    ("token persistence rejects stale replacement snapshots", TokenPersistenceRejectsStaleReplacementSnapshots),
+    ("newer token persistence follows an in-flight older save", NewerTokenPersistenceFollowsInFlightOlderSave),
     ("endpoint replacement cannot redirect bearer", EndpointReplacementCannotRedirectBearer),
     ("active compatibility requires enum evidence", ActiveCompatibilityRequiresEvidence),
     ("response active is nullable", ResponseActiveIsNullable),
@@ -175,45 +177,117 @@ static void TokenReplacementAndSwitchRegistrationAreAtomic()
 {
     const string oldToken = "PVP_0123456789abcdef01";
     const string replacementToken = "PVP_0123456789abcdef02";
+    for (var attempt = 0; attempt < 200; attempt++)
+    {
+        var authorizationState = new TrackerAuthorizationState<List<string>>(() => new());
+        var tokenState = new TrackerProfileTokenState<List<string>>(
+            authorizationState,
+            new() { ["profilea"] = oldToken });
+        var profile = new Profile { Id = "profilea", Type = ProfileType.Regular };
+        using var start = new ManualResetEventSlim();
+        var replacement = Task.Run(() =>
+        {
+            start.Wait();
+            return tokenState.ReplaceToken(profile.Id, replacementToken);
+        });
+        var profileSwitch = Task.Run(() =>
+        {
+            start.Wait();
+            return tokenState.BeginSwitch(profile, 7);
+        });
+
+        start.Set();
+        True(Task.WaitAll(new Task[] { replacement, profileSwitch }, TimeSpan.FromSeconds(5)));
+        if (profileSwitch.Result.Token == oldToken)
+        {
+            False(authorizationState.TryActivate(
+                profileSwitch.Result.ProfileSwitch,
+                new() { "stale" },
+                out _));
+        }
+        else
+        {
+            Equal(replacementToken, profileSwitch.Result.Token);
+            True(authorizationState.TryActivate(
+                profileSwitch.Result.ProfileSwitch,
+                new() { "replacement" },
+                out var authorization));
+            Equal(replacementToken, authorization.Token);
+        }
+    }
+}
+
+static void TokenPersistenceRejectsStaleReplacementSnapshots()
+{
+    const string initialToken = "PVP_0123456789abcdef00";
+    const string tokenA = "PVP_0123456789abcdef01";
+    const string tokenB = "PVP_0123456789abcdef02";
     var authorizationState = new TrackerAuthorizationState<List<string>>(() => new());
     var tokenState = new TrackerProfileTokenState<List<string>>(
         authorizationState,
-        new() { ["profilea"] = oldToken });
-    var profile = new Profile { Id = "profilea", Type = ProfileType.Regular };
-    using var invalidated = new ManualResetEventSlim();
-    using var switchAttempted = new ManualResetEventSlim();
-    using var allowReplacementStore = new ManualResetEventSlim();
+        new() { ["profilea"] = initialToken });
+    Dictionary<string, string> persisted = new() { ["profilea"] = initialToken };
 
-    var replacement = Task.Run(() => tokenState.ReplaceToken(
-        profile.Id,
-        replacementToken,
-        () =>
+    var replacementA = tokenState.ReplaceToken("profilea", tokenA);
+    var replacementB = tokenState.ReplaceToken("profilea", tokenB);
+
+    True(tokenState.PersistIfCurrent(
+        replacementB,
+        snapshot => persisted = new(snapshot)));
+    False(tokenState.PersistIfCurrent(
+        replacementA,
+        snapshot => persisted = new(snapshot)));
+    Equal(tokenB, persisted["profilea"]);
+
+    var restartedAuthorization = new TrackerAuthorizationState<List<string>>(() => new());
+    var restartedTokenState = new TrackerProfileTokenState<List<string>>(
+        restartedAuthorization,
+        new(persisted));
+    var restartedProfile = new Profile { Id = "profilea", Type = ProfileType.Regular };
+    var restartedSwitch = restartedTokenState.BeginSwitch(restartedProfile, 11);
+    Equal(tokenB, restartedSwitch.Token);
+    True(restartedAuthorization.TryActivate(
+        restartedSwitch.ProfileSwitch,
+        new() { "restart" },
+        out var restartedAuthorizationToken));
+    Equal(tokenB, restartedAuthorizationToken.Token);
+}
+
+static void NewerTokenPersistenceFollowsInFlightOlderSave()
+{
+    const string tokenA = "PVP_0123456789abcdef01";
+    const string tokenB = "PVP_0123456789abcdef02";
+    var authorizationState = new TrackerAuthorizationState<List<string>>(() => new());
+    var tokenState = new TrackerProfileTokenState<List<string>>(
+        authorizationState,
+        new());
+    var persistedToken = string.Empty;
+    using var olderSaveStarted = new ManualResetEventSlim();
+    using var allowOlderSaveToFinish = new ManualResetEventSlim();
+
+    var replacementA = tokenState.ReplaceToken("profilea", tokenA);
+    var persistA = Task.Run(() => tokenState.PersistIfCurrent(
+        replacementA,
+        snapshot =>
         {
-            invalidated.Set();
-            True(switchAttempted.Wait(TimeSpan.FromSeconds(5)));
-            True(allowReplacementStore.Wait(TimeSpan.FromSeconds(5)));
+            olderSaveStarted.Set();
+            True(allowOlderSaveToFinish.Wait(TimeSpan.FromSeconds(5)));
+            persistedToken = snapshot["profilea"];
         }));
 
-    True(invalidated.Wait(TimeSpan.FromSeconds(5)));
-    var profileSwitch = Task.Run(() =>
-    {
-        switchAttempted.Set();
-        return tokenState.BeginSwitch(profile, 7);
-    });
+    True(olderSaveStarted.Wait(TimeSpan.FromSeconds(5)));
+    var replacementB = tokenState.ReplaceToken("profilea", tokenB);
+    var persistB = Task.Run(() => tokenState.PersistIfCurrent(
+        replacementB,
+        snapshot => persistedToken = snapshot["profilea"]));
+    False(persistB.Wait(TimeSpan.FromMilliseconds(100)));
 
-    True(switchAttempted.Wait(TimeSpan.FromSeconds(5)));
-    False(profileSwitch.Wait(TimeSpan.FromMilliseconds(100)));
-    allowReplacementStore.Set();
-    True(replacement.Wait(TimeSpan.FromSeconds(5)));
-    True(profileSwitch.Wait(TimeSpan.FromSeconds(5)));
-
-    Equal(replacementToken, profileSwitch.Result.Token);
-    Equal(replacementToken, profileSwitch.Result.ProfileSwitch.Token);
-    True(authorizationState.TryActivate(
-        profileSwitch.Result.ProfileSwitch,
-        new() { "replacement" },
-        out var authorization));
-    Equal(replacementToken, authorization.Token);
+    allowOlderSaveToFinish.Set();
+    True(persistA.Wait(TimeSpan.FromSeconds(5)));
+    True(persistB.Wait(TimeSpan.FromSeconds(5)));
+    True(persistA.Result);
+    True(persistB.Result);
+    Equal(tokenB, persistedToken);
 }
 
 static void EndpointReplacementCannotRedirectBearer()
