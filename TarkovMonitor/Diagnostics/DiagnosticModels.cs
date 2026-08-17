@@ -15,7 +15,8 @@ public sealed record DiagnosticContext(
     string Stage,
     string DisplayMessage,
     string? Endpoint = null,
-    string Outcome = "failure");
+    string Outcome = "failure",
+    string? IncidentId = null);
 
 public sealed class DiagnosticSnapshot
 {
@@ -27,6 +28,7 @@ public sealed class DiagnosticSnapshot
     public string Outcome { get; init; } = "failure";
     public string DisplayMessage { get; init; } = "";
     public string? Endpoint { get; init; }
+    public string? IncidentId { get; init; }
     public DateTime TimestampUtc { get; init; }
     public long? DurationMilliseconds { get; init; }
     public string ApplicationVersion { get; init; } = "";
@@ -174,7 +176,10 @@ public sealed class DiagnosticsService
         var hResult = exceptionDetails.Count == 0 ? "" : exceptionDetails[0].HResult;
         var sanitizedCode = DiagnosticRedactor.Sanitize(context.Code, 128);
         var sanitizedOperation = DiagnosticRedactor.Sanitize(context.Operation, 256);
-        var diagnosticKey = string.Join("|", sanitizedCode, sanitizedOperation, exceptionType, hResult);
+        var sanitizedIncidentId = DiagnosticRedactor.Sanitize(context.IncidentId, 128);
+        var diagnosticKey = string.IsNullOrWhiteSpace(sanitizedIncidentId)
+            ? string.Join("|", sanitizedCode, sanitizedOperation, exceptionType, hResult)
+            : $"incident:{sanitizedIncidentId}";
 
         int occurrenceCount;
         lock (gate)
@@ -194,6 +199,7 @@ public sealed class DiagnosticsService
             Outcome = DiagnosticRedactor.Sanitize(context.Outcome, 64),
             DisplayMessage = DiagnosticRedactor.Sanitize(context.DisplayMessage, 512),
             Endpoint = DiagnosticRedactor.SanitizeEndpoint(context.Endpoint),
+            IncidentId = sanitizedIncidentId,
             TimestampUtc = timestamp,
             DurationMilliseconds = durationMilliseconds is long measuredDuration
                 ? Math.Max(0, measuredDuration)
@@ -324,6 +330,7 @@ public sealed class DiagnosticsService
                     snapshot.Outcome,
                     snapshot.DisplayMessage,
                     snapshot.Endpoint,
+                    snapshot.IncidentId,
                     snapshot.TimestampUtc,
                     snapshot.DurationMilliseconds,
                     snapshot.ApplicationVersion,

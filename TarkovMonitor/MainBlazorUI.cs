@@ -86,6 +86,7 @@ namespace TarkovMonitor
         private CancellationTokenSource? tarkovDevDataRefreshCancellation;
         private long tarkovDevDataRefreshGeneration;
         private Profile? tarkovDevDataProfile;
+        private bool closing;
 
         private readonly record struct TrackerSessionNoticeIdentity(
             string AccountId,
@@ -244,7 +245,7 @@ namespace TarkovMonitor
             UpdateCheck.NewVersion += UpdateCheck_NewVersion;
             UpdateCheck.Error += UpdateCheck_Error;
 
-            SocketClient.ExceptionThrown += SocketClient_ExceptionThrown;
+            SocketClient.ConnectionInterrupted += SocketClient_ConnectionInterrupted;
 
             blazorWebView1.WebView.CoreWebView2InitializationCompleted += WebView_CoreWebView2InitializationCompleted;
 
@@ -287,9 +288,10 @@ namespace TarkovMonitor
             string service,
             string stage,
             string? endpoint = null,
-            long? durationMilliseconds = null)
+            long? durationMilliseconds = null,
+            string? incidentId = null)
         {
-            messageLog.AddException(displayMessage, code, operation, exception, service, stage, endpoint, durationMilliseconds);
+            messageLog.AddException(displayMessage, code, operation, exception, service, stage, endpoint, durationMilliseconds, incidentId);
         }
 
         public void MarkUiReady()
@@ -628,9 +630,26 @@ namespace TarkovMonitor
             groupManager.ClearGroup();
         }
 
-        private void SocketClient_ExceptionThrown(object? sender, ExceptionEventArgs e)
+        private void SocketClient_ConnectionInterrupted(object? sender, SocketConnectionIncidentEventArgs e)
         {
-            RecordException("Tarkov.dev connection failed; copy diagnostics for details.", "TM-SOCKET-001", e.Context, e.Exception, "WebSocket", "Background");
+            if (closing)
+            {
+                return;
+            }
+
+            // A recoverable background disconnect is retained as sanitized
+            // telemetry, not rendered as a frightening error card. A later
+            // send owns user-facing reporting if lazy recovery fails.
+            diagnostics.Capture(
+                new DiagnosticContext(
+                    "TM-SOCKET-001",
+                    e.Operation,
+                    "WebSocket",
+                    "Background",
+                    "Tarkov.dev connection interrupted.",
+                    e.Endpoint,
+                    IncidentId: e.IncidentId),
+                e.Exception);
         }
 
         protected override void OnShown(EventArgs e)
@@ -691,6 +710,15 @@ namespace TarkovMonitor
             {
                 RecordException("Update checking could not start.", "TM-UPDATE-002", "CheckForNewVersion", ex, "UpdateCheck", "Startup");
             }
+
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            closing = true;
+            SocketClient.ConnectionInterrupted -= SocketClient_ConnectionInterrupted;
+            _ = SocketClient.StopAsync();
+            base.OnFormClosed(e);
         }
 
         private async void Eft_PlayerPosition(object? sender, PlayerPositionEventArgs e)
@@ -715,7 +743,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Player position could not be sent to Tarkov.dev.", "TM-SOCKET-002", "SendPlayerPosition", ex, "WebSocket", "PlayerPosition", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException("Tarkov.dev is unavailable. No messages were resent; the connection will be retried when needed.", "TM-SOCKET-002", "SendPlayerPosition", ex, "WebSocket", "PlayerPosition", endpoint: SocketClient.GetEndpointForDiagnostics(), durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc), incidentId: SocketClient.GetIncidentId(ex));
             }
         }
 
@@ -799,7 +827,7 @@ namespace TarkovMonitor
             }
         }
 
-        private void Eft_MapLoading_NavigateToMap(object? sender, RaidInfoEventArgs e)
+        private async void Eft_MapLoading_NavigateToMap(object? sender, RaidInfoEventArgs e)
         {
             if (!Properties.Settings.Default.autoNavigateMap)
             {
@@ -809,7 +837,29 @@ namespace TarkovMonitor
             {
                 return;
             }
-            SocketClient.NavigateToMap(e.RaidInfo.Map);
+            await NavigateToMapWithDiagnostics(e.RaidInfo.Map);
+        }
+
+        private async Task NavigateToMapWithDiagnostics(TarkovDev.Map map)
+        {
+            var startedUtc = DateTime.UtcNow;
+            try
+            {
+                await SocketClient.NavigateToMap(map);
+            }
+            catch (Exception exception)
+            {
+                RecordException(
+                    "Tarkov.dev is unavailable. No messages were resent; the connection will be retried when needed.",
+                    "TM-SOCKET-002",
+                    "NavigateToMap",
+                    exception,
+                    "WebSocket",
+                    "MapNavigation",
+                    endpoint: SocketClient.GetEndpointForDiagnostics(),
+                    durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc),
+                    incidentId: SocketClient.GetIncidentId(exception));
+            }
         }
 
         private void Eft_GroupUserLeave(object? sender, LogContentEventArgs<GroupMatchUserLeaveLogContent> e)
@@ -1419,8 +1469,8 @@ namespace TarkovMonitor
                     }
                     select.Placeholder = "Choose a map";
                     monMessage.Selects.Add(select);
-                     MonitorMessageButton mapButton = new("Set map", Icons.Material.Filled.Map);
-                    mapButton.OnClick += () => {
+                    MonitorMessageButton mapButton = new("Set map", Icons.Material.Filled.Map);
+                    mapButton.OnClick += async () => {
                         if (select.Selected == null)
                         {
                             return;
@@ -1436,7 +1486,7 @@ namespace TarkovMonitor
                             {
                                 return;
                             }
-                            SocketClient.NavigateToMap(e.RaidInfo.Map);
+                            await NavigateToMapWithDiagnostics(e.RaidInfo.Map);
                         }
                     };
                     monMessage.Buttons.Add(mapButton);
