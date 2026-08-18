@@ -93,6 +93,8 @@ namespace TarkovMonitor
         private long tarkovDevDataRefreshGeneration;
         private Profile? tarkovDevDataProfile;
         private bool closing;
+        private readonly UpdateService updateService;
+        private Version? promptedUpdateVersion;
 
         private readonly record struct TrackerSessionNoticeIdentity(
             string AccountId,
@@ -131,6 +133,7 @@ namespace TarkovMonitor
 			eft = new GameWatcher();
 
             timersManager = new TimersManager(eft, messageLog);
+            updateService = new UpdateService();
 
             // Creates the dependency injection services which are the in-betweens for the Blazor interface and the rest of the C# application.
             var services = new ServiceCollection();
@@ -253,8 +256,8 @@ namespace TarkovMonitor
             TarkovTracker.ProgressRetrieved += TarkovTracker_ProgressRetrieved;
             TarkovDev.ExceptionThrown += TarkovDev_ExceptionThrown;
 
-            UpdateCheck.NewVersion += UpdateCheck_NewVersion;
-            UpdateCheck.Error += UpdateCheck_Error;
+            updateService.UpdateAvailable += UpdateService_UpdateAvailable;
+            updateService.Error += UpdateService_Error;
 
             SocketClient.ConnectionInterrupted += SocketClient_ConnectionInterrupted;
 
@@ -803,11 +806,17 @@ namespace TarkovMonitor
 
             try
             {
-                UpdateCheck.CheckForNewVersion();
+                updateService.Start();
             }
             catch (Exception ex)
             {
-                RecordException("Update checking could not start.", "TM-UPDATE-002", "CheckForNewVersion", ex, "UpdateCheck", "Startup");
+                RecordException(
+                    "Update checking could not start.",
+                    "TM-UPDATE-002",
+                    "Start",
+                    ex,
+                    "UpdateService",
+                    "Startup");
             }
 
         }
@@ -815,6 +824,11 @@ namespace TarkovMonitor
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             closing = true;
+
+            updateService.UpdateAvailable -= UpdateService_UpdateAvailable;
+            updateService.Error -= UpdateService_Error;
+            updateService.Dispose();
+
             SocketClient.ConnectionInterrupted -= SocketClient_ConnectionInterrupted;
             _ = SocketClient.StopAsync();
             base.OnFormClosed(e);
@@ -846,11 +860,6 @@ namespace TarkovMonitor
             }
         }
 
-        private void UpdateCheck_Error(object? sender, ExceptionEventArgs e)
-        {
-            RecordException("Update checking failed; copy diagnostics for details.", "TM-UPDATE-001", e.Context, e.Exception, "UpdateCheck", "Background");
-        }
-
         private void TarkovDev_ExceptionThrown(object? sender, ExceptionEventArgs e)
         {
             var displayMessage = e.Context == "player profile lookup"
@@ -867,9 +876,98 @@ namespace TarkovMonitor
                 e.DurationMilliseconds);
         }
 
-        private void UpdateCheck_NewVersion(object? sender, NewVersionEventArgs e)
+        private void UpdateService_Error(object? sender, ExceptionEventArgs e)
         {
-            messageLog.AddMessage($"A new Tarkov Monitor version is available ({e.Version}). Click to open the download page, and update before reporting a bug.", null, e.Uri.ToString());
+            RecordException(
+                "Update checking failed; copy diagnostics for details.",
+                "TM-UPDATE-001",
+                e.Context,
+                e.Exception,
+                "UpdateService",
+                "Background");
+        }
+
+        private void UpdateService_UpdateAvailable(object? sender, UpdateAvailableEventArgs e)
+        {
+            if (closing || IsDisposed)
+            {
+                return;
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(
+                    new Action(() =>
+                        UpdateService_UpdateAvailable(sender, e)));
+
+                return;
+            }
+
+            // Do not repeatedly prompt for the same version during this session.
+            if (promptedUpdateVersion is not null && promptedUpdateVersion >= e.Version)
+            {
+                return;
+            }
+
+            promptedUpdateVersion = e.Version;
+
+            messageLog.AddMessage($"Tarkov Monitor {e.Version} is available for automatic installation.");
+
+            var response = MessageBox.Show(
+                this,
+                $"Tarkov Monitor {e.Version} is available.\n\n" +
+                "Download and install it now? " +
+                "The application will restart automatically.",
+                "Tarkov Monitor Update",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (response == System.Windows.Forms.DialogResult.Yes)
+            {
+                _ = InstallUpdateAsync(e.Version);
+            }
+        }
+
+        private async Task InstallUpdateAsync(Version version)
+        {
+            var originalTitle = Text;
+
+            try
+            {
+                UseWaitCursor = true;
+
+                messageLog.AddMessage($"Downloading Tarkov Monitor {version}...");
+
+                var progress = new Progress<double>(value => Text = $"Tarkov Monitor - Installing update {value:P0}");
+
+                await updateService.PrepareUpdateAsync(version, progress);
+
+                messageLog.AddMessage("Update downloaded. Restarting Tarkov Monitor...");
+
+                updateService.LaunchUpdater(version);
+
+                // Onova waits for this process to exit, copies the files,
+                // and then restarts TarkovMonitor.exe.
+                Close();
+            }
+            catch (Exception ex)
+            {
+                RecordException(
+                    "The update could not be installed; copy diagnostics for details.",
+                    "TM-UPDATE-003",
+                    "PrepareAndLaunchUpdate",
+                    ex,
+                    "UpdateService",
+                    "Install");
+            }
+            finally
+            {
+                if (!IsDisposed)
+                {
+                    Text = originalTitle;
+                    UseWaitCursor = false;
+                }
+            }
         }
 
         private async void Eft_MapLoading(object? sender, EventArgs e)

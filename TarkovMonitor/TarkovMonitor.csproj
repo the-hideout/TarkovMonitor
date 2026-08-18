@@ -23,6 +23,7 @@
     <PackageReference Include="MudBlazor" Version="9.7.0" />
     <PackageReference Include="NAudio" Version="2.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="Onova" Version="2.6.13" />
     <PackageReference Include="Refit" Version="14.0.1" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
     <PackageReference Include="Websocket.Client" Version="5.5.0" />
