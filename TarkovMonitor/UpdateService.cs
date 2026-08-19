@@ -25,8 +25,7 @@ namespace TarkovMonitor
 
         public UpdateService()
         {
-            var localSource =
-                Environment.GetEnvironmentVariable(LocalSourceEnvironmentVariable);
+            var localSource = Environment.GetEnvironmentVariable(LocalSourceEnvironmentVariable);
 
             IPackageResolver resolver = string.IsNullOrWhiteSpace(localSource)
                 ? new GithubPackageResolver(
@@ -93,10 +92,7 @@ namespace TarkovMonitor
             }
         }
 
-        public Task PrepareUpdateAsync(
-            Version version,
-            IProgress<double>? progress = null,
-            CancellationToken cancellationToken = default)
+        public Task PrepareUpdateAsync(Version version, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
         {
             ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -116,9 +112,7 @@ namespace TarkovMonitor
                 restartArguments: string.Empty);
         }
 
-        private async void UpdateTimer_Elapsed(
-            object? sender,
-            System.Timers.ElapsedEventArgs e)
+        private async void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
             await CheckForUpdatesAsync();
         }
