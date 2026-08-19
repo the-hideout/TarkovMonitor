@@ -33,6 +33,7 @@ jobs:
             --runtime win-x64 `
             -p:PublishSingleFile=true `
             -p:Version=${{ github.ref_name }} `
+            -p:AssemblyVersion=${{ github.ref_name }} `
             --output "$Env:GITHUB_WORKSPACE\publish"
 
       - name: Verify published application

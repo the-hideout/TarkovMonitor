@@ -6,8 +6,16 @@ namespace TarkovMonitor
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-		static void Main()
+		static void Main(string[] args)
         {
+            // A copy of this executable installs downloaded updates, because a
+            // running application cannot replace its own files. That copy never
+            // reaches the rest of startup.
+            if (Updating.UpdateApplier.TryHandle(args))
+            {
+                return;
+            }
+
             var diagnostics = new DiagnosticsService();
             Application.ThreadException += (_, args) => diagnostics.Capture(
                 new DiagnosticContext("TM-APP-001", "UnhandledUiException", "Application", "Thread", "The application encountered an unexpected UI failure."),

@@ -122,8 +122,16 @@
             if (subscribedMessages.Add(message))
             {
                 message.Buttons.CollectionChanged += MessageActions_CollectionChanged;
+                message.Changed += Message_Changed;
             }
         }
+    }
+
+    private void Message_Changed(object? sender, EventArgs e)
+    {
+        // Progress updates rewrite the text of a message already in the list,
+        // so only a redraw is needed.
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void MessageActions_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -319,6 +327,7 @@
         foreach (var message in subscribedMessages)
         {
             message.Buttons.CollectionChanged -= MessageActions_CollectionChanged;
+            message.Changed -= Message_Changed;
         }
         subscribedMessages.Clear();
         timer?.Dispose();

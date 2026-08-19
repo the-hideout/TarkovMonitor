@@ -387,6 +387,16 @@
         </MudPaper>
     </MudItem>
 
+    <MudItem xs="12" lg="6" xl="4">
+        <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.Update" Class="mr-2" /><span class="tm-card-heading-text">Updates</span></MudText>
+            <MudText>Installed version @CurrentVersion</MudText>
+            <div>
+                <MudButton @onclick="CheckForUpdates" Variant="Variant.Text" Class="tm-action-link" Disabled="@checkingForUpdates">Check for updates</MudButton>
+            </div>
+        </MudPaper>
+    </MudItem>
+
 </MudGrid>
 
 @code {
@@ -403,7 +413,31 @@
     private static bool pendingDrawerExpanded;
     private static bool boundDrawerExpanded;
     private bool scanningOrgProfiles;
+    private bool checkingForUpdates;
     private static readonly HashSet<string> expandedAccountIds = new(StringComparer.Ordinal);
+
+    private static string CurrentVersion => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "";
+
+    private async Task CheckForUpdates()
+    {
+        checkingForUpdates = true;
+        StateHasChanged();
+        try
+        {
+            // A newer release announces itself through the notification list,
+            // where it can be installed. Only the "nothing to do" answer has to
+            // be reported from here.
+            if (await WindowHost.CheckForUpdates() == UpdateCheckResult.UpToDate)
+            {
+                messageLog.AddMessage($"Tarkov Monitor {CurrentVersion} is the latest version.", "update");
+            }
+        }
+        finally
+        {
+            checkingForUpdates = false;
+            StateHasChanged();
+        }
+    }
 
     private sealed record OrgAccountGroup(
         string AccountId,

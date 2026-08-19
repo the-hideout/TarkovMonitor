@@ -97,6 +97,19 @@ namespace TarkovMonitor
         public MonitorMessageCollection<MonitorMessageButton> Buttons { get; } = new();
         public MonitorMessageCollection<MonitorMessageSelect> Selects { get; } = new();
         public List<MonitorMessageProtectedValue> ProtectedValues { get; } = new();
+
+        /// <summary>
+        /// Raised when the text of an already displayed message changes, so a
+        /// long-running action can report progress in place instead of adding a
+        /// new message for every step.
+        /// </summary>
+        public event EventHandler? Changed;
+
+        public void NotifyChanged()
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
         public MonitorMessage(string message)
         {
             Message = message;
