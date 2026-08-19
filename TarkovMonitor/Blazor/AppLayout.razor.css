@@ -8,9 +8,6 @@
     padding-top: 8px !important;
     overflow-x: hidden;
     overflow-y: auto;
-    scrollbar-color: auto;
-    scrollbar-gutter: stable;
-    scrollbar-width: auto;
 }
 
 ::deep .app-main-content--restored {
@@ -66,24 +63,26 @@
     min-width: 0;
     margin-left: 4px;
     overflow: hidden;
-    pointer-events: none;
+    pointer-events: auto;
     text-overflow: ellipsis;
     transform: translateY(1px);
     white-space: nowrap;
 }
 
 .window-product-title {
-    position: absolute;
+	align-items: center;
+	display: inline-flex;
+	position: absolute;
     left: 50%;
     overflow: hidden;
     color: #ffffff;
     font-size: 1rem;
     font-weight: 600;
     letter-spacing: 0.025em;
-    pointer-events: none;
+    pointer-events: auto;
     text-overflow: ellipsis;
     transform: translateX(-50%);
-    white-space: nowrap;
+	white-space: nowrap;
 }
 
 .window-controls {
@@ -101,12 +100,13 @@
 ::deep .navigation-drawer {
     top: 0 !important;
     height: 100vh !important;
+    width: 175px !important;
     z-index: 1300;
     border-right: 1px solid rgba(169, 154, 107, 0.32);
 }
 
 ::deep .navigation-drawer-header {
-    min-height: 96px;
+    min-height: 48px;
     padding: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -114,10 +114,10 @@
 .navigation-brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    position: relative;
     width: 100%;
-    min-height: 96px;
-    padding: 14px 10px 14px 18px;
+    min-height: 48px;
+    padding: 4px 0 4px 10px;
     border: 0;
     color: inherit;
     background: transparent;
@@ -133,12 +133,13 @@
 .navigation-brand-logo {
     display: block;
     width: 100%;
-    max-width: 198px;
+    max-width: 140px;
     height: auto;
 }
 
 ::deep .drawer-collapse-cue {
-    flex: 0 0 auto;
+    position: absolute;
+    right: 0;
     color: rgba(255, 255, 255, 0.60);
 }
 

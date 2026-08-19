@@ -6,7 +6,7 @@ namespace TarkovMonitor
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+		static void Main()
         {
             var diagnostics = new DiagnosticsService();
             Application.ThreadException += (_, args) => diagnostics.Capture(
@@ -58,7 +58,9 @@ namespace TarkovMonitor
 			// both modes. Skip mode has no branding window, but it should still
 			// reveal the finished UI instead of exposing the temporary WebView
 			// startup shell.
-			var mainWindow = new MainBlazorUI(holdUntilSplashCompletes: true, diagnosticsService: diagnostics)
+			var mainWindow = new MainBlazorUI(
+				holdUntilSplashCompletes: true,
+				diagnosticsService: diagnostics)
 			{
 				ShowInTaskbar = false
 			};
@@ -107,5 +109,6 @@ namespace TarkovMonitor
 
 			Application.Run(mainWindow);
         }
+
     }
 }
