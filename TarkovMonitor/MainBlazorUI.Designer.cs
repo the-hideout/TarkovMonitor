@@ -79,7 +79,7 @@
             FormBorderStyle = FormBorderStyle.None;
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(3, 4, 3, 4);
-            MinimumSize = new Size(720, 480);
+            MinimumSize = new Size(450, 250);
             Name = "MainBlazorUI";
             Padding = new Padding(1);
             Text = "Tarkov Monitor";

@@ -15,7 +15,7 @@
 	<MudLayout>
 		<MudAppBar Class="window-app-bar" Elevation="1" Bottom="false" Dense="true">
 			<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer"/>
-			<span class="window-page-title">@CurrentPageTitle</span>
+			<span class="window-page-title" @onmousedown="BeginWindowDrag" @onmousedown:preventDefault="true">@CurrentPageTitle</span>
 			<div class="window-drag-region" @onmousedown="BeginWindowDrag">
 				<span class="window-product-title">@LocalizationService.GetString("TarkovMonitor")</span>
 			</div>

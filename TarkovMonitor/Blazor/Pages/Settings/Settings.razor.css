@@ -225,7 +225,7 @@
     bottom: 0;
     left: 0;
     width: 2px;
-    background: linear-gradient(180deg, #78aefb, rgba(139, 92, 246, 0.55));
+    background: linear-gradient(180deg, #78aefb, rgba(194, 178, 126, 0.55));
     content: "";
     opacity: 0.58;
     pointer-events: none;
@@ -377,9 +377,9 @@
 }
 
 .tracker-mode-badge--seasonal {
-    border-color: rgba(212, 148, 255, 0.46);
-    color: #deb0ff;
-    background: rgba(139, 74, 180, 0.16);
+    border-color: rgba(194, 178, 126, 0.46);
+    color: #d7c996;
+    background: rgba(152, 138, 102, 0.16);
 }
 
 .tracker-mode-badge--unknown {

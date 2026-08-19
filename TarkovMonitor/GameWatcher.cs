@@ -1202,22 +1202,14 @@ namespace TarkovMonitor
                 .ToList();
         }
 
-        public List<LogDetails> GetLogBreakpoints(string profileId)
+        public List<LogDetails> GetLogBreakpoints()
         {
             List<LogDetails> breakpoints = new();
-            if (profileId == "")
-            {
-                return breakpoints;
-            }
             foreach (var kvp in GetLogFolders().OrderBy(key => key.Key).ToDictionary(x => x.Key, x => x.Value))
             {
                 List<LogDetails> folderBreakpoints = GetLogDetails(kvp.Value);
                 foreach(var breakpoint in folderBreakpoints)
                 {
-                    if (breakpoint.Profile.Id != profileId)
-                    {
-                        continue;
-                    }
                     var matchingBreakpoint = breakpoints.Where((bp) => bp.Version == breakpoint.Version
                         && bp.Profile.Id == breakpoint.Profile.Id
                         && bp.Profile.SessionMode == breakpoint.Profile.SessionMode).FirstOrDefault();

@@ -8,14 +8,14 @@
 <MudDialog Class="tm-dialog-shell tm-dialog-shell--read-past" TitleClass="tm-dialog-title" ContentClass="tm-dialog-content tm-dialog-content--read-past" ActionsClass="tm-dialog-actions">
     <DialogContent>
         <MudText>
-            @LocalizationService.GetString("CurrentProfile"):
-            @if (HasCurrentProfileRoute)
+            @LocalizationService.GetString("LastProfileLoaded"):
+            @if (HasLastLoadedProfileRoute)
             {
-                <MudLink Class="tm-profile-link" Href="@CurrentProfileUrl">@CurrentProfileName (@GetProfileTypeDisplayName(GameWatcher.CurrentProfile.Type))</MudLink>
+                <MudLink Class="tm-profile-link" Href="@LastLoadedProfileUrl">@LastProfileName (@GetProfileTypeDisplayName(LastLoadedProfileType))</MudLink>
             }
             else
             {
-                <span>No EFT profile detected.</span>
+                <span>No EFT profile loaded.</span>
             }
         </MudText>
         <MudText>
@@ -84,37 +84,39 @@
     bool SubmitDisabled { get; set; } = true;
     bool IsProcessing { get; set; }
 
-    private string currentProfileName = GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute
-        ? GameWatcher.CurrentProfile.AccountId
+    private string lastProfileName = TarkovDev.LastLoadedProfile?.AccountId
+        ?? "";
+    private Profile? LastLoadedProfile => TarkovDev.LastLoadedProfile;
+    private ProfileType LastLoadedProfileType => LastLoadedProfile?.Type ?? ProfileType.Unknown;
+    private string LastProfileName => lastProfileName;
+    private bool HasLastLoadedProfileRoute => LastLoadedProfile?.HasTarkovDevPlayerRoute == true;
+    private string LastLoadedProfileUrl => HasLastLoadedProfileRoute
+        ? $"https://tarkov.dev/players/{LastLoadedProfile!.TarkovDevPlayerMode}/{LastLoadedProfile.AccountId}"
         : "";
-    private bool HasCurrentProfileRoute => GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute;
-    private string CurrentProfileUrl => HasCurrentProfileRoute
-        ? $"https://tarkov.dev/players/{GameWatcher.CurrentProfile.TarkovDevPlayerMode}/{GameWatcher.CurrentProfile.AccountId}"
-        : "";
-    private string CurrentProfileName
+
+    private static bool ProfilesMatch(Profile left, Profile right)
     {
-        get
-        {
-            return currentProfileName;
-        }
+        return left.Type == right.Type
+            && left.SessionMode == right.SessionMode
+            && string.Equals(left.AccountId, right.AccountId, StringComparison.Ordinal)
+            && string.Equals(left.Id, right.Id, StringComparison.Ordinal);
     }
+
     private async Task UpdateProfileName()
     {
-        var profile = GameWatcher.CurrentProfile.Snapshot();
-        if (!profile.HasTarkovDevPlayerRoute)
+        var profile = TarkovDev.LastLoadedProfile;
+        if (profile == null || !profile.HasTarkovDevPlayerRoute)
         {
-            currentProfileName = "";
+            lastProfileName = "";
             return;
         }
 
-        currentProfileName = profile.AccountId;
+        lastProfileName = profile.AccountId;
         var profileName = await TarkovDev.GetPlayerName(profile);
-        if (GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute
-            && string.Equals(GameWatcher.CurrentProfile.AccountId, profile.AccountId, StringComparison.Ordinal)
-            && string.Equals(GameWatcher.CurrentProfile.Id, profile.Id, StringComparison.Ordinal)
-            && GameWatcher.CurrentProfile.SessionMode == profile.SessionMode)
+        var latestProfile = TarkovDev.LastLoadedProfile;
+        if (latestProfile != null && ProfilesMatch(latestProfile, profile))
         {
-            currentProfileName = profileName;
+            lastProfileName = profileName;
         }
     }
 
@@ -124,12 +126,22 @@
         Task.Run(GetBreakPoints);
         _ = UpdateProfileName();
 
+        TarkovDev.ApiDataLoaded += OnTarkovDevDataLoaded;
         Properties.Settings.Default.PropertyChanged += Settings_PropertyChanged;
+    }
+
+    private void OnTarkovDevDataLoaded(object? sender, EventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await UpdateProfileName();
+            StateHasChanged();
+        });
     }
 
     private void GetBreakPoints()
     {
-        breakpoints = customWatcher.GetLogBreakpoints(GameWatcher.CurrentProfile.Id);
+        breakpoints = customWatcher.GetLogBreakpoints();
         InvokeAsync(() => StateHasChanged());
     }
 
@@ -341,6 +353,7 @@
 
     public void Dispose()
     {
+        TarkovDev.ApiDataLoaded -= OnTarkovDevDataLoaded;
         Properties.Settings.Default.PropertyChanged -= Settings_PropertyChanged;
     }
 }

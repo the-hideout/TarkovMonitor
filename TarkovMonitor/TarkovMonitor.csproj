@@ -11,15 +11,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Blazor\AppLayout.razor.css" />
-    <None Remove="Blazor\MainLayout.razor.css" />
-    <None Remove="Blazor\Pages\Dashboard\Dashboard.razor.css" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Blazor\AppLayout.razor.css" />
-    <Content Include="Blazor\MainLayout.razor.css" />
-    <Content Include="Blazor\Pages\Dashboard\Dashboard.razor.css" />
     <Content Include="Resources\TarkovDev.ico" />
   </ItemGroup>
 

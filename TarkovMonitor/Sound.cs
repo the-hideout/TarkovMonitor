@@ -77,10 +77,62 @@ namespace TarkovMonitor
             {
                 { -1, "Default Device" }
             };
+
+            // WaveOutCapabilities.ProductName is backed by the fixed-size
+            // WAVEOUTCAPS product-name field, so Windows truncates longer
+            // endpoint names before the UI ever receives them. Keep the
+            // WaveOut indexes for playback, but use the full Core Audio
+            // friendly names for display after matching each endpoint by
+            // its original (possibly truncated) WaveOut name.
+            List<string> endpointNames = new();
+            try
+            {
+                using var enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+                var endpoints = enumerator.EnumerateAudioEndPoints(
+                    NAudio.CoreAudioApi.DataFlow.Render,
+                    NAudio.CoreAudioApi.DeviceState.Active);
+                foreach (var endpoint in endpoints)
+                {
+                    using (endpoint)
+                    {
+                        endpointNames.Add(endpoint.FriendlyName);
+                    }
+                }
+            }
+            catch
+            {
+                // The WaveOut names below remain a usable fallback if Core
+                // Audio enumeration is unavailable during startup.
+            }
+
+            HashSet<int> matchedEndpointIndexes = new();
             for (var deviceNum = 0; deviceNum < WaveOut.DeviceCount; deviceNum++)
             {
                 WaveOutCapabilities deviceInfo = WaveOut.GetCapabilities(deviceNum);
-                devices.Add(deviceNum, deviceInfo.ProductName);
+                var displayName = deviceInfo.ProductName;
+                for (var endpointIndex = 0; endpointIndex < endpointNames.Count; endpointIndex++)
+                {
+                    if (matchedEndpointIndexes.Contains(endpointIndex))
+                    {
+                        continue;
+                    }
+
+                    var endpointName = endpointNames[endpointIndex];
+                    if (!string.Equals(endpointName, deviceInfo.ProductName, StringComparison.OrdinalIgnoreCase)
+                        && !endpointName.StartsWith(deviceInfo.ProductName, StringComparison.OrdinalIgnoreCase)
+                        && !deviceInfo.ProductName.StartsWith(endpointName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    displayName = endpointName;
+                    matchedEndpointIndexes.Add(endpointIndex);
+                    break;
+                }
+
+                devices.Add(deviceNum, string.IsNullOrWhiteSpace(displayName)
+                    ? deviceInfo.ProductName
+                    : displayName);
             }
             return devices;
         }

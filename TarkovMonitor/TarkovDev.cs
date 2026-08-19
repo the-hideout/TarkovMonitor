@@ -8,6 +8,7 @@ namespace TarkovMonitor
     public class TarkovDev
     {
         public static event EventHandler<ExceptionEventArgs>? ExceptionThrown;
+        public static event EventHandler? ApiDataLoaded;
         private static readonly object playerNameCacheLock = new();
         private static readonly ConcurrentDictionary<(ProfileType ProfileType, string AccountId), Lazy<Task<string>>> playerNameLookups = new();
         private static readonly HttpClient jsonClient = new(new HttpClientHandler
@@ -131,6 +132,7 @@ namespace TarkovMonitor
         }
 
         private static ApiDataSnapshot apiData = ApiDataSnapshot.Empty;
+        private static Profile? lastLoadedProfile;
         private static ApiDataSnapshot CurrentApiData => Volatile.Read(ref apiData);
 
         public static List<Task> Tasks => CurrentApiData.Tasks;
@@ -140,6 +142,7 @@ namespace TarkovMonitor
         public static List<HideoutStation> Stations => CurrentApiData.Stations;
         public static List<PlayerLevel> PlayerLevels => CurrentApiData.PlayerLevels;
         public static ProfileType LoadedProfileType => CurrentApiData.ProfileType;
+        public static Profile? LastLoadedProfile => Volatile.Read(ref lastLoadedProfile)?.Snapshot();
         public static DateTime ScavAvailableTime { get; set; } = DateTime.Now;
         public static DateTime LastActivity { get; set; } = DateTime.MinValue;
         public static Dictionary<ProfileType, Dictionary<string, string>> PlayerNames { get; private set; } = new();
@@ -344,9 +347,14 @@ namespace TarkovMonitor
                 items.ScavCooldownSeconds);
         }
 
-        internal static void PublishApiData(ApiDataSnapshot snapshot)
+        internal static void PublishApiData(ApiDataSnapshot snapshot, Profile? loadedProfile = null)
         {
             Volatile.Write(ref apiData, snapshot);
+            if (loadedProfile != null)
+            {
+                Volatile.Write(ref lastLoadedProfile, loadedProfile.Snapshot());
+            }
+            ApiDataLoaded?.Invoke(null, EventArgs.Empty);
         }
 
         internal static void ClearApiData()
@@ -369,7 +377,7 @@ namespace TarkovMonitor
                 return false;
             }
 
-            PublishApiData(snapshot);
+            PublishApiData(snapshot, currentProfile);
             return true;
         }
 
@@ -392,7 +400,7 @@ namespace TarkovMonitor
                 return false;
             }
 
-            PublishApiData(snapshot);
+            PublishApiData(snapshot, expectedProfile);
             return true;
         }
 

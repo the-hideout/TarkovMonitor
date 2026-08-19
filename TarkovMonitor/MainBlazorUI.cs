@@ -17,10 +17,14 @@ namespace TarkovMonitor
     {
         private const int WmNcHitTest = 0x0084;
         private const int WmNcCalcSize = 0x0083;
+        private const int WmNcPaint = 0x0085;
+        private const int WmNcActivate = 0x0086;
         private const int WmNcLButtonDown = 0x00A1;
         private const int HtCaption = 0x0002;
         private const int HtClient = 0x0001;
         private const int ResizeBorderWidth = 4;
+        private const int MinimumWindowWidth = 450;
+        private const int MinimumWindowHeight = 250;
         private const int WsThickFrame = 0x00040000;
         private const int WsMinimizeBox = 0x00020000;
         private const int WsMaximizeBox = 0x00010000;
@@ -33,6 +37,7 @@ namespace TarkovMonitor
         private const int DwmBorderColor = 34;
         private const int DwmCaptionColor = 35;
         private const int DwmRound = 2;
+        private const int DwmColorNone = unchecked((int)0xFFFFFFFE);
         private const int TarkovBorderColor = 0x003B555F;
         private const int TarkovHeaderColor = 0x002D2F2F;
 
@@ -82,6 +87,7 @@ namespace TarkovMonitor
         private readonly object trackerSessionNoticeLock = new();
         private long trackerSessionNoticeGeneration;
         private TrackerSessionNoticeIdentity? lastAnnouncedTrackerSession;
+        private int noActiveEftSessionNoticePublished;
         private readonly object tarkovDevDataRefreshLock = new();
         private CancellationTokenSource? tarkovDevDataRefreshCancellation;
         private long tarkovDevDataRefreshGeneration;
@@ -188,14 +194,18 @@ namespace TarkovMonitor
             {
                 if (!e.Profile.HasTarkovDevPlayerRoute)
                 {
+                    PublishNoActiveEftSessionNotice();
                     TarkovTracker.ResetActiveState();
                     TarkovDev.StopAutoUpdates();
-                    InvalidateTarkovDevData();
+                    // EFT can be running at "Select Profile and Mode" while the
+                    // watcher has not recovered a player route yet. Preserve the
+                    // read-only Tarkov.dev preload until a real profile is selected.
                     return;
                 }
 
                 if (!eft.IsGameRunning)
                 {
+                    PublishNoActiveEftSessionNotice();
                     // The startup scan is historical, not a live EFT session.
                     // It may still establish the read-only Tarkov.dev context so
                     // the user does not need to launch EFT just to verify the
@@ -206,6 +216,7 @@ namespace TarkovMonitor
                     return;
                 }
 
+                MarkEftSessionRecognized();
                 // Load the data set for the exact EFT session mode detected by
                 // the watcher. A later mode switch starts a new generation and
                 // invalidates this load before it can publish stale assets.
@@ -264,6 +275,12 @@ namespace TarkovMonitor
         }
 
         public bool IsMaximized => WindowState == FormWindowState.Maximized;
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            MinimumSize = new System.Drawing.Size(MinimumWindowWidth, MinimumWindowHeight);
+        }
 
         public void MinimizeWindow() => WindowState = FormWindowState.Minimized;
 
@@ -356,6 +373,11 @@ namespace TarkovMonitor
             {
                 Activate();
             }
+
+            // DWM can recreate the native frame when the hidden host is
+            // revealed. Reapply the state-aware color after that transition
+            // so the temporary white frame is not left behind.
+            BeginInvoke(new Action(ApplyWindowFrameAttributes));
         }
 
         public void BeginWindowDrag()
@@ -376,6 +398,29 @@ namespace TarkovMonitor
                 SwpNoSize | SwpNoMove | SwpNoZOrder | SwpNoActivate | SwpFrameChanged);
         }
 
+        private void ApplyWindowFrameAttributes()
+        {
+            if (!IsHandleCreated)
+            {
+                return;
+            }
+
+            var cornerPreference = DwmRound;
+            DwmSetWindowAttribute(Handle, DwmWindowCornerPreference, ref cornerPreference, sizeof(int));
+
+            // Keep the accepted gold frame around restored windows while
+            // suppressing the native frame only for maximized windows.
+            // WS_THICKFRAME remains enabled for Windows snap/resize behavior;
+            // WM_NCACTIVATE below prevents it from being repainted white.
+            var borderColor = WindowState == FormWindowState.Maximized
+                ? DwmColorNone
+                : TarkovBorderColor;
+            DwmSetWindowAttribute(Handle, DwmBorderColor, ref borderColor, sizeof(int));
+
+            var captionColor = TarkovHeaderColor;
+            DwmSetWindowAttribute(Handle, DwmCaptionColor, ref captionColor, sizeof(int));
+        }
+
         public void BeginWindowResize(int hitTest)
         {
             if (WindowState != FormWindowState.Normal || !IsResizeHit(hitTest))
@@ -390,20 +435,34 @@ namespace TarkovMonitor
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-
-            var cornerPreference = DwmRound;
-            DwmSetWindowAttribute(Handle, DwmWindowCornerPreference, ref cornerPreference, sizeof(int));
-
-            var borderColor = TarkovBorderColor;
-            DwmSetWindowAttribute(Handle, DwmBorderColor, ref borderColor, sizeof(int));
-
-            var captionColor = TarkovHeaderColor;
-            DwmSetWindowAttribute(Handle, DwmCaptionColor, ref captionColor, sizeof(int));
+            // Apply the borderless client frame immediately. Without an
+            // initial SWP_FRAMECHANGED, DWM can keep the standard resize
+            // frame until the first mouse hit-test or window-state change.
+            RefreshNormalWindowFrame();
+            ApplyWindowFrameAttributes();
         }
 
         protected override void WndProc(ref Message message)
         {
-            if (message.Msg == WmNcCalcSize && message.WParam != IntPtr.Zero && WindowState == FormWindowState.Normal)
+            if (message.Msg == WmNcPaint)
+            {
+                // The client area is the complete custom frame. Do not let
+                // DefWindowProc paint the native resize border over it.
+                message.Result = IntPtr.Zero;
+                return;
+            }
+
+            if (message.Msg == WmNcActivate)
+            {
+                // DefWindowProc repaints the native non-client frame during
+                // activation. Keep activation state while preventing that
+                // repaint from restoring the white resize border.
+                ApplyWindowFrameAttributes();
+                message.Result = (IntPtr)1;
+                return;
+            }
+
+            if (message.Msg == WmNcCalcSize && message.WParam != IntPtr.Zero)
             {
                 message.Result = IntPtr.Zero;
                 return;
@@ -483,35 +542,66 @@ namespace TarkovMonitor
         private void Eft_ProfileChanged(object? sender, ProfileEventArgs e)
         {
             var profileSnapshot = e.Profile.Snapshot();
-            _ = RefreshTarkovDevApiData(profileSnapshot);
+            if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
+            {
+                MarkEftSessionRecognized();
+            }
+            else
+            {
+                PublishNoActiveEftSessionNotice();
+            }
+            if (profileSnapshot.HasTarkovDevPlayerRoute)
+            {
+                _ = RefreshTarkovDevApiData(profileSnapshot, allowPersistedProfile: !eft.IsGameRunning);
+            }
             if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
             {
                 TarkovDev.StartAutoUpdates();
+                _ = InitializeProgress(profileSnapshot, announceSession: true);
             }
             else
             {
                 TarkovDev.StopAutoUpdates();
+                if (!eft.IsGameRunning)
+                {
+                    TarkovTracker.DeactivateProfile();
+                }
             }
-            _ = InitializeProgress(profileSnapshot, announceSession: true);
         }
 
         private void Eft_ProfileReady(object? sender, ProfileEventArgs e)
         {
             var profileSnapshot = e.Profile.Snapshot();
-            _ = RefreshTarkovDevApiData(profileSnapshot);
+            if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
+            {
+                MarkEftSessionRecognized();
+            }
+            else
+            {
+                PublishNoActiveEftSessionNotice();
+            }
+            if (profileSnapshot.HasTarkovDevPlayerRoute)
+            {
+                _ = RefreshTarkovDevApiData(profileSnapshot, allowPersistedProfile: !eft.IsGameRunning);
+            }
             if (profileSnapshot.HasTarkovDevPlayerRoute && eft.IsGameRunning)
             {
                 TarkovDev.StartAutoUpdates();
+                _ = InitializeProgress(profileSnapshot, announceSession: true);
             }
             else
             {
                 TarkovDev.StopAutoUpdates();
+                if (!eft.IsGameRunning)
+                {
+                    TarkovTracker.DeactivateProfile();
+                }
             }
-            _ = InitializeProgress(profileSnapshot, announceSession: true);
         }
 
         private void Eft_GameStopped(object? sender, EventArgs e)
         {
+            PublishNoActiveEftSessionNotice();
             TarkovTracker.DeactivateProfile();
             TarkovDev.StopAutoUpdates();
             InvalidateTarkovDevData();
@@ -656,6 +746,11 @@ namespace TarkovMonitor
         {
             base.OnShown(e);
 
+            // DWM can recreate the native frame while the hidden host is
+            // being shown. Reapply the state-aware color after that transition
+            // so the temporary white frame is not left behind.
+            BeginInvoke(new Action(ApplyWindowFrameAttributes));
+
             var startedUtc = DateTime.UtcNow;
             try
             {
@@ -696,6 +791,10 @@ namespace TarkovMonitor
                     _ = RefreshTarkovDevApiData(lastKnownProfile, allowPersistedProfile: true);
                 }
                 gameWatcherStarted = eft.Start();
+                if (!eft.IsGameRunning)
+                {
+                    PublishNoActiveEftSessionNotice();
+                }
             }
             catch (Exception ex)
             {
@@ -953,7 +1052,6 @@ namespace TarkovMonitor
 
             CancellationTokenSource refreshCancellation;
             long refreshGeneration;
-            Profile? previousProfile;
             lock (tarkovDevDataRefreshLock)
             {
                 if (tarkovDevDataProfile != null
@@ -968,15 +1066,8 @@ namespace TarkovMonitor
                 tarkovDevDataRefreshCancellation?.Cancel();
                 refreshCancellation = new CancellationTokenSource();
                 tarkovDevDataRefreshCancellation = refreshCancellation;
-                previousProfile = tarkovDevDataProfile;
                 tarkovDevDataProfile = profileSnapshot;
 
-                if (previousProfile == null
-                    || !ProfilesMatch(previousProfile, profileSnapshot)
-                    || TarkovDev.LoadedProfileType != profileSnapshot.Type)
-                {
-                    TarkovDev.ClearApiData();
-                }
             }
 
             var published = false;
@@ -992,8 +1083,16 @@ namespace TarkovMonitor
                         return;
                     }
 
-                    TarkovDev.PublishApiData(data);
+                    TarkovDev.PublishApiData(data, profileSnapshot);
                     published = true;
+                }
+
+                if (eft.IsGameRunning && !allowPersistedProfile)
+                {
+                    // Delay only the current-session Tarkov.dev notification so
+                    // the session/progress messages can appear first. Do not
+                    // delay startup preload or change callback sequencing.
+                    await Task.Delay(TimeSpan.FromMilliseconds(1000), refreshCancellation.Token);
                 }
 
                 messageLog.AddMessage(
@@ -1061,7 +1160,23 @@ namespace TarkovMonitor
         {
             if (eft.IsGameRunning)
             {
-                return IsCurrentProfile(expectedProfile);
+                if (IsCurrentProfile(expectedProfile))
+                {
+                    return true;
+                }
+
+                // While EFT is waiting at profile selection, there is no live
+                // player route to own the refresh. Permit only the persisted
+                // read-only preload; a selected live profile must supersede it.
+                if (!allowPersistedProfile
+                    || GameWatcher.CurrentProfile.Snapshot().HasTarkovDevPlayerRoute)
+                {
+                    return false;
+                }
+
+                var waitingProfile = TarkovTracker.GetLastKnownOrgProfile();
+                return waitingProfile != null
+                    && ProfilesMatch(waitingProfile, expectedProfile);
             }
 
             if (!allowPersistedProfile)
@@ -1089,8 +1204,22 @@ namespace TarkovMonitor
                 tarkovDevDataRefreshCancellation?.Cancel();
                 tarkovDevDataRefreshCancellation = null;
                 tarkovDevDataProfile = null;
-                TarkovDev.ClearApiData();
             }
+        }
+
+        private void PublishNoActiveEftSessionNotice()
+        {
+            if (Interlocked.Exchange(ref noActiveEftSessionNoticePublished, 1) == 0)
+            {
+                messageLog.AddMessage(
+                    localizationService.GetString("NoActiveEftSessionRecognized"),
+                    "info");
+            }
+        }
+
+        private void MarkEftSessionRecognized()
+        {
+            Volatile.Write(ref noActiveEftSessionNoticePublished, 0);
         }
 
         private async Task InitializeProgress(Profile? profile = null, bool announceSession = true)
@@ -1150,7 +1279,7 @@ namespace TarkovMonitor
             }
 
             messageLog.AddProtectedMessage(
-                $"EFT session confirmed - Session: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.",
+                $"EFT session confirmed: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.",
                 "info",
                 new[]
                 {
@@ -1602,9 +1731,10 @@ namespace TarkovMonitor
                     var nextWindowState = WindowState;
                     lastPublishedWindowState = nextWindowState;
 
-                    if (previousWindowState == FormWindowState.Maximized && nextWindowState == FormWindowState.Normal)
+                    if (previousWindowState != nextWindowState)
                     {
                         RefreshNormalWindowFrame();
+                        ApplyWindowFrameAttributes();
                     }
 
                     WindowStateChanged?.Invoke(this, EventArgs.Empty);
