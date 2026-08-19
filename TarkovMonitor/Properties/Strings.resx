@@ -315,6 +315,12 @@
   <data name="CurrentProfile" xml:space="preserve">
     <value>Active profile</value>
   </data>
+    <data name="LastProfileLoaded" xml:space="preserve">
+      <value>Last/Current Profile</value>
+    </data>
+  <data name="NoActiveEftSessionRecognized" xml:space="preserve">
+    <value>No active session recognized, please launch Escape From Tarkov.</value>
+  </data>
   <data name="IfYouWantToUpdateProgressForDifferentProfile" xml:space="preserve">
     <value>If you want to update progress for a different profile, activate that profile in the game.</value>
   </data>
@@ -394,7 +400,7 @@
     <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev for {5}.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>To track task progress automatically, assign your Tarkov Tracker token in Settings.</value>
+    <value>API key not assigned. To track task progress automatically, please import or assign an API key in Settings.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Using the {0} profile.</value>
