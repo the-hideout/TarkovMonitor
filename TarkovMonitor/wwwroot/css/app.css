@@ -82,6 +82,24 @@ body {
     color: #d7c996 !important;
 }
 
+.tm-input .mud-input-outlined-border {
+    border-color: rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.tm-input:hover .mud-input-outlined-border {
+    border-color: rgba(152, 138, 102, 0.78) !important;
+}
+
+.tm-input:focus-within .mud-input-outlined-border {
+    border-color: #988a66 !important;
+}
+
+.tm-input .mud-input-adornment {
+    color: #988a66;
+}
+
 .tm-input .mud-input.mud-input-underline:before {
     background-color: transparent;
     border-bottom-color: rgba(255, 255, 255, 0.28);
@@ -233,6 +251,8 @@ body {
     border-radius: 10px;
     background: linear-gradient(145deg, #232428, #16171a);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38), 0 3px 10px rgba(0, 0, 0, 0.24);
+    /* MudBlazor's list owns dropdown scrolling. The popover only clips its
+       rounded surface so it cannot create a second scrollbar. */
     overflow: hidden;
 }
 
@@ -250,6 +270,8 @@ body {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
     scrollbar-color: rgba(143, 132, 99, 0.78) rgba(255, 255, 255, 0.04);
     scrollbar-width: thin;
 }
@@ -262,9 +284,12 @@ body {
     border-radius: 7px;
     color: rgba(255, 255, 255, 0.82);
     line-height: 1.25;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
     overflow: visible;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
+    overflow-wrap: normal;
     transition: background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
 }
 
@@ -331,14 +356,14 @@ html.tm-keyboard-input .tm-select-list .mud-list-item.mud-selected-item[tabindex
 .tm-menu-list .mud-menu-item .mud-menu-item-text {
     display: block;
     flex: 1 1 auto;
-    min-width: 0;
-    max-width: 100%;
+    min-width: max-content;
+    max-width: none;
     padding-right: 0.25rem;
     overflow: visible !important;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: normal;
+    word-break: normal;
     text-overflow: clip !important;
-    white-space: normal !important;
+    white-space: nowrap !important;
 }
 
 .tm-message-actions {
@@ -437,8 +462,22 @@ html.tm-keyboard-input .tm-select-list .mud-list-item.mud-selected-item[tabindex
 }
 
 .dashboard-notification-surface {
+    display: flex;
+    flex-direction: column;
     min-height: calc(100% - 8px);
-    margin: 0 16px 8px;
+    margin: 0 0 8px 16px;
+}
+
+.dashboard-message-stack {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    padding-right: 0.75rem !important;
+    justify-content: flex-end !important;
+}
+
+.dashboard-message__paper--text-only {
+    padding-bottom: 0 !important;
 }
 
 .dashboard-page-grid,

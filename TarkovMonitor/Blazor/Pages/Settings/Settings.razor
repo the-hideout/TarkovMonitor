@@ -144,7 +144,6 @@
                 {
                     <span>No EFT profile detected.</span>
                 }
-                <MudText Typo="Typo.body2" Class="tracker-key-intro">Add a TarkovTracker.org API key. Tarkov Monitor verifies the key and its game mode before it can be assigned to an EFT profile.</MudText>
                 @foreach (var warning in TrackerStorageWarnings)
                 {
                     <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">@warning</MudAlert>
@@ -346,7 +345,7 @@
     <MudItem xs="12" lg="6" xl="4">
         <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
             <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.SettingsRemote" Class="mr-2" /><span class="tm-card-heading-text">@TarkovDevWebsiteRemoteTitle</span></MudText>
-            <MudTextField @bind-Value="@RemoteID" MaxLength="4" Label="@LocalizationService.GetString("RemoteID")" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentPaste" OnAdornmentClick="PasteRemoteClick"></MudTextField>
+            <MudTextField @bind-Value="@RemoteID" MaxLength="4" Label="@LocalizationService.GetString("RemoteID")" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.ContentPaste" OnAdornmentClick="PasteRemoteClick" Class="tm-input tm-input--full"></MudTextField>
             <div>
                 <MudSwitch @bind-Value="@NavigateMapSwitch" Label="@LocalizationService.GetString("SwitchToTarkovDevMapOnRaidLoad")" Color="Color.Info" />
             </div>
@@ -421,6 +420,12 @@
     private string currentProfileName = GameWatcher.CurrentProfile.HasTarkovDevPlayerRoute
         ? GameWatcher.CurrentProfile.AccountId
         : "";
+    private string CurrentProfileName {
+        get
+        {
+            return currentProfileName;
+        }
+    }
 
     private RenderFragment TarkovDevWebsiteRemoteTitle => builder =>
     {
@@ -447,13 +452,6 @@
         builder.AddContent(sequence++, title[(linkStart + linkText.Length)..].TrimStart());
         builder.CloseElement();
     };
-    private string CurrentProfileName {
-        get
-        {
-            return currentProfileName;
-        }
-    }
-
     private static string GetProfileTypeDisplayName(ProfileType profileType) => profileType switch
     {
         ProfileType.PVE => "PVE",
