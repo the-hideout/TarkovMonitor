@@ -984,7 +984,15 @@ namespace TarkovMonitor
 
         private void TarkovTracker_ProgressRetrieved(object? sender, TarkovTracker.ProgressRetrievedEventArgs e)
         {
-            messageLog.AddProtectedMessage(
+            messageLog.AddMessage(
+                string.Format(
+                    localizationService.GetString("RetrievedDataFromTarkovTracker"),
+                    e.Progress.data.displayName,
+                    e.Progress.data.playerLevel,
+                    e.Progress.data.pmcFaction,
+                    TarkovTracker.GetSessionDisplayName(e.SessionMode)),
+                "update");
+            /*messageLog.AddProtectedMessage(
                 string.Format(
                     localizationService.GetString("RetrievedDataFromTarkovTracker"),
                     e.Progress.data.displayName,
@@ -996,7 +1004,7 @@ namespace TarkovMonitor
                 {
                     new MonitorMessageProtectedValue("API token", e.ApiKey),
                 },
-                $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
+                $"https://{Properties.Settings.Default.tarkovTrackerDomain}");*/
         }
 
         private void Eft_GroupStaleEvent(object? sender, EventArgs e)
@@ -1278,14 +1286,15 @@ namespace TarkovMonitor
                 lastAnnouncedTrackerSession = identity;
             }
 
-            messageLog.AddProtectedMessage(
+            messageLog.AddMessage($"EFT session confirmed: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.", "info");
+            /*messageLog.AddProtectedMessage(
                 $"EFT session confirmed: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.",
                 "info",
                 new[]
                 {
                     new MonitorMessageProtectedValue("Account ID", profileSnapshot.AccountId),
                     new MonitorMessageProtectedValue("Profile ID", profileSnapshot.Id),
-                });
+                });*/
             if (TarkovTracker.GetTokenForProfile(profileSnapshot) == "")
             {
                 messageLog.AddMessage(localizationService.GetString("ToAutomaticallyTrackTaskProgress"));
