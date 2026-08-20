@@ -454,17 +454,17 @@ namespace TarkovMonitor
                     TarkovTracker.GetTokenPrefix(normalizedToken),
                     StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException("The verified API key and mode prefix do not match.", nameof(token));
+                throw new ArgumentException("The verified API token and mode prefix do not match.", nameof(token));
             }
             if (keys.Any(key => TokenIdentityMatches(key.Token, normalizedToken)))
             {
                 throw new TarkovTracker.DuplicateImportedTokenException(
-                    $"This {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key is already saved locally.");
+                    $"This {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API token is already saved locally.");
             }
             if (bindingProfile == null && HasPendingKey(normalizedPrefix))
             {
                 throw new InvalidOperationException(
-                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API key before importing another one.");
+                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API token before importing another one.");
             }
 
             var key = new TarkovTrackerOrgKey
@@ -492,7 +492,7 @@ namespace TarkovMonitor
             {
                 keys.RemoveAll(candidate => string.Equals(candidate.Id, key.Id, StringComparison.Ordinal));
                 throw new InvalidOperationException(
-                    $"The {TarkovTracker.GetPrefixDisplayName(prefix)} API key does not match the selected {bindingProfile.DisplayName} profile.");
+                    $"The {TarkovTracker.GetPrefixDisplayName(prefix)} API token does not match the selected {bindingProfile.DisplayName} profile.");
             }
             return key;
         }
@@ -502,20 +502,20 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (key.IsBound)
             {
-                throw new InvalidOperationException("This API key is already assigned.");
+                throw new InvalidOperationException("This API token is already assigned.");
             }
             if (!IsVerified(key))
             {
-                throw new InvalidOperationException("This API key must be verified before it can be assigned.");
+                throw new InvalidOperationException("This API token must be verified before it can be assigned.");
             }
             if (!string.IsNullOrEmpty(GetStoreIssue(key)))
             {
-                throw new InvalidOperationException("This API key record must be repaired before it can be assigned.");
+                throw new InvalidOperationException("This API token record must be repaired before it can be assigned.");
             }
             if (!CanBindToProfile(key, profile))
             {
                 throw new InvalidOperationException(
-                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key cannot be assigned to the selected {profile.DisplayName} profile.");
+                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API token cannot be assigned to the selected {profile.DisplayName} profile.");
             }
 
             ApplyBinding(key, profile);
@@ -583,7 +583,7 @@ namespace TarkovMonitor
                 }
                 catch (Exception ex) when (ex is CryptographicException or FormatException)
                 {
-                    throw new JsonException("A stored TarkovTracker.org API key could not be decrypted.", ex);
+                    throw new JsonException("A stored TarkovTracker.org API token could not be decrypted.", ex);
                 }
             }
             else
@@ -640,18 +640,18 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound)
             {
-                throw new InvalidOperationException("This API key is not assigned.");
+                throw new InvalidOperationException("This API token is not assigned.");
             }
 
             var target = GetKnownProfile(accountId, profileId, sessionMode);
             if (!CanBindToProfile(key, target))
             {
                 throw new InvalidOperationException(
-                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key cannot be assigned to the selected {target.DisplayName} profile.");
+                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API token cannot be assigned to the selected {target.DisplayName} profile.");
             }
             if (BindingMatches(key, target))
             {
-                throw new InvalidOperationException("This API key is already assigned to that profile.");
+                throw new InvalidOperationException("This API token is already assigned to that profile.");
             }
 
             var previous = new Profile
@@ -670,7 +670,7 @@ namespace TarkovMonitor
             {
                 if (!CanBindToProfile(occupant, previous))
                 {
-                    throw new InvalidOperationException("The selected profile already has an incompatible API key.");
+                    throw new InvalidOperationException("The selected profile already has an incompatible API token.");
                 }
                 ApplyBinding(occupant, previous);
             }
@@ -688,14 +688,14 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound)
             {
-                throw new InvalidOperationException("This API key is already unassigned.");
+                throw new InvalidOperationException("This API token is already unassigned.");
             }
             if (keys.Any(candidate => !candidate.IsBound
                 && !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)
                 && string.Equals(candidate.Prefix, key.Prefix, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
-                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API key before unbinding another one.");
+                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API token before unbinding another one.");
             }
 
             var previousAccountId = key.AccountId;
@@ -713,7 +713,7 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound || !string.IsNullOrEmpty(GetStoreIssue(key)))
             {
-                throw new InvalidOperationException("Assign this API key before setting its profile nickname.");
+                throw new InvalidOperationException("Assign this API token before setting its profile nickname.");
             }
 
             var normalizedNickname = NormalizeNickname(nickname);
@@ -732,7 +732,7 @@ namespace TarkovMonitor
                 && string.IsNullOrEmpty(GetStoreIssue(key))
                 && string.Equals(key.AccountId, accountId, StringComparison.Ordinal)))
             {
-                throw new InvalidOperationException("Assign an API key to this account before setting its nickname.");
+                throw new InvalidOperationException("Assign an API token to this account before setting its nickname.");
             }
 
             var normalizedAccountId = accountId.Trim();
@@ -987,14 +987,14 @@ namespace TarkovMonitor
                 && string.Equals(key.SessionMode, proposedKey.SessionMode, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
-                    "The selected EFT account, profile, and mode already have an assigned API key. Reassign, unbind, or remove it before assigning another key.");
+                    "The selected EFT account, profile, and mode already have an assigned API token. Reassign, unbind, or remove it before assigning another key.");
             }
         }
 
         private TarkovTrackerOrgKey GetMutableKey(string id)
         {
             return keys.FirstOrDefault(key => string.Equals(key.Id, id, StringComparison.Ordinal))
-                ?? throw new KeyNotFoundException("The saved API key was not found.");
+                ?? throw new KeyNotFoundException("The saved API token was not found.");
         }
 
         private static bool TokenIdentityMatches(string first, string second)

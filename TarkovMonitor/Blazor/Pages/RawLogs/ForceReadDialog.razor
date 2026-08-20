@@ -178,7 +178,7 @@
         if (string.IsNullOrWhiteSpace(TarkovTracker.GetTokenForProfile(breakpoint.Profile)))
         {
             messageLog.AddMessage(
-                $"A verified {breakpoint.Profile.DisplayName} TarkovTracker.org API key assigned to this exact EFT profile is required to read past logs.",
+                $"A verified {breakpoint.Profile.DisplayName} TarkovTracker.org API token assigned to this exact EFT profile is required to read past logs.",
                 "warning");
             return;
         }

@@ -19,7 +19,7 @@ namespace TarkovMonitor.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "18.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Strings {
@@ -61,7 +61,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Air Filter Audio Reminders.
+        ///   Looks up a localized string similar to Air filter reminders.
         /// </summary>
         internal static string AirFilterAudioReminders {
             get {
@@ -70,7 +70,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to API Token.
+        ///   Looks up a localized string similar to API token.
         /// </summary>
         internal static string APIToken {
             get {
@@ -88,7 +88,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Automatically delete taken screenshots after raid.
+        ///   Looks up a localized string similar to Delete raid screenshots automatically.
         /// </summary>
         internal static string AutomaticallyDeleteScreenshotsAfterRaid {
             get {
@@ -115,7 +115,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Choose the starting point from which to read logs.
+        ///   Looks up a localized string similar to Choose where to start reading logs.
         /// </summary>
         internal static string ChooseStartingPointHelperText {
             get {
@@ -124,7 +124,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Clear Data.
+        ///   Looks up a localized string similar to Clear data.
         /// </summary>
         internal static string ClearData {
             get {
@@ -133,7 +133,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Could not find the Escape From Tarkov installation location, or no logs exist..
+        ///   Looks up a localized string similar to Couldn’t find the Escape from Tarkov installation or any log files..
         /// </summary>
         internal static string CouldNotFindEFTInstallation {
             get {
@@ -142,7 +142,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Current profile.
+        ///   Looks up a localized string similar to Active profile.
         /// </summary>
         internal static string CurrentProfile {
             get {
@@ -151,7 +151,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Air Filter Off Sound.
+        ///   Looks up a localized string similar to Custom sound for air filter off.
         /// </summary>
         internal static string CustomAirFilterOffSound {
             get {
@@ -160,7 +160,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Air Filter On Sound.
+        ///   Looks up a localized string similar to Custom sound for air filter on.
         /// </summary>
         internal static string CustomAirFilterOnSound {
             get {
@@ -169,7 +169,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Log Data.
+        ///   Looks up a localized string similar to Custom log data.
         /// </summary>
         internal static string CustomLogData {
             get {
@@ -178,7 +178,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Match Found Sound.
+        ///   Looks up a localized string similar to Custom sound for match found.
         /// </summary>
         internal static string CustomMatchFoundSound {
             get {
@@ -187,7 +187,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Raid Starting Sound.
+        ///   Looks up a localized string similar to Custom sound for raid start.
         /// </summary>
         internal static string CustomRaidStartingSound {
             get {
@@ -196,7 +196,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Restart Tasks Sound.
+        ///   Looks up a localized string similar to Custom sound for task restart.
         /// </summary>
         internal static string CustomRestartTasksSound {
             get {
@@ -205,7 +205,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Runthrough Period Sound.
+        ///   Looks up a localized string similar to Custom sound for run-through.
         /// </summary>
         internal static string CustomRunthroughPeriodSound {
             get {
@@ -214,7 +214,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Scav Cooldown Sound.
+        ///   Looks up a localized string similar to Custom sound for Scav availability.
         /// </summary>
         internal static string CustomScavCooldownSound {
             get {
@@ -232,7 +232,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Data Collection.
+        ///   Looks up a localized string similar to Data collection.
         /// </summary>
         internal static string DataCollection {
             get {
@@ -277,7 +277,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Flea Market Sale.
+        ///   Looks up a localized string similar to Flea market sale.
         /// </summary>
         internal static string FleaMarketSale {
             get {
@@ -286,7 +286,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Flea Market Sales.
+        ///   Looks up a localized string similar to Flea market sales.
         /// </summary>
         internal static string FleaMarketSales {
             get {
@@ -313,7 +313,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Get A Token.
+        ///   Looks up a localized string similar to Get a token.
         /// </summary>
         internal static string GetAToken {
             get {
@@ -340,7 +340,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Initial Setup.
+        ///   Looks up a localized string similar to Initial setup.
         /// </summary>
         internal static string InitialSetup {
             get {
@@ -358,7 +358,16 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Logs Folder.
+        ///   Looks up a localized string similar to Last/Current Profile.
+        /// </summary>
+        internal static string LastProfileLoaded {
+            get {
+                return ResourceManager.GetString("LastProfileLoaded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Logs folder.
         /// </summary>
         internal static string LogsFolder {
             get {
@@ -367,7 +376,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Map to use for offline raids.
+        ///   Looks up a localized string similar to Map used for offline raids.
         /// </summary>
         internal static string MapToUseForOfflineRaids {
             get {
@@ -376,7 +385,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Match Found Audio Notification.
+        ///   Looks up a localized string similar to Match found notification.
         /// </summary>
         internal static string MatchFoundAudioNotification {
             get {
@@ -394,11 +403,20 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Minimize to System Tray.
+        ///   Looks up a localized string similar to Minimize to the system tray.
         /// </summary>
         internal static string MinimizeToSystemTray {
             get {
                 return ResourceManager.GetString("MinimizeToSystemTray", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No active session recognized, please launch Escape From Tarkov..
+        /// </summary>
+        internal static string NoActiveEftSessionRecognized {
+            get {
+                return ResourceManager.GetString("NoActiveEftSessionRecognized", resourceCulture);
             }
         }
         
@@ -430,7 +448,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Notifications playback device.
+        ///   Looks up a localized string similar to Notification playback device.
         /// </summary>
         internal static string NotificationsPlaybackDevice {
             get {
@@ -439,7 +457,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Offline Map.
+        ///   Looks up a localized string similar to Offline map.
         /// </summary>
         internal static string OfflineMap {
             get {
@@ -448,7 +466,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Ok.
+        ///   Looks up a localized string similar to OK.
         /// </summary>
         internal static string Ok {
             get {
@@ -457,7 +475,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Open Logs Folder.
+        ///   Looks up a localized string similar to Open logs folder.
         /// </summary>
         internal static string OpenLogsFolder {
             get {
@@ -493,7 +511,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Quest Item Reminder Audio Notification.
+        ///   Looks up a localized string similar to Quest item reminder.
         /// </summary>
         internal static string QuestItemReminderAudioNotification {
             get {
@@ -511,7 +529,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Raid Starting Audio Notification.
+        ///   Looks up a localized string similar to Raid start notification.
         /// </summary>
         internal static string RaidStartingAudioNotification {
             get {
@@ -520,7 +538,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Raw Logs.
+        ///   Looks up a localized string similar to Raw logs.
         /// </summary>
         internal static string RawLogs {
             get {
@@ -529,7 +547,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Read Past Logs.
+        ///   Looks up a localized string similar to Read past logs.
         /// </summary>
         internal static string ReadPastLogs {
             get {
@@ -538,7 +556,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Read Previous Logs.
+        ///   Looks up a localized string similar to Read previous logs.
         /// </summary>
         internal static string ReadPreviousLogs {
             get {
@@ -565,7 +583,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Reset to Default.
+        ///   Looks up a localized string similar to Reset to default.
         /// </summary>
         internal static string ResetToDefault {
             get {
@@ -574,7 +592,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Restart Tasks Audio Reminder.
+        ///   Looks up a localized string similar to Task restart reminder.
         /// </summary>
         internal static string RestartTasksAudioReminder {
             get {
@@ -583,7 +601,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev for {5}.
+        ///   Looks up a localized string similar to Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev for {5}..
         /// </summary>
         internal static string RetrievedDataFromTarkovDev {
             get {
@@ -592,7 +610,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Retrieved Tarkov Tracker progress for {0} (level {1}, {2}) ({3}).
+        ///   Looks up a localized string similar to Retrieved Tarkov Tracker progress for {0} (level {1}, {2}) ({3})..
         /// </summary>
         internal static string RetrievedDataFromTarkovTracker {
             get {
@@ -601,7 +619,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Runthrough Period.
+        ///   Looks up a localized string similar to Run-through period.
         /// </summary>
         internal static string RunthroughPeriod {
             get {
@@ -610,7 +628,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Runthrough Period Audio Reminder.
+        ///   Looks up a localized string similar to Run-through reminder.
         /// </summary>
         internal static string RunthroughPeriodAudioReminder {
             get {
@@ -619,7 +637,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Runthrough Time (HH:MM:SS).
+        ///   Looks up a localized string similar to Run-through time (HH:MM:SS).
         /// </summary>
         internal static string RunthroughTime {
             get {
@@ -637,7 +655,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Scav Cooldown.
+        ///   Looks up a localized string similar to Scav cooldown.
         /// </summary>
         internal static string ScavCooldown {
             get {
@@ -646,7 +664,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Scav Cooldown Reminders.
+        ///   Looks up a localized string similar to Scav cooldown reminders.
         /// </summary>
         internal static string ScavCooldownReminders {
             get {
@@ -655,7 +673,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Scav Karma.
+        ///   Looks up a localized string similar to Scav karma.
         /// </summary>
         internal static string ScavKarma {
             get {
@@ -664,7 +682,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Select Language.
+        ///   Looks up a localized string similar to Language.
         /// </summary>
         internal static string SelectLanguage {
             get {
@@ -673,7 +691,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Select a starting point to read previous logs and update your quest progress. All logs from that point forward for the same profile will be read and that cumulative progress will be synced to Tarkov Tracker..
+        ///   Looks up a localized string similar to Choose a starting point. Tarkov Monitor will read logs from that point forward for the active profile and sync the resulting quest progress to Tarkov Tracker..
         /// </summary>
         internal static string SelectStartingPointDescription {
             get {
@@ -691,7 +709,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Skip Tarkov.dev Splash Logo.
+        ///   Looks up a localized string similar to Skip the Tarkov.dev splash logo.
         /// </summary>
         internal static string SkipTarkovDevSplashLogo {
             get {
@@ -718,7 +736,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Start Tarkov Monitor Minimized.
+        ///   Looks up a localized string similar to Start Tarkov Monitor minimized.
         /// </summary>
         internal static string StartTarkovMonitorMinimized {
             get {
@@ -736,7 +754,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Stay on Top.
+        ///   Looks up a localized string similar to Stay on top.
         /// </summary>
         internal static string StayOnTop {
             get {
@@ -754,7 +772,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Submit Queue Time Data.
+        ///   Looks up a localized string similar to Submit queue-time data.
         /// </summary>
         internal static string SubmitQueueTimeData {
             get {
@@ -763,7 +781,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Switch to Tarkov.dev map on position update (via screenshot).
+        ///   Looks up a localized string similar to Switch to the Tarkov.dev map when your position updates (via screenshot).
         /// </summary>
         internal static string SwitchToTarkovDevMapOnPositionUpdate {
             get {
@@ -772,7 +790,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Switch to Tarkov.dev map on raid load.
+        ///   Looks up a localized string similar to Switch to the Tarkov.dev map when a raid loads.
         /// </summary>
         internal static string SwitchToTarkovDevMapOnRaidLoad {
             get {
@@ -781,7 +799,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Tarkov.dev Website Remote.
+        ///   Looks up a localized string similar to Tarkov.dev website remote.
         /// </summary>
         internal static string TarkovDevWebsiteRemote {
             get {
@@ -808,7 +826,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Tarkov Tracker Service.
+        ///   Looks up a localized string similar to Tarkov Tracker service.
         /// </summary>
         internal static string TarkovTrackerService {
             get {
@@ -817,7 +835,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Tarkov Tracker service to use.
+        ///   Looks up a localized string similar to Choose the Tarkov Tracker service.
         /// </summary>
         internal static string TarkovTrackerServiceHelperText {
             get {
@@ -826,7 +844,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Test Token.
+        ///   Looks up a localized string similar to Test token.
         /// </summary>
         internal static string TestToken {
             get {
@@ -835,7 +853,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to There aren&apos;t any messages yet..
+        ///   Looks up a localized string similar to No messages yet..
         /// </summary>
         internal static string ThereArentAnyMessagesYet {
             get {
@@ -844,7 +862,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Time In Raid.
+        ///   Looks up a localized string similar to Time in raid.
         /// </summary>
         internal static string TimeInRaid {
             get {
@@ -862,7 +880,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to To track task progress automatically, assign your Tarkov Tracker token in Settings.
+        ///   Looks up a localized string similar to API token not assigned. To track task progress automatically, please import or assign an API token in Settings..
         /// </summary>
         internal static string ToAutomaticallyTrackTaskProgress {
             get {
@@ -880,7 +898,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Using {0} profile.
+        ///   Looks up a localized string similar to Using the {0} profile..
         /// </summary>
         internal static string UsingProfile {
             get {
@@ -889,7 +907,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to WARNING: You can mess up your Tarkov Tracker saved quest progress if you pick an invalid starting date, so proceed with caution..
+        ///   Looks up a localized string similar to Warning: Choosing the wrong starting date can overwrite your saved Tarkov Tracker quest progress..
         /// </summary>
         internal static string WarningMessage {
             get {
@@ -898,7 +916,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Window Behavior.
+        ///   Looks up a localized string similar to Window behavior.
         /// </summary>
         internal static string WindowBehavior {
             get {
@@ -907,7 +925,7 @@ namespace TarkovMonitor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to You aren&apos;t in a group or have party members yet..
+        ///   Looks up a localized string similar to You are not in a group, and no party members are available..
         /// </summary>
         internal static string YouArentInAGroupOrHavePartyMembersYet {
             get {

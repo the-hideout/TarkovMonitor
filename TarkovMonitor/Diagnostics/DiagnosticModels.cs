@@ -306,7 +306,7 @@ public sealed class DiagnosticsService
         }
 
         builder.AppendLine();
-        builder.AppendLine("Privacy: API keys, authorization headers, request bodies, IP addresses, account/profile identifiers, and full local paths are excluded or redacted. Review before sharing.");
+        builder.AppendLine("Privacy: API tokens, authorization headers, request bodies, IP addresses, account/profile identifiers, and full local paths are excluded or redacted. Review before sharing.");
         return DiagnosticRedactor.Sanitize(builder.ToString(), 64_000);
     }
 

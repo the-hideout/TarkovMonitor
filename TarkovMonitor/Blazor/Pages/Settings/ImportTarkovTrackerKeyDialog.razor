@@ -6,19 +6,19 @@
         <div class="tracker-dialog-note" role="note">
             <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" Class="tracker-dialog-note__icon" />
             <span class="tracker-dialog-note__copy">
-                <strong>Add a TarkovTracker.org API key.</strong>
+                <strong>Add a TarkovTracker.org API token.</strong>
                 <span>Tarkov Monitor verifies the key and identifies its game mode before saving it as Unassigned.</span>
             </span>
         </div>
 
         <div class="tracker-dialog-section-heading">
             <MudIcon Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" />
-            <span>API key</span>
+            <span>API token</span>
         </div>
         <div class="tracker-dialog-form-card">
             <MudTextField @bind-Value="apiKey"
                           Immediate="true"
-                          Label="TarkovTracker.org API key"
+                          Label="TarkovTracker.org API token"
                           InputType="@passwordInput"
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
@@ -31,6 +31,12 @@
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
             <MudAlert Severity="@messageSeverity" Dense="true" Class="mt-2">@errorMessage</MudAlert>
+            @if (importException is TarkovTracker.MissingWritePermissionTokenException)
+            {
+                <MudLink Href="@trackerTokenSettingsLink" Underline="Underline.None">
+                    <MudAlert Severity="@Severity.Info" Dense"true" Class="mt-2">@trackerTokenGenerateText</MudAlert>
+                </MudLink>
+            }
         }
     </DialogContent>
     <DialogActions>
@@ -66,6 +72,9 @@
     private bool showKey;
     private InputType passwordInput = InputType.Password;
     private string passwordIcon = Icons.Material.Filled.VisibilityOff;
+    private Exception importException;
+    private string trackerTokenSettingsLink = "https://tarkovtracker.org/settings#api";
+    private string trackerTokenGenerateText = "Click here to generate a new API token on Tarkov Tracker.";
 
     protected override void OnInitialized()
     {
@@ -94,25 +103,42 @@
         }
         catch (Exception ex)
         {
+            importException = ex;
             errorMessage = ex.Message;
-            messageSeverity = ex is TarkovTracker.DuplicateImportedTokenException
-                ? Severity.Info
-                : Severity.Error;
+            messageSeverity = Severity.Error;
+            if (ex is TarkovTracker.DuplicateImportedTokenException)
+            {
+                messageSeverity = Severity.Info;
+            }
+            if (ex is TarkovTracker.MissingWritePermissionTokenException)
+            {
+                messageSeverity = Severity.Warning;
+            }
             StartCooldownCountdown();
             if (cooldownSeconds > 0)
             {
-                var report = string.Join(Environment.NewLine,
-                    "TarkovTracker.org API key validation failed.",
-                    $"UTC time: {DateTimeOffset.UtcNow:O}",
-                    $"Tarkov Monitor version: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}",
-                    "Operation: Verify and save TarkovTracker.org API key",
-                    "Endpoint: GET https://api.tarkovtracker.org/token",
-                    $"Key type: {TarkovTracker.GetPrefixDisplayName(TarkovTracker.GetTokenPrefix(apiKey))}",
-                    $"Error type: {ex.GetType().Name}",
-                    $"Error: {ex.Message}",
-                    "The API key was intentionally excluded from this report.");
-                MessageLog.AddMessage(report, "exception");
-                errorMessage += " A sanitized error report was added to Messages so you can copy it when reporting the problem.";
+                if (messageSeverity == Severity.Error)
+                {
+                    var report = string.Join(Environment.NewLine,
+                        "TarkovTracker.org API token validation failed.",
+                        $"UTC time: {DateTimeOffset.UtcNow:O}",
+                        $"Tarkov Monitor version: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}",
+                        "Operation: Verify and save TarkovTracker.org API token",
+                        "Endpoint: GET https://api.tarkovtracker.org/token",
+                        $"Key type: {TarkovTracker.GetPrefixDisplayName(TarkovTracker.GetTokenPrefix(apiKey))}",
+                        $"Error type: {ex.GetType().Name}",
+                        $"Error: {ex.Message}",
+                        "The API token was intentionally excluded from this report.");
+                    MessageLog.AddMessage(report, "exception");
+                    errorMessage += " A sanitized error report was added to Messages so you can copy it when reporting the problem.";
+                }
+                else if (ex is TarkovTracker.MissingWritePermissionTokenException)
+                {
+                    MessageLog.AddMessage(errorMessage, "info", trackerTokenSettingsLink, trackerTokenGenerateText);
+                } else
+                {
+                    MessageLog.AddMessage(errorMessage, "info");
+                }
             }
         }
         finally

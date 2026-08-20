@@ -994,7 +994,7 @@ namespace TarkovMonitor
                 "update",
                 new[]
                 {
-                    new MonitorMessageProtectedValue("API key", e.ApiKey),
+                    new MonitorMessageProtectedValue("API token", e.ApiKey),
                 },
                 $"https://{Properties.Settings.Default.tarkovTrackerDomain}");
         }

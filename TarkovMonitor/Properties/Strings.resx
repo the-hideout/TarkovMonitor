@@ -400,7 +400,7 @@
     <value>Retrieved {0} items, {1} maps, {2} traders, {3} tasks, and {4} hideout stations from Tarkov.dev for {5}.</value>
   </data>
   <data name="ToAutomaticallyTrackTaskProgress" xml:space="preserve">
-    <value>API key not assigned. To track task progress automatically, please import or assign an API key in Settings.</value>
+    <value>API token not assigned. To track task progress automatically, please import or assign an API token in Settings.</value>
   </data>
   <data name="UsingProfile" xml:space="preserve">
     <value>Using the {0} profile.</value>

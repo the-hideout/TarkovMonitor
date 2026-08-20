@@ -151,12 +151,12 @@
                 <div class="tracker-key-toolbar">
                     @if (CanImportOrgKey)
                     {
-                        <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="tracker-toolbar-button">Import API Key</MudButton>
+                        <MudButton @onclick="OpenImportTrackerKey" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="tracker-toolbar-button">Import API Token</MudButton>
                     }
                     else
                     {
                         <MudTooltip Text="@OrgImportBlockedReason">
-                            <span><MudButton Disabled="true" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="tracker-toolbar-button">Import API Key</MudButton></span>
+                            <span><MudButton Disabled="true" Variant="Variant.Filled" Color="Color.Info" StartIcon="@Icons.Material.Filled.Add" Class="tracker-toolbar-button">Import API Token</MudButton></span>
                         </MudTooltip>
                     }
                     <MudTooltip Text="@OrgProfileScanHelpText">
@@ -167,7 +167,7 @@
                 <div class="tracker-key-manager">
                     <div class="tracker-state-note tracker-manager-warning" role="note">
                         <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" Class="tracker-state-note-icon" />
-                        <span><b>Tarkov Monitor manages API keys automatically.</b> Only change an assignment if you understand how EFT profiles and game modes are linked.</span>
+                        <span><b>Tarkov Monitor manages API tokens automatically.</b> Only change an assignment if you understand how EFT profiles and game modes are linked.</span>
                     </div>
 
                     <div class="tracker-drawer mb-1">
@@ -184,7 +184,7 @@
                                 </div>
                                 @if (PendingOrgKeys.Count == 0)
                                 {
-                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No unassigned API key is stored.</MudText>
+                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No unassigned API token is stored.</MudText>
                                 }
                                 @foreach (var key in PendingOrgKeys)
                                 {
@@ -257,7 +257,7 @@
                                 </div>
                                 @if (BoundOrgKeys.Count == 0)
                                 {
-                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No TarkovTracker.org API keys are assigned.</MudText>
+                                    <MudText Typo="Typo.body2" Class="tracker-empty-state">No TarkovTracker.org API tokens are assigned.</MudText>
                                 }
                                 else
                                 {
@@ -1034,14 +1034,14 @@
     private async Task OpenImportTrackerKey()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<ImportTarkovTrackerKeyDialog>("Import TarkovTracker.org API key", options);
+        var dialog = await DialogService.ShowAsync<ImportTarkovTrackerKeyDialog>("Import TarkovTracker.org API token", options);
         var result = await dialog.Result;
         if (result is { Canceled: false, Data: TarkovTracker.ImportedToken importedToken })
         {
             messageLog.AddMessage(
                 importedToken.IsBound
-                    ? $"Imported, verified, and automatically assigned the {importedToken.DisplayName} TarkovTracker.org API key to the active EFT profile."
-                    : $"Imported and verified the {importedToken.DisplayName} TarkovTracker.org API key. It will auto-assign on the first matching EFT profile, or you can assign it manually.",
+                    ? $"Imported, verified, and automatically assigned the {importedToken.DisplayName} TarkovTracker.org API token to the active EFT profile."
+                    : $"Imported and verified the {importedToken.DisplayName} TarkovTracker.org API token. It will auto-assign on the first matching EFT profile, or you can assign it manually.",
                 "update");
             await ReactivateCurrentTrackerProfile();
             StateHasChanged();
@@ -1087,7 +1087,7 @@
             [nameof(AssignTarkovTrackerKeyDialog.IsReassign)] = reassign,
         };
         var dialog = await DialogService.ShowAsync<AssignTarkovTrackerKeyDialog>(
-            $"{(reassign ? "Reassign" : "Assign")} {key.DisplayName} API key",
+            $"{(reassign ? "Reassign" : "Assign")} {key.DisplayName} API token",
             parameters,
             options);
         var result = await dialog.Result;
@@ -1109,7 +1109,7 @@
                 {
                     var nicknameNotice = string.IsNullOrWhiteSpace(assignedKey.ProfileNickname) ? "" : " Its profile nickname moved with the key.";
                     AddProtectedKeyMessage(
-                        $"Reassigned the verified {assignedKey.DisplayName} TarkovTracker.org API key.{nicknameNotice}",
+                        $"Reassigned the verified {assignedKey.DisplayName} TarkovTracker.org API token.{nicknameNotice}",
                         ("Previous Account ID", key.AccountId),
                         ("Previous Profile ID", key.ProfileId),
                         ("New Account ID", assignedKey.AccountId),
@@ -1122,7 +1122,7 @@
                             ? ""
                             : " Profile nicknames moved with their keys.";
                     AddProtectedKeyMessage(
-                        $"Swapped the verified {assignedKey.DisplayName} TarkovTracker.org API keys between the two saved profiles.{nicknameNotice}",
+                        $"Swapped the verified {assignedKey.DisplayName} TarkovTracker.org API tokens between the two saved profiles.{nicknameNotice}",
                         ("First Account ID", key.AccountId),
                         ("First Profile ID", key.ProfileId),
                         ("Second Account ID", assignedKey.AccountId),
@@ -1133,7 +1133,7 @@
             {
                 assignedKey = await TarkovTracker.AssignOrgKey(key.Id, profile.AccountId, profile.ProfileId, profile.SessionMode);
                 AddProtectedKeyMessage(
-                    $"Assigned the verified {assignedKey.DisplayName} TarkovTracker.org API key manually.",
+                    $"Assigned the verified {assignedKey.DisplayName} TarkovTracker.org API token manually.",
                     ("Account ID", assignedKey.AccountId),
                     ("Profile ID", assignedKey.ProfileId));
             }
@@ -1145,7 +1145,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Could not {action.ToLowerInvariant()} the TarkovTracker.org API key: {ex.Message}", "exception");
+            messageLog.AddMessage($"Could not {action.ToLowerInvariant()} the TarkovTracker.org API token: {ex.Message}", "exception");
         }
         StateHasChanged();
     }
@@ -1219,7 +1219,7 @@
     {
         if (!await ConfirmOrgKeyAction(
             key,
-            $"Unbind {key.DisplayName} API key",
+            $"Unbind {key.DisplayName} API token",
             "Keep the key, but stop using it.",
             string.IsNullOrWhiteSpace(key.ProfileNickname)
                 ? "The key will remain saved and move to Unassigned and will be marked MANUAL ASSIGNMENT ONLY for its previous EFT account. Assign it explicitly to use it again."
@@ -1236,7 +1236,7 @@
             TarkovTracker.UnbindOrgKey(key.Id);
             var nicknameNotice = string.IsNullOrWhiteSpace(key.ProfileNickname) ? "" : " Its profile nickname was cleared.";
             AddProtectedKeyMessage(
-                $"Moved the verified {key.DisplayName} TarkovTracker.org API key to Unassigned.{nicknameNotice}",
+                $"Moved the verified {key.DisplayName} TarkovTracker.org API token to Unassigned.{nicknameNotice}",
                 ("Previous Account ID", key.AccountId),
                 ("Previous Profile ID", key.ProfileId));
             pendingDrawerExpanded = true;
@@ -1244,7 +1244,7 @@
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Could not unbind the TarkovTracker.org API key: {ex.Message}", "exception");
+            messageLog.AddMessage($"Could not unbind the TarkovTracker.org API token: {ex.Message}", "exception");
         }
         StateHasChanged();
     }
@@ -1253,8 +1253,8 @@
     {
         if (!await ConfirmOrgKeyAction(
             key,
-            $"Remove {key.DisplayName} API key",
-            "Delete this API key?",
+            $"Remove {key.DisplayName} API token",
+            "Delete this API token?",
             "This removes the key from Tarkov Monitor on this PC. To restore it, you will need to import it again.",
             "Remove",
             Icons.Material.Filled.DeleteOutline,
@@ -1267,26 +1267,26 @@
         {
             if (!TarkovTracker.RemoveOrgKey(key.Id))
             {
-                messageLog.AddMessage("This TarkovTracker.org API key has already been removed.", "warning");
+                messageLog.AddMessage("This TarkovTracker.org API token has already been removed.", "warning");
                 return;
             }
             if (key.IsBound)
             {
                 AddProtectedKeyMessage(
-                    $"Removed the verified {key.DisplayName} TarkovTracker.org API key from Tarkov Monitor.",
+                    $"Removed the verified {key.DisplayName} TarkovTracker.org API token from Tarkov Monitor.",
                     ("Previous Account ID", key.AccountId),
                     ("Previous Profile ID", key.ProfileId));
             }
             else
             {
                 var verificationState = key.IsVerified ? "verified" : "unverified recovered";
-                messageLog.AddMessage($"Removed the {verificationState} unassigned {key.DisplayName} TarkovTracker.org API key.", "update");
+                messageLog.AddMessage($"Removed the {verificationState} unassigned {key.DisplayName} TarkovTracker.org API token.", "update");
             }
             await ReactivateCurrentTrackerProfile();
         }
         catch (Exception ex)
         {
-            messageLog.AddMessage($"Could not remove the TarkovTracker.org API key: {ex.Message}", "exception");
+            messageLog.AddMessage($"Could not remove the TarkovTracker.org API token: {ex.Message}", "exception");
         }
         StateHasChanged();
     }
@@ -1341,7 +1341,7 @@
             [nameof(EditTarkovTrackerKeyDialog.KeyChangesDisabledReason)] = OrgKeyChangesBlockedReason,
         };
         var dialog = await DialogService.ShowAsync<EditTarkovTrackerKeyDialog>(
-            $"Edit {key.DisplayName} API key",
+            $"Edit {key.DisplayName} API token",
             parameters,
             new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true });
         var result = await dialog.Result;

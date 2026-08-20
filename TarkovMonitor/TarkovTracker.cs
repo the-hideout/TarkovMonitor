@@ -208,7 +208,7 @@ namespace TarkovMonitor
                     orgTokenStore = TarkovTrackerOrgStore.Empty();
                     orgTokenStoreLoaded = false;
                     storageWarnings.Add(
-                        $"TarkovTracker.org API keys could not be protected for this Windows user. The original value was preserved and key changes remain disabled until storage is repaired. {ex.Message}");
+                        $"TarkovTracker.org API tokens could not be protected for this Windows user. The original value was preserved and key changes remain disabled until storage is repaired. {ex.Message}");
                 }
             }
             if (modeTokenStoreLoaded && verificationStoreLoaded)
@@ -418,7 +418,7 @@ namespace TarkovMonitor
             var submitted = submittedToken.Trim();
             if (!IsSupportedOrgToken(submitted))
             {
-                throw new Exception("The TarkovTracker.org API key format is invalid.");
+                throw new Exception("The TarkovTracker.org API token format is invalid.");
             }
 
             var returnedToken = response.token?.Trim();
@@ -428,7 +428,7 @@ namespace TarkovMonitor
                     || !string.Equals(GetOrgTokenPrefix(submitted), GetOrgTokenPrefix(returnedToken), StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(submitted[4..], returnedToken[4..], StringComparison.Ordinal))
                 {
-                    throw new Exception("TarkovTracker returned a different API key than the one supplied.");
+                    throw new Exception("TarkovTracker returned a different API token than the one supplied.");
                 }
             }
 
@@ -442,12 +442,12 @@ namespace TarkovMonitor
                 "pve" => "PVE",
                 "pvp" or "regular" => "PVP",
                 "seasonal" or "pvpseason" or "pvp-season" or "sn1" or "szn" => "SZN",
-                _ => throw new Exception("TarkovTracker returned an unsupported game mode for this API key."),
+                _ => throw new Exception("TarkovTracker returned an unsupported game mode for this API token."),
             };
             var submittedPrefix = GetOrgTokenPrefix(submitted);
             if (!string.Equals(submittedPrefix, verifiedPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                throw new Exception($"This API key is {submittedPrefix}, but TarkovTracker verified it as {verifiedPrefix}.");
+                throw new Exception($"This API token is {submittedPrefix}, but TarkovTracker verified it as {verifiedPrefix}.");
             }
         }
 
@@ -740,7 +740,7 @@ namespace TarkovMonitor
                     || GetLegacyOrgCandidateLocked(suppliedPrefix) != null)
                 {
                     throw new InvalidOperationException(
-                        $"Assign or remove the unassigned {GetPrefixDisplayName(suppliedPrefix)} API key before importing another one.");
+                        $"Assign or remove the unassigned {GetPrefixDisplayName(suppliedPrefix)} API token before importing another one.");
                 }
             }
 
@@ -749,7 +749,7 @@ namespace TarkovMonitor
                 if (orgTokenStore.ContainsToken(trimmedToken))
                 {
                     throw new DuplicateImportedTokenException(
-                        $"This {GetPrefixDisplayName(suppliedPrefix)} API key is already saved locally.");
+                        $"This {GetPrefixDisplayName(suppliedPrefix)} API token is already saved locally.");
                 }
             }
             BeginImportValidationCall();
@@ -758,7 +758,7 @@ namespace TarkovMonitor
                 var response = await InspectToken(trimmedToken, "tarkovtracker.org");
                 if (!response.permissions.Contains("WP"))
                 {
-                    throw new Exception("This API key is valid but does not have write permission.");
+                    throw new MissingWritePermissionTokenException("This API token is valid but does not have write permission.");
                 }
                 var prefix = GetVerifiedPrefix(trimmedToken, response);
                 TarkovTrackerOrgKey savedKey;
@@ -769,7 +769,7 @@ namespace TarkovMonitor
                         || GetLegacyOrgCandidateLocked(prefix) != null)
                     {
                         throw new InvalidOperationException(
-                            $"Another unassigned {GetPrefixDisplayName(prefix)} API key was added before this import finished.");
+                            $"Another unassigned {GetPrefixDisplayName(prefix)} API token was added before this import finished.");
                     }
                     var activeProfile = GetActiveOrgBindingProfileLocked();
                     if (activeProfile != null && orgTokenStore.GetForProfile(activeProfile) != null)
@@ -831,7 +831,7 @@ namespace TarkovMonitor
                     var candidate = GetLegacyOrgCandidateByIdLocked(id);
                     if (candidate == null)
                     {
-                        throw new KeyNotFoundException("The pending API key was not found.");
+                        throw new KeyNotFoundException("The pending API token was not found.");
                     }
                     prefix = candidate.Prefix;
                     token = candidate.Token;
@@ -846,12 +846,12 @@ namespace TarkovMonitor
                         var response = await InspectToken(token, "tarkovtracker.org");
                         if (!response.permissions.Contains("WP"))
                         {
-                            throw new Exception("This API key is valid but does not have write permission.");
+                            throw new Exception("This API token is valid but does not have write permission.");
                         }
                         var verifiedPrefix = GetVerifiedPrefix(token, response);
                         if (!string.Equals(prefix, verifiedPrefix, StringComparison.OrdinalIgnoreCase))
                         {
-                            throw new Exception("The saved API key mode no longer matches its verified mode.");
+                            throw new Exception("The saved API token mode no longer matches its verified mode.");
                         }
                         CompleteImportValidationCall(true);
                     }
@@ -873,7 +873,7 @@ namespace TarkovMonitor
                         || !string.Equals(candidate.Prefix, prefix, StringComparison.OrdinalIgnoreCase)
                         || !string.Equals(candidate.Token, token, StringComparison.Ordinal))
                     {
-                        throw new InvalidOperationException("The unassigned API key changed before assignment finished.");
+                        throw new InvalidOperationException("The unassigned API token changed before assignment finished.");
                     }
 
                     var savedKey = PersistLegacyRecoveryBindingLocked(candidate, bindingProfile);
@@ -958,11 +958,11 @@ namespace TarkovMonitor
             {
                 EnsureOrgServiceGenerationLocked(expectedServiceGeneration);
                 var key = orgTokenStore.GetKey(id)
-                    ?? throw new KeyNotFoundException("The saved API key was not found.");
+                    ?? throw new KeyNotFoundException("The saved API token was not found.");
                 if (GetLegacyOrgCandidateLocked(key.Prefix) != null)
                 {
                     throw new InvalidOperationException(
-                        $"Assign or remove the unassigned {GetPrefixDisplayName(key.Prefix)} API key before unbinding another one.");
+                        $"Assign or remove the unassigned {GetPrefixDisplayName(key.Prefix)} API token before unbinding another one.");
                 }
                 var unboundKey = PersistOrgStoreChangeLocked(store => store.Unbind(id));
                 return ToSummary(unboundKey);
@@ -1258,7 +1258,7 @@ namespace TarkovMonitor
                         if (!modeTokens.TryGetValue(source.Key, out var modeToken)
                             || !string.Equals(modeToken?.Trim(), candidate.Token, StringComparison.Ordinal))
                         {
-                            throw new InvalidOperationException("The saved API key changed before its recovery source could be updated.");
+                            throw new InvalidOperationException("The saved API token changed before its recovery source could be updated.");
                         }
                         modeTokens.Remove(source.Key);
                         if (verificationStoreLoaded)
@@ -1270,7 +1270,7 @@ namespace TarkovMonitor
                         if (!tokens.TryGetValue(source.Key, out var profileToken)
                             || !string.Equals(profileToken?.Trim(), candidate.Token, StringComparison.Ordinal))
                         {
-                            throw new InvalidOperationException("The saved API key changed before its recovery source could be updated.");
+                            throw new InvalidOperationException("The saved API token changed before its recovery source could be updated.");
                         }
                         tokens.Remove(source.Key);
                         break;
@@ -1280,7 +1280,7 @@ namespace TarkovMonitor
                             candidate.Token,
                             StringComparison.Ordinal))
                         {
-                            throw new InvalidOperationException("The saved API key changed before its recovery source could be updated.");
+                            throw new InvalidOperationException("The saved API token changed before its recovery source could be updated.");
                         }
                         singletonToken = "";
                         Properties.Settings.Default.tarkovTrackerToken = "";
@@ -1427,15 +1427,15 @@ namespace TarkovMonitor
         {
             if (string.IsNullOrEmpty(apiToken))
             {
-                throw new Exception("Paste a TarkovTracker.org API key before validating.");
+                throw new Exception("Paste a TarkovTracker.org API token before validating.");
             }
             if (!string.Equals(apiToken, apiToken.Trim(), StringComparison.Ordinal))
             {
-                throw new Exception("The API key contains a space before or after the key. Copy it directly from TarkovTracker.org and try again.");
+                throw new Exception("The API token contains a space before or after the key. Copy it directly from TarkovTracker.org and try again.");
             }
             if (apiToken.Any(character => character > 127))
             {
-                throw new Exception("The API key contains a non-ASCII character. Copy it directly from TarkovTracker.org instead of typing or editing it manually.");
+                throw new Exception("The API token contains a non-ASCII character. Copy it directly from TarkovTracker.org instead of typing or editing it manually.");
             }
 
             var separatorIndex = apiToken.IndexOf('_');
@@ -1451,7 +1451,7 @@ namespace TarkovMonitor
                 || identifier.Length != 18
                 || !identifierIsHexadecimal)
             {
-                throw new Exception("The API key format is invalid. Expected PVP_, PVE_, or SZN_ followed by an 18-character hexadecimal identifier. Copy the key directly from TarkovTracker.org and try again.");
+                throw new Exception("The API token format is invalid. Expected PVP_, PVE_, or SZN_ followed by an 18-character hexadecimal identifier. Copy the key directly from TarkovTracker.org and try again.");
             }
         }
 
@@ -1463,11 +1463,11 @@ namespace TarkovMonitor
                 if (now < nextImportValidationAllowedAt)
                 {
                     var secondsRemaining = Math.Max(1, (int)Math.Ceiling((nextImportValidationAllowedAt - now).TotalSeconds));
-                    throw new Exception($"Please wait {secondsRemaining} seconds before verifying another API key.");
+                    throw new Exception($"Please wait {secondsRemaining} seconds before verifying another API token.");
                 }
                 if (importValidationInProgress)
                 {
-                    throw new Exception("An API key verification is already in progress.");
+                    throw new Exception("An API token verification is already in progress.");
                 }
                 importValidationInProgress = true;
             }
@@ -1523,6 +1523,10 @@ namespace TarkovMonitor
             {
             }
         }
+        public sealed class MissingWritePermissionTokenException : Exception
+        {
+            public MissingWritePermissionTokenException(string message) : base(message) { }
+        }
         public static void SetToken(string profileId, string token)
         {
             if (IsLegacyService)
@@ -1539,7 +1543,7 @@ namespace TarkovMonitor
             }
             if (IsImportableToken(token))
             {
-                throw new InvalidOperationException("This is a TarkovTracker.org API key. Switch to TarkovTracker.org to recover or manage it.");
+                throw new InvalidOperationException("This is a TarkovTracker.org API token. Switch to TarkovTracker.org to recover or manage it.");
             }
 
             lock (stateLock)
@@ -2229,7 +2233,7 @@ namespace TarkovMonitor
                 if (string.IsNullOrWhiteSpace(expectedPrefix)
                     || !string.Equals(expectedPrefix, GetOrgTokenPrefix(request.Token), StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new Exception("The active API key does not match the current EFT mode.");
+                    throw new Exception("The active API token does not match the current EFT mode.");
                 }
                 if (!response.permissions.Contains("WP"))
                 {

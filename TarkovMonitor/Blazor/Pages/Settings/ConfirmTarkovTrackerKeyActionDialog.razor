@@ -10,7 +10,7 @@
 
         <div class="tracker-dialog-section-heading">
             <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" />
-            <span>API key</span>
+            <span>API token</span>
         </div>
         <dl class="tracker-dialog-detail-card">
             <div class="tracker-dialog-detail-row">
@@ -18,7 +18,7 @@
                 <dd><span class="tracker-dialog-mode-badge @ModeBadgeClass">@Mode</span></dd>
             </div>
             <div class="tracker-dialog-detail-row">
-                <dt>API key</dt>
+                <dt>API token</dt>
                 <dd>@MaskedToken</dd>
             </div>
             <div class="tracker-dialog-detail-row">
@@ -41,7 +41,7 @@
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public string Heading { get; set; } = "Confirm this change";
-    [Parameter] public string Message { get; set; } = "Check the API key details before continuing.";
+    [Parameter] public string Message { get; set; } = "Check the API token details before continuing.";
     [Parameter] public string Mode { get; set; } = "";
     [Parameter] public string MaskedToken { get; set; } = "";
     [Parameter] public string AccountId { get; set; } = "";
