@@ -33,6 +33,9 @@ TarkovMonitor is an Escape from Tarkov companion application that provides usefu
    - Displays "Time in Raid"
    - Displays countdown for "Runthrough time"
    - Display countdown for Scav cooldown time
+-Automatic updates
+    - Checks GitHub for new TarkovMonitor releases
+    - Downloads, installs, and restarts the application after confirmation
 
 ## Installation
 
@@ -40,7 +43,20 @@ Head on over to the [latest release](https://github.com/the-hideout/TarkovMonito
 
 <img width="845" alt="Screenshot 2023-08-10 at 7 58 36 PM" src="https://github.com/the-hideout/TarkovMonitor/assets/23362539/86fbb000-25a3-4d71-bf39-45d622d61e8e">
 
-Once downloaded, extract the zip and run the `TarkovMonitor.exe` executable included within the bundle. Enjoy!
+Once downloaded, extract the zip and run the `TarkovMonitor.exe` executable included within the bundle. Do not run the executable from inside the zip file. Enjoy!
+
+### Automatic Updates
+
+TarkovMonitor checks for a new version when it starts and once every 24 hours while it remains open. When a new version is available, TarkovMonitor will ask whether you want to install it.
+
+If you choose **Yes**, TarkovMonitor will:
+
+1. Download the `TarkovMonitor.zip` asset from the latest official GitHub release.
+2. Extract the update to a temporary location.
+3. Close TarkovMonitor and replace the application files in the current installation folder.
+4. Restart TarkovMonitor automatically.
+
+The updater may request administrator permission if TarkovMonitor was extracted to a protected folder. Automatic updates are offered only for normal releases; GitHub releases marked as drafts or prereleases are ignored.
 
 ## Setup
 
