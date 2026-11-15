@@ -139,7 +139,7 @@
     <value>匆匆撤离时段音频通知</value>
   </data>
   <data name="AirFilterAudioReminders" xml:space="preserve">
-    <value>过滤吸收器音频通知</value>
+    <value>空气过滤器音频通知</value>
   </data>
   <data name="QuestItemReminderAudioNotification" xml:space="preserve">
     <value>任务物品提醒音频通知</value>
@@ -352,10 +352,10 @@
     <value>自定义匆匆撤离时段音效</value>
   </data>
   <data name="CustomAirFilterOnSound" xml:space="preserve">
-    <value>自定义过滤吸收器开启音效</value>
+    <value>自定义空气过滤器开启音效</value>
   </data>
   <data name="CustomAirFilterOffSound" xml:space="preserve">
-    <value>自定义过滤吸收器关闭音效</value>
+    <value>自定义空气过滤器关闭音效</value>
   </data>
   <data name="CustomScavCooldownSound" xml:space="preserve">
     <value>自定义 Scav 冷却音效</value>
