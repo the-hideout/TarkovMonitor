@@ -146,11 +146,11 @@ namespace TarkovMonitor
             LinkText = linkText ?? "";
             if (Type == "exception")
             {
-                Buttons.Add(new MonitorMessageButton("Copy diagnostics", CopyDiagnostics, Icons.Material.Filled.CopyAll)
+                Buttons.Add(new MonitorMessageButton(LocalizationService.T("CopyDiagnostics"), CopyDiagnostics, Icons.Material.Filled.CopyAll)
                 {
                     Color = MudBlazor.Color.Info,
                 });
-                Buttons.Add(new("Report", () => {
+                Buttons.Add(new(LocalizationService.T("Report"), () => {
                     var psi = new ProcessStartInfo
                     {
                         FileName = "https://github.com/the-hideout/TarkovMonitor/issues",
@@ -166,11 +166,11 @@ namespace TarkovMonitor
             try
             {
                 Clipboard.SetText(DiagnosticText ?? Message);
-                return new(true, "Sanitized diagnostics copied to the clipboard.");
+                return new(true, LocalizationService.T("DiagnosticsCopiedSnack"));
             }
             catch
             {
-                return new(false, "Diagnostics could not be copied to the clipboard. Try again.");
+                return new(false, LocalizationService.T("DiagnosticsCopyFailedSnack"));
             }
         }
 
@@ -278,10 +278,10 @@ namespace TarkovMonitor
 
     public class MonitorMessageButtonConfirm
     {
-        public string Title { get; set; } = "Confirm";
+        public string Title { get; set; } = LocalizationService.T("Confirm");
         public string Message { get; set; }
         public string YesText { get; set; }
-        public string CancelText { get; set; } = "Cancel";
+        public string CancelText { get; set; } = LocalizationService.T("Cancel");
         public MonitorMessageButtonConfirm(string title, string message, string yesText, string cancelText)
         {
             Title = title;

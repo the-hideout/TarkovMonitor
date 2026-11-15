@@ -543,7 +543,7 @@ namespace TarkovMonitor
                 JsonNode screenshotBind = keyBindings.FirstOrDefault((n) => n.AsObject()["keyName"].ToString() == "MakeScreenshot" && n.AsObject()["variants"].AsArray().Any(variant => variant.AsObject()["isAxis"]?.GetValue<bool>() == true || variant.AsObject()["keyCode"].AsArray().Count > 0));
                 if (screenshotBind == null)
                 {
-            messageLog.AddMessage("EFT has no screenshot key bound. Bind one to update your position on the Tarkov.dev map.", "info");
+            messageLog.AddMessage(localizationService.GetString("NoScreenshotKeybound"), "info");
                     return;
                 }
                 var variant = screenshotBind["variants"].AsArray().FirstOrDefault(variant => variant.AsObject()["keyCode"].AsArray().Count > 0);
@@ -555,12 +555,12 @@ namespace TarkovMonitor
                 var keys = variant["keyCode"].AsArray().Select(n => n.GetValue<string>());
                 if (keys.Any(key => key == "SysReq"))
                 {
-                    messageLog.AddMessage("The EFT screenshot key is not bound correctly. Rebind it to update your position on the Tarkov.dev map.", "info");
+                    messageLog.AddMessage(localizationService.GetString("ScreenshotKeyboundIncorrectly"), "info");
                 }
             }
             catch (Exception ex)
             {
-                RecordException("EFT screenshot keybind could not be checked.", "TM-WATCHER-002", "ReadControlSettings", ex, "GameWatcher", "ControlSettings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("ScreenshotKeybindCheckFailed"), "TM-WATCHER-002", "ReadControlSettings", ex, "GameWatcher", "ControlSettings", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -659,7 +659,7 @@ namespace TarkovMonitor
             {
                 Sound.Play("scav_available");
             }
-            messageLog.AddMessage("Your Scav is available.", "info");
+            messageLog.AddMessage(localizationService.GetString("ScavAvailable"), "info");
         }
 
         private void RunthroughTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -667,14 +667,13 @@ namespace TarkovMonitor
             if (Properties.Settings.Default.runthroughAlert)
             {
                 Sound.Play("runthrough_over");
-                messageLog.AddMessage("The run-through period is over.", "info");
+                messageLog.AddMessage(localizationService.GetString("RunthroughPeriodOver"), "info");
             }
         }
 
         private void Delete_Screenshots(RaidInfoEventArgs e, MonitorMessage? monMessage = null, MonitorMessageButton? screenshotButton = null)
         {
             var screenshotCount = e.RaidInfo.Screenshots.Count;
-            var screenshotLabel = screenshotCount == 1 ? "screenshot" : "screenshots";
             var startedUtc = DateTime.UtcNow;
             try
             {
@@ -682,11 +681,13 @@ namespace TarkovMonitor
                 {
                     File.Delete(Path.Combine(eft.ScreenshotsPath, filename));
                 }
-                messageLog.AddMessage($"Deleted {screenshotCount} raid {screenshotLabel}.");
+                messageLog.AddMessage(screenshotCount == 1
+                    ? localizationService.GetString("DeletedOneRaidScreenshot", screenshotCount)
+                    : localizationService.GetString("DeletedRaidScreenshots", screenshotCount));
             }
             catch (Exception ex)
             {
-                RecordException("Raid screenshots could not be deleted.", "TM-FILES-001", "DeleteRaidScreenshots", ex, "Filesystem", "ScreenshotCleanup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("RaidScreenshotsDeleteFailed"), "TM-FILES-001", "DeleteRaidScreenshots", ex, "Filesystem", "ScreenshotCleanup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
 
             if (monMessage is null || screenshotButton is null)
@@ -707,8 +708,11 @@ namespace TarkovMonitor
             }
 
             var screenshotCount = e.RaidInfo.Screenshots.Count;
-            var screenshotLabel = screenshotCount == 1 ? "raid screenshot" : "raid screenshots";
-            MonitorMessageButton screenshotButton = new($"Deleted {screenshotCount} {screenshotLabel}", Icons.Material.Filled.Delete);
+            MonitorMessageButton screenshotButton = new(
+                screenshotCount == 1
+                    ? localizationService.GetString("RaidScreenshotsButtonOne", screenshotCount)
+                    : localizationService.GetString("RaidScreenshotsButtonMany", screenshotCount),
+                Icons.Material.Filled.Delete);
             screenshotButton.OnClick = () =>
             {
                 Delete_Screenshots(e, monMessage, screenshotButton);
@@ -723,7 +727,7 @@ namespace TarkovMonitor
             await ResumeMediaAfterRaid();
             
             //groupManager.Stale = true;
-            MonitorMessage monMessage = new($"Raid ended on {e.RaidInfo.Map?.name}.");
+            MonitorMessage monMessage = new(localizationService.GetString("RaidEndedOn", e.RaidInfo.Map?.name));
 
             if (e.RaidInfo.Screenshots.Count > 0) {
                 Handle_Screenshots(e, monMessage);
@@ -793,7 +797,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("The window could not minimize at startup.", "TM-UI-001", "MinimizeAtStartup", ex, "UI", "Startup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("MinimizeAtStartupFailed"), "TM-UI-001", "MinimizeAtStartup", ex, "UI", "Startup", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -824,7 +828,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Game log monitoring could not start.", "TM-WATCHER-001", "StartGameWatcher", ex, "GameWatcher", "Startup");
+                RecordException(localizationService.GetString("GameLogMonitoringStartFailed"), "TM-WATCHER-001", "StartGameWatcher", ex, "GameWatcher", "Startup");
             }
 
             try
@@ -836,7 +840,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Update checking could not start.", "TM-UPDATE-002", "CheckForNewVersion", ex, "UpdateCheck", "Startup");
+                RecordException(localizationService.GetString("UpdateCheckStartFailed"), "TM-UPDATE-002", "CheckForNewVersion", ex, "UpdateCheck", "Startup");
             }
 
             // No need to do this at startup; it happens when a map is loaded
@@ -877,7 +881,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Current position on {e.RaidInfo.Map.name}: x={e.Position.X}, y={e.Position.Y}, z={e.Position.Z}.");
+            messageLog.AddMessage(localizationService.GetString("CurrentPositionOn", e.RaidInfo.Map.name, e.Position.X, e.Position.Y, e.Position.Z));
             List<JsonObject> socketMessages = new();
             socketMessages.Add(SocketClient.GetPlayerPositionMessage(e));
             //await SocketClient.UpdatePlayerPosition(e);
@@ -893,20 +897,20 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov.dev is unavailable. No messages were resent; the connection will be retried when needed.", "TM-SOCKET-002", "SendPlayerPosition", ex, "WebSocket", "PlayerPosition", endpoint: SocketClient.GetEndpointForDiagnostics(), durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc), incidentId: SocketClient.GetIncidentId(ex));
+                RecordException(localizationService.GetString("TarkovDevUnavailableNoResend"), "TM-SOCKET-002", "SendPlayerPosition", ex, "WebSocket", "PlayerPosition", endpoint: SocketClient.GetEndpointForDiagnostics(), durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc), incidentId: SocketClient.GetIncidentId(ex));
             }
         }
 
         private void UpdateCheck_Error(object? sender, ExceptionEventArgs e)
         {
-            RecordException("Update checking failed; copy diagnostics for details.", "TM-UPDATE-001", e.Context, e.Exception, "UpdateCheck", "Background");
+            RecordException(localizationService.GetString("UpdateCheckFailedCopyDiagnostics"), "TM-UPDATE-001", e.Context, e.Exception, "UpdateCheck", "Background");
         }
 
         private void TarkovDev_ExceptionThrown(object? sender, ExceptionEventArgs e)
         {
             var displayMessage = e.Context == "player profile lookup"
-                ? "Player profile lookup failed; copy diagnostics for details."
-                : "Automatic Tarkov.dev refresh failed; copy diagnostics for details.";
+                ? localizationService.GetString("PlayerProfileLookupFailed")
+                : localizationService.GetString("TarkovDevRefreshFailed");
             RecordException(
                 displayMessage,
                 e.Context == "player profile lookup" ? "TM-API-TARKOVDEV-002" : "TM-API-TARKOVDEV-001",
@@ -973,7 +977,7 @@ namespace TarkovMonitor
                 }
                 foreach (var task in failedTasks)
                 {
-                    messageLog.AddMessage($"Task failed: {task.name}. Restart required.", "quest", task.wikiLink);
+                    messageLog.AddMessage(localizationService.GetString("TaskFailedRestartRequired", task.name), "quest", task.wikiLink);
                 }
                 if (Properties.Settings.Default.restartTaskAlert)
                 {
@@ -982,7 +986,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Raid-start processing failed.", "TM-WATCHER-003", "RaidStartProcessing", ex, "GameWatcher", "RaidStart", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("RaidStartProcessingFailed"), "TM-WATCHER-003", "RaidStartProcessing", ex, "GameWatcher", "RaidStart", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1017,7 +1021,7 @@ namespace TarkovMonitor
             catch (Exception exception)
             {
                 RecordException(
-                    "Tarkov.dev is unavailable. No messages were resent; the connection will be retried when needed.",
+                    localizationService.GetString("TarkovDevUnavailableNoResend"),
                     "TM-SOCKET-002",
                     "NavigateToMap",
                     exception,
@@ -1041,7 +1045,7 @@ namespace TarkovMonitor
 
         private void Eft_GroupInviteAccept(object? sender, LogContentEventArgs<GroupLogContent> e)
         {
-            messageLog.AddMessage($"{e.LogContent.Info.Nickname} ({e.LogContent.Info.Side.ToUpper()} {e.LogContent.Info.Level}) accepted the group invite.", "group");
+            messageLog.AddMessage(localizationService.GetString("GroupInviteAccepted", e.LogContent.Info.Nickname, e.LogContent.Info.Side.ToUpper(), e.LogContent.Info.Level), "group");
         }
 
         private void Eft_GroupDisbanded(object? sender, EventArgs e)
@@ -1112,7 +1116,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Game log monitoring could not start.", "TM-WATCHER-001", "StartGameWatcher", ex, "GameWatcher", "Startup");
+                RecordException(localizationService.GetString("GameLogMonitoringStartFailed"), "TM-WATCHER-001", "StartGameWatcher", ex, "GameWatcher", "Startup");
             }
         }
 
@@ -1198,7 +1202,7 @@ namespace TarkovMonitor
                     }
                 }
 
-                RecordException($"Tarkov.dev data update failed for {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}; copy diagnostics for details.", "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev");
+                RecordException(localizationService.GetString("TarkovDevDataUpdateFailedForSession", TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)), "TM-API-TARKOVDEV-001", "UpdateApiData", ex, "TarkovDev", "DataUpdate", "https://json.tarkov.dev");
             }
             finally
             {
@@ -1354,7 +1358,7 @@ namespace TarkovMonitor
                 lastAnnouncedTrackerSession = identity;
             }
 
-            messageLog.AddMessage($"EFT session confirmed: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.", "info");
+            messageLog.AddMessage(localizationService.GetString("EftSessionConfirmed", TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)), "info");
             /*messageLog.AddProtectedMessage(
                 $"EFT session confirmed: {TarkovTracker.GetSessionDisplayName(profileSnapshot.SessionMode)}.",
                 "info",
@@ -1405,16 +1409,16 @@ namespace TarkovMonitor
             {
                 Sound.Play("match_found");
             }
-            var mapName = e.RaidInfo.Map?.name ?? "unknown map";
-            messageLog.AddMessage($"Matching complete on {mapName} after {e.RaidInfo.QueueTime:0.##} seconds.");
+            var mapName = e.RaidInfo.Map?.name ?? localizationService.GetString("UnknownMap");
+            messageLog.AddMessage(localizationService.GetString("MatchingCompleteOn", mapName, e.RaidInfo.QueueTime.ToString("0.##")));
         }
 
         private void Eft_MatchingStarted(object? sender, RaidInfoEventArgs e)
         {
             var mapName = e.RaidInfo.Map?.name;
             var message = string.IsNullOrWhiteSpace(mapName)
-                ? "Matching started"
-                : $"Matching started on {mapName}";
+                ? localizationService.GetString("MatchingStarted")
+                : localizationService.GetString("MatchingStartedOn", mapName);
             messageLog.AddMessage(message, "info");
         }
 
@@ -1428,7 +1432,7 @@ namespace TarkovMonitor
                 logRepository.AddLog(e.Data, e.Type.ToString());
             } catch (Exception ex)
             {
-                RecordException("A game log event could not be stored.", "TM-DATA-001", "AddLog", ex, "LogRepository", "Persistence", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("LogEventStoreFailed"), "TM-DATA-001", "AddLog", ex, "LogRepository", "Persistence", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1449,7 +1453,7 @@ namespace TarkovMonitor
                 return;
             }
 
-            messageLog.AddMessage($"Task completed: {task.name}.", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+            messageLog.AddMessage(localizationService.GetString("TaskCompleted", task.name), "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
             if (!TarkovTracker.ValidToken)
             {
@@ -1467,7 +1471,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-002", "SetTaskComplete", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("TrackerTaskProgressUpdateFailed"), "TM-API-TRACKER-002", "SetTaskComplete", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1479,7 +1483,7 @@ namespace TarkovMonitor
                 return;
             }
 
-            messageLog.AddMessage($"Task failed: {task.name}.", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+            messageLog.AddMessage(localizationService.GetString("TaskFailed", task.name), "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
             if (!TarkovTracker.ValidToken)
             {
@@ -1497,7 +1501,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-003", "SetTaskFailed", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("TrackerTaskProgressUpdateFailed"), "TM-API-TRACKER-003", "SetTaskFailed", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1508,7 +1512,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Task started: {task.name}.", "quest", $"https://tarkov.dev/task/{task.normalizedName}");
+            messageLog.AddMessage(localizationService.GetString("TaskStarted", task.name), "quest", $"https://tarkov.dev/task/{task.normalizedName}");
 
             if (!TarkovTracker.ValidToken)
             {
@@ -1525,7 +1529,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("Tarkov Tracker task progress could not be updated.", "TM-API-TRACKER-004", "SetTaskStarted", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("TrackerTaskProgressUpdateFailed"), "TM-API-TRACKER-004", "SetTaskStarted", ex, "TarkovTracker", "TaskUpdate", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1567,7 +1571,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"{e.LogContent.Buyer} purchased {String.Format("{0:n0}", e.LogContent.SoldItemCount)} {soldItem.name} for {String.Join(", ", received.ToArray())}", "flea", soldItem.link);
+            messageLog.AddMessage(localizationService.GetString("FleaSold", e.LogContent.Buyer, String.Format("{0:n0}", e.LogContent.SoldItemCount), soldItem.name, String.Join(", ", received.ToArray())), "flea", soldItem.link);
         }
 
         private void Eft_FleaOfferExpired(object? sender, LogContentEventArgs<FleaExpiredMessageLogContent> e)
@@ -1581,7 +1585,7 @@ namespace TarkovMonitor
             {
                 return;
             }
-            messageLog.AddMessage($"Your offer for {unsoldItem.name} (x{e.LogContent.ItemCount}) has expired.", "flea", unsoldItem.link);
+            messageLog.AddMessage(localizationService.GetString("FleaOfferExpired", unsoldItem.name, e.LogContent.ItemCount), "flea", unsoldItem.link);
         }
 
         private void Eft_DebugMessage(object? sender, DebugEventArgs e)
@@ -1591,7 +1595,7 @@ namespace TarkovMonitor
 
         private void Eft_ExceptionThrown(object? sender, ExceptionEventArgs e)
         {
-            RecordException("EFT monitoring failed; copy diagnostics for details.", "TM-WATCHER-004", e.Context, e.Exception, "GameWatcher", "Runtime");
+            RecordException(localizationService.GetString("EftMonitoringFailed"), "TM-WATCHER-004", e.Context, e.Exception, "GameWatcher", "Runtime");
         }
 
         private async void Eft_RaidStarting(object? sender, RaidInfoEventArgs e)
@@ -1613,12 +1617,13 @@ namespace TarkovMonitor
             try
             {
                 int pausedSessions = await MediaController.PauseAsync();
-                var sessionLabel = pausedSessions == 1 ? "session" : "sessions";
-                messageLog.AddMessage($"Paused {pausedSessions} music {sessionLabel}.", "info");
+                messageLog.AddMessage(pausedSessions == 1
+                    ? localizationService.GetString("PausedOneMusicSession", pausedSessions)
+                    : localizationService.GetString("PausedMusicSessions", pausedSessions), "info");
             }
             catch (Exception ex)
             {
-                RecordException("Media could not be paused for the raid.", "TM-MEDIA-001", "PauseMedia", ex, "Media", "RaidStart", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("MediaPauseFailed"), "TM-MEDIA-001", "PauseMedia", ex, "Media", "RaidStart", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1637,13 +1642,14 @@ namespace TarkovMonitor
                 int resumedSessions = await MediaController.ResumeAsync();
                 if (resumedSessions > 0)
                 {
-                    var sessionLabel = resumedSessions == 1 ? "session" : "sessions";
-                    messageLog.AddMessage($"Resumed {resumedSessions} music {sessionLabel}.", "info");
+                    messageLog.AddMessage(resumedSessions == 1
+                        ? localizationService.GetString("ResumedOneMusicSession", resumedSessions)
+                        : localizationService.GetString("ResumedMusicSessions", resumedSessions), "info");
                 }
             }
             catch (Exception ex)
             {
-                RecordException("Media could not be resumed after the raid.", "TM-MEDIA-002", "ResumeMedia", ex, "Media", "RaidEnd", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("MediaResumeFailed"), "TM-MEDIA-002", "ResumeMedia", ex, "Media", "RaidEnd", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1660,29 +1666,29 @@ namespace TarkovMonitor
             
             if (!e.RaidInfo.Reconnected && e.RaidInfo.RaidType != RaidType.Unknown)
             {
-                MonitorMessage monMessage = new($"Starting a {e.RaidInfo.RaidType} raid on {e.RaidInfo.Map?.name}.");
+                MonitorMessage monMessage = new(localizationService.GetString("StartingRaidOn", e.RaidInfo.RaidType, e.RaidInfo.Map?.name));
                 if (e.RaidInfo.Map != null && e.RaidInfo.StartedTime != null && e.RaidInfo.Map.HasGoons())
                 {
                     AddGoonsButton(monMessage, e.RaidInfo);
                 }
                 else if (e.RaidInfo.Map == null)
                 {
-                    monMessage.Message = $"Starting a {e.RaidInfo.RaidType} raid. Choose a map:";
+                    monMessage.Message = localizationService.GetString("StartingRaidChooseMap", e.RaidInfo.RaidType);
                     MonitorMessageSelect select = new();
                     foreach (var gameMap in TarkovDev.Maps)
                     {
                         select.Options.Add(new(gameMap.name, gameMap.id));
                     }
-                    select.Placeholder = "Choose a map";
+                    select.Placeholder = localizationService.GetString("ChooseMap");
                     monMessage.Selects.Add(select);
-                    MonitorMessageButton mapButton = new("Set map", Icons.Material.Filled.Map);
+                    MonitorMessageButton mapButton = new(localizationService.GetString("SetMap"), Icons.Material.Filled.Map);
                     mapButton.OnClick += async () => {
                         if (select.Selected == null)
                         {
                             return;
                         }
                         e.RaidInfo.Map = TarkovDev.Maps.Find(m => m.id == select.Selected.Value);
-                        monMessage.Message = $"Starting a {e.RaidInfo.RaidType} raid on {select.Selected.Text}.";
+                        monMessage.Message = localizationService.GetString("StartingRaidOn", e.RaidInfo.RaidType, select.Selected.Text);
                         monMessage.Buttons.Clear();
                         monMessage.Selects.Clear();
                         //AddGoonsButton(monMessage, e.RaidInfo); // offline raids have goons on all goons maps
@@ -1706,7 +1712,7 @@ namespace TarkovMonitor
             }
             else
             {
-                messageLog.AddMessage($"Re-entering the raid on {e.RaidInfo.Map?.name}.");
+                messageLog.AddMessage(localizationService.GetString("ReenteringRaidOn", e.RaidInfo.Map?.name));
             }
             if (Properties.Settings.Default.runthroughAlert && !e.RaidInfo.Reconnected && (e.RaidInfo.RaidType == RaidType.PMC || e.RaidInfo.RaidType == RaidType.PVE))
             {
@@ -1733,24 +1739,24 @@ namespace TarkovMonitor
         {
             if (raidInfo.Map != null && raidInfo.StartedTime != null && raidInfo.Map.HasGoons())
             {
-                MonitorMessageButton goonsButton = new("Report Goons", Icons.Material.Filled.Groups);
+                MonitorMessageButton goonsButton = new(localizationService.GetString("ReportGoons"), Icons.Material.Filled.Groups);
                 goonsButton.OnClick = async () => {
                     var startedUtc = DateTime.UtcNow;
                     try
                     {
                         await TarkovDev.PostGoonsSighting(raidInfo.Map?.nameId, (DateTime)raidInfo.StartedTime, Int32.Parse(raidInfo.Profile.AccountId), GameWatcher.CurrentProfile.Type);
-                        messageLog.AddMessage($"Reported Goons on {raidInfo.Map?.name}.", "info");
+                        messageLog.AddMessage(localizationService.GetString("ReportedGoonsOn", raidInfo.Map?.name), "info");
                     }
                     catch (Exception ex)
                     {
-                        RecordException("The Goons report could not be submitted.", "TM-API-GOONS-001", "SubmitGoonsReport", ex, "TarkovDev", "Report", "https://manager.tarkov.dev/api", DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                        RecordException(localizationService.GetString("GoonsReportFailed"), "TM-API-GOONS-001", "SubmitGoonsReport", ex, "TarkovDev", "Report", "https://manager.tarkov.dev/api", DiagnosticsService.ElapsedMilliseconds(startedUtc));
                     }
                     monMessage.Buttons.Remove(goonsButton);
                 };
                 goonsButton.Confirm = new(
-                    $"Report Goons on {raidInfo.Map?.name}",
-                    "<p>Submit a report only if you saw the Goons during this raid.</p><p><strong>Notice:</strong> By submitting a report, you consent to the collection of your IP address and EFT account ID for verification.</p>",
-                    "Submit report", "Cancel"
+                    localizationService.GetString("ReportGoonsOn", raidInfo.Map?.name),
+                    localizationService.GetString("GoonsReportConfirmHtml"),
+                    localizationService.GetString("SubmitReport"), localizationService.GetString("Cancel")
                 );
                 goonsButton.Timeout = TimeSpan.FromMinutes(120).TotalMilliseconds;
                 monMessage.Buttons.Add(goonsButton);
@@ -1769,11 +1775,11 @@ namespace TarkovMonitor
                 var mapName = e.Map;
                 var map = TarkovDev.Maps.Find(m => m.nameId == mapName);
                 if (map != null) mapName = map.name;
-                messageLog.AddMessage($"Left the {mapName} raid.", "raidleave");
+                messageLog.AddMessage(localizationService.GetString("LeftRaidOn", mapName), "raidleave");
             }
             catch (Exception ex)
             {
-                RecordException("Raid-exit processing failed.", "TM-WATCHER-005", "RaidExited", ex, "GameWatcher", "RaidExit", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("RaidExitProcessingFailed"), "TM-WATCHER-005", "RaidExited", ex, "GameWatcher", "RaidExit", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1825,7 +1831,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("The application could not minimize to the tray.", "TM-UI-002", "MinimizeToTray", ex, "UI", "WindowState", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("MinimizeToTrayFailed"), "TM-UI-002", "MinimizeToTray", ex, "UI", "WindowState", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 
@@ -1840,7 +1846,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex)
             {
-                RecordException("The application could not restore from the tray.", "TM-UI-003", "RestoreFromTray", ex, "UI", "WindowState", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                RecordException(localizationService.GetString("RestoreFromTrayFailed"), "TM-UI-003", "RestoreFromTray", ex, "UI", "WindowState", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
 

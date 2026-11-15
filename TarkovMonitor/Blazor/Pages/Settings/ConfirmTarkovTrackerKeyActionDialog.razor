@@ -1,3 +1,5 @@
+@inject LocalizationService LocalizationService
+
 <MudDialog Class="tracker-settings-dialog">
     <DialogContent>
         <div class="tracker-dialog-note @(IsDestructive ? "tracker-dialog-note--danger" : "tracker-dialog-note--warning")" role="note">
@@ -10,25 +12,25 @@
 
         <div class="tracker-dialog-section-heading">
             <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" />
-            <span>API token</span>
+            <span>@LocalizationService.GetString("ApiToken")</span>
         </div>
         <dl class="tracker-dialog-detail-card">
             <div class="tracker-dialog-detail-row">
-                <dt>Mode</dt>
+                <dt>@LocalizationService.GetString("ModeLabel")</dt>
                 <dd><span class="tracker-dialog-mode-badge @ModeBadgeClass">@Mode</span></dd>
             </div>
             <div class="tracker-dialog-detail-row">
-                <dt>API token</dt>
+                <dt>@LocalizationService.GetString("ApiToken")</dt>
                 <dd>@MaskedToken</dd>
             </div>
             <div class="tracker-dialog-detail-row">
-                <dt>Account ID</dt>
+                <dt>@LocalizationService.GetString("AccountId")</dt>
                 <dd>@AccountId</dd>
             </div>
         </dl>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">@LocalizationService.GetString("Cancel")</MudButton>
         <MudButton OnClick="Confirm"
                    Variant="Variant.Filled"
                    Color="@(IsDestructive ? Color.Error : Color.Warning)"
@@ -40,12 +42,12 @@
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter] public string Heading { get; set; } = "Confirm this change";
-    [Parameter] public string Message { get; set; } = "Check the API token details before continuing.";
+    [Parameter] public string Heading { get; set; } = "";
+    [Parameter] public string Message { get; set; } = "";
     [Parameter] public string Mode { get; set; } = "";
     [Parameter] public string MaskedToken { get; set; } = "";
     [Parameter] public string AccountId { get; set; } = "";
-    [Parameter] public string ConfirmLabel { get; set; } = "Confirm";
+    [Parameter] public string ConfirmLabel { get; set; } = "";
     [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Warning;
     [Parameter] public bool IsDestructive { get; set; }
 

@@ -157,7 +157,7 @@ namespace TarkovMonitor
             RaidActiveChanged?.Invoke(this, EventArgs.Empty);
 
             if (shouldRecordRaidTime)
-                messageLog.AddMessage($"Raid completed — total time in raid: {completedRaidTime:hh\\:mm\\:ss}.", "info");
+                messageLog.AddMessage(LocalizationService.T("RaidCompletedTimeInRaid", completedRaidTime.ToString(@"hh\:mm\:ss")), "info");
         }
 
         private void TimerRaid_Elapsed(object state)

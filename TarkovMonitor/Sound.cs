@@ -75,7 +75,7 @@ namespace TarkovMonitor
         {
             Dictionary<int, string> devices = new()
             {
-                { -1, "Default Device" }
+                { -1, LocalizationService.T("DefaultDevice") }
             };
 
             // WaveOutCapabilities.ProductName is backed by the fixed-size

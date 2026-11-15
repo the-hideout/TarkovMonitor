@@ -72,11 +72,11 @@ namespace TarkovMonitor.Updating
             var canInstall = newVersion.Asset != null && UpdateInstaller.IsSupportedInstallation;
             var message = new MonitorMessage(
                 canInstall
-                    ? $"Tarkov Monitor {newVersion.Version} is available. Install it before reporting a bug."
-                    : $"Tarkov Monitor {newVersion.Version} is available. Download it before reporting a bug.",
+                    ? LocalizationService.T("UpdateAvailableInstall", newVersion.Version)
+                    : LocalizationService.T("UpdateAvailableDownload", newVersion.Version),
                 "update",
                 newVersion.Uri.ToString(),
-                "View the release");
+                LocalizationService.T("ViewTheRelease"));
 
             if (canInstall)
             {
@@ -88,15 +88,14 @@ namespace TarkovMonitor.Updating
 
         private MonitorMessageButton CreateInstallButton(MonitorMessage message, NewVersionEventArgs newVersion)
         {
-            var button = new MonitorMessageButton("Install and restart", icon: Icons.Material.Filled.Update)
+            var button = new MonitorMessageButton(LocalizationService.T("InstallAndRestart"), icon: Icons.Material.Filled.Update)
             {
                 Color = MudBlazor.Color.Info,
                 Confirm = new MonitorMessageButtonConfirm(
-                    "Install update",
-                    $"Tarkov Monitor will download version {newVersion.Version}, close, and reopen to finish installing."
-                        + "<br /><br />Do not do this while you are in a raid.",
-                    "Install",
-                    "Not now"),
+                    LocalizationService.T("InstallUpdate"),
+                    LocalizationService.T("InstallUpdateConfirmHtml", newVersion.Version),
+                    LocalizationService.T("Install"),
+                    LocalizationService.T("NotNow")),
             };
             button.OnClick = () => BeginUpdate(message, button, newVersion);
             return button;
@@ -121,14 +120,14 @@ namespace TarkovMonitor.Updating
                 cancellation = new CancellationTokenSource();
             }
 
-            var cancelButton = new MonitorMessageButton("Cancel", icon: Icons.Material.Filled.Cancel)
+            var cancelButton = new MonitorMessageButton(LocalizationService.T("Cancel"), icon: Icons.Material.Filled.Cancel)
             {
                 Color = MudBlazor.Color.Default,
             };
             cancelButton.OnClick = () => cancellation.Cancel();
             message.Buttons.Remove(installButton);
             message.Buttons.Add(cancelButton);
-            SetMessageText(message, $"Preparing to download Tarkov Monitor {newVersion.Version}...");
+            SetMessageText(message, LocalizationService.T("PreparingDownload", newVersion.Version));
 
             _ = Task.Run(() => RunUpdateAsync(message, installButton, cancelButton, newVersion, asset, cancellation));
         }
@@ -155,14 +154,14 @@ namespace TarkovMonitor.Updating
                     cancellation.Token);
 
                 message.Buttons.Remove(cancelButton);
-                SetMessageText(message, $"Tarkov Monitor {newVersion.Version} is ready. Restarting...");
+                SetMessageText(message, LocalizationService.T("UpdateReadyRestarting", newVersion.Version));
 
                 UpdateInstaller.StartApply(staged);
                 requestExit();
             }
             catch (OperationCanceledException)
             {
-                Reset(message, installButton, cancelButton, "The update was cancelled.", newVersion);
+                Reset(message, installButton, cancelButton, LocalizationService.T("UpdateCancelled"), newVersion);
             }
             catch (Exception exception)
             {
@@ -170,10 +169,10 @@ namespace TarkovMonitor.Updating
                     message,
                     installButton,
                     cancelButton,
-                    $"Tarkov Monitor {newVersion.Version} could not be installed. Use the link above to download it.",
+                    LocalizationService.T("UpdateInstallFailedDownloadManually", newVersion.Version),
                     newVersion);
                 messageLog.AddException(
-                    "Installing the update failed; copy diagnostics for details.",
+                    LocalizationService.T("UpdateInstallFailedCopyDiagnostics"),
                     "TM-UPDATE-003",
                     "InstallUpdate",
                     exception,
@@ -203,7 +202,7 @@ namespace TarkovMonitor.Updating
             // The original button carries the confirmation dialog and the
             // closure over this release, so it can simply be put back.
             message.Buttons.Add(installButton);
-            SetMessageText(message, $"{text} Tarkov Monitor {newVersion.Version} is still available.");
+            SetMessageText(message, LocalizationService.T("UpdateStillAvailable", text, newVersion.Version));
         }
 
         private static void SetMessageText(MonitorMessage message, string text)
@@ -217,12 +216,12 @@ namespace TarkovMonitor.Updating
             return update.Stage switch
             {
                 UpdateStage.Downloading when update.Percent is int percent
-                    => $"Downloading Tarkov Monitor {version}... {percent}% ({DescribeSize(update.BytesReceived)} of {DescribeSize(update.TotalBytes)})",
+                    => LocalizationService.T("DownloadingWithPercent", version, percent, DescribeSize(update.BytesReceived), DescribeSize(update.TotalBytes)),
                 UpdateStage.Downloading
-                    => $"Downloading Tarkov Monitor {version}... {DescribeSize(update.BytesReceived)}",
-                UpdateStage.Verifying => $"Verifying the Tarkov Monitor {version} download...",
-                UpdateStage.Extracting => $"Unpacking Tarkov Monitor {version}...",
-                _ => $"Tarkov Monitor {version} is ready to install.",
+                    => LocalizationService.T("DownloadingWithSize", version, DescribeSize(update.BytesReceived)),
+                UpdateStage.Verifying => LocalizationService.T("VerifyingDownload", version),
+                UpdateStage.Extracting => LocalizationService.T("UnpackingUpdate", version),
+                _ => LocalizationService.T("ReadyToInstall", version),
             };
         }
 

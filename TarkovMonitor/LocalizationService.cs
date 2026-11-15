@@ -39,6 +39,23 @@ namespace TarkovMonitor
             }
         }
 
+        public string GetString(string key, params object?[] args)
+        {
+            return string.Format(CultureInfo.CurrentUICulture, GetString(key), args);
+        }
+
+        // Static lookup for code without DI access (static classes, plain C# types).
+        // Reads the same compiled resources as GetString; missing keys fall back to English.
+        public static string T(string key, params object?[] args)
+        {
+            var value = Properties.Strings.ResourceManager.GetString(key, CultureInfo.CurrentUICulture) ?? key;
+            if (args.Length > 0)
+            {
+                return string.Format(CultureInfo.CurrentUICulture, value, args);
+            }
+            return value;
+        }
+
         public void SetCulture(string cultureName)
         {
             try

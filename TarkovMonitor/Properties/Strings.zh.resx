@@ -402,4 +402,886 @@
   <data name="RetrievedDataFromTarkovTracker" xml:space="preserve">
     <value>从 Tarkov Tracker 获取了 {0} 等级 {1} {2}（{3}）进度</value>
   </data>
+  <data name="NoScreenshotKeybound" xml:space="preserve">
+    <value>EFT 没有绑定截图快捷键。请绑定一个，以便在 tarkov.dev 地图上更新你的位置。</value>
+  </data>
+  <data name="ScreenshotKeyboundIncorrectly" xml:space="preserve">
+    <value>EFT 截图快捷键绑定不正确。请重新绑定，以便在 tarkov.dev 地图上更新你的位置。</value>
+  </data>
+  <data name="ScreenshotKeybindCheckFailed" xml:space="preserve">
+    <value>无法检查 EFT 截图快捷键绑定</value>
+  </data>
+  <data name="ScavAvailable" xml:space="preserve">
+    <value>你的 Scav 已就绪</value>
+  </data>
+  <data name="RunthroughPeriodOver" xml:space="preserve">
+    <value>匆匆撤离时段已结束</value>
+  </data>
+  <data name="DeletedOneRaidScreenshot" xml:space="preserve">
+    <value>已删除 {0} 张战局截图</value>
+  </data>
+  <data name="DeletedRaidScreenshots" xml:space="preserve">
+    <value>已删除 {0} 张战局截图</value>
+  </data>
+  <data name="RaidScreenshotsDeleteFailed" xml:space="preserve">
+    <value>无法删除战局截图</value>
+  </data>
+  <data name="RaidScreenshotsButtonOne" xml:space="preserve">
+    <value>删除 {0} 张战局截图</value>
+  </data>
+  <data name="RaidScreenshotsButtonMany" xml:space="preserve">
+    <value>删除 {0} 张战局截图</value>
+  </data>
+  <data name="RaidEndedOn" xml:space="preserve">
+    <value>在 {0} 的战局已结束</value>
+  </data>
+  <data name="MinimizeAtStartupFailed" xml:space="preserve">
+    <value>窗口无法在启动时最小化</value>
+  </data>
+  <data name="GameLogMonitoringStartFailed" xml:space="preserve">
+    <value>游戏日志监控未能启动</value>
+  </data>
+  <data name="UpdateCheckStartFailed" xml:space="preserve">
+    <value>更新检查未能启动</value>
+  </data>
+  <data name="CurrentPositionOn" xml:space="preserve">
+    <value>在 {0} 的当前位置：x={1}，y={2}，z={3}</value>
+  </data>
+  <data name="TarkovDevUnavailableNoResend" xml:space="preserve">
+    <value>tarkov.dev 不可用，消息未重发；连接将在需要时重试</value>
+  </data>
+  <data name="UpdateCheckFailedCopyDiagnostics" xml:space="preserve">
+    <value>更新检查失败；详情请复制诊断信息查看</value>
+  </data>
+  <data name="PlayerProfileLookupFailed" xml:space="preserve">
+    <value>玩家档案查询失败；详情请复制诊断信息查看</value>
+  </data>
+  <data name="TarkovDevRefreshFailed" xml:space="preserve">
+    <value>tarkov.dev 自动刷新失败；详情请复制诊断信息查看</value>
+  </data>
+  <data name="TaskFailedRestartRequired" xml:space="preserve">
+    <value>任务失败：{0}，需要重新开始</value>
+  </data>
+  <data name="RaidStartProcessingFailed" xml:space="preserve">
+    <value>战局开始处理失败</value>
+  </data>
+  <data name="GroupInviteAccepted" xml:space="preserve">
+    <value>{0}（{1} {2}）接受了组队邀请</value>
+  </data>
+  <data name="TarkovDevDataUpdateFailedForSession" xml:space="preserve">
+    <value>{0} 的 tarkov.dev 数据更新失败；详情请复制诊断信息查看</value>
+  </data>
+  <data name="EftSessionConfirmed" xml:space="preserve">
+    <value>EFT 会话已确认：{0}</value>
+  </data>
+  <data name="UnknownMap" xml:space="preserve">
+    <value>未知地图</value>
+  </data>
+  <data name="MatchingCompleteOn" xml:space="preserve">
+    <value>{0} 匹配完成，耗时 {1} 秒</value>
+  </data>
+  <data name="MatchingStarted" xml:space="preserve">
+    <value>开始匹配</value>
+  </data>
+  <data name="MatchingStartedOn" xml:space="preserve">
+    <value>开始在 {0} 匹配</value>
+  </data>
+  <data name="LogEventStoreFailed" xml:space="preserve">
+    <value>游戏日志事件无法存储</value>
+  </data>
+  <data name="TaskCompleted" xml:space="preserve">
+    <value>任务完成：{0}</value>
+  </data>
+  <data name="TrackerTaskProgressUpdateFailed" xml:space="preserve">
+    <value>无法更新 Tarkov Tracker 任务进度</value>
+  </data>
+  <data name="TaskFailed" xml:space="preserve">
+    <value>任务失败：{0}</value>
+  </data>
+  <data name="TaskStarted" xml:space="preserve">
+    <value>任务开始：{0}</value>
+  </data>
+  <data name="FleaSold" xml:space="preserve">
+    <value>{0} 以 {3} 购买了 {1} 个 {2}</value>
+  </data>
+  <data name="FleaOfferExpired" xml:space="preserve">
+    <value>你对 {0}（x{1}）的挂单已过期</value>
+  </data>
+  <data name="EftMonitoringFailed" xml:space="preserve">
+    <value>EFT 监控失败；详情请复制诊断信息查看</value>
+  </data>
+  <data name="PausedOneMusicSession" xml:space="preserve">
+    <value>已暂停 {0} 个音乐播放会话</value>
+  </data>
+  <data name="PausedMusicSessions" xml:space="preserve">
+    <value>已暂停 {0} 个音乐播放会话</value>
+  </data>
+  <data name="MediaPauseFailed" xml:space="preserve">
+    <value>进入战局时无法暂停媒体播放</value>
+  </data>
+  <data name="ResumedOneMusicSession" xml:space="preserve">
+    <value>已恢复 {0} 个音乐播放会话</value>
+  </data>
+  <data name="ResumedMusicSessions" xml:space="preserve">
+    <value>已恢复 {0} 个音乐播放会话</value>
+  </data>
+  <data name="MediaResumeFailed" xml:space="preserve">
+    <value>战局结束后无法恢复媒体播放</value>
+  </data>
+  <data name="StartingRaidOn" xml:space="preserve">
+    <value>即将在 {1} 开始 {0} 战局</value>
+  </data>
+  <data name="StartingRaidChooseMap" xml:space="preserve">
+    <value>即将开始 {0} 战局，请选择地图：</value>
+  </data>
+  <data name="ChooseMap" xml:space="preserve">
+    <value>选择地图</value>
+  </data>
+  <data name="SetMap" xml:space="preserve">
+    <value>设置地图</value>
+  </data>
+  <data name="ReenteringRaidOn" xml:space="preserve">
+    <value>重新进入 {0} 的战局</value>
+  </data>
+  <data name="ReportGoons" xml:space="preserve">
+    <value>上报 Goons</value>
+  </data>
+  <data name="ReportedGoonsOn" xml:space="preserve">
+    <value>已上报在 {0} 发现 Goons</value>
+  </data>
+  <data name="GoonsReportFailed" xml:space="preserve">
+    <value>Goons 上报无法提交</value>
+  </data>
+  <data name="ReportGoonsOn" xml:space="preserve">
+    <value>上报在 {0} 发现的 Goons</value>
+  </data>
+  <data name="GoonsReportConfirmHtml" xml:space="preserve">
+    <value>&lt;p&gt;只有在本场战局中亲眼见到 Goons 才提交上报。&lt;/p&gt;&lt;p&gt;&lt;strong&gt;注意：&lt;/strong&gt;提交上报即表示你同意为验证目的收集你的 IP 地址和 EFT 账户 ID。&lt;/p&gt;</value>
+  </data>
+  <data name="SubmitReport" xml:space="preserve">
+    <value>提交上报</value>
+  </data>
+  <data name="LeftRaidOn" xml:space="preserve">
+    <value>已离开 {0} 的战局</value>
+  </data>
+  <data name="RaidExitProcessingFailed" xml:space="preserve">
+    <value>战局撤离处理失败</value>
+  </data>
+  <data name="MinimizeToTrayFailed" xml:space="preserve">
+    <value>应用无法最小化到系统托盘</value>
+  </data>
+  <data name="RestoreFromTrayFailed" xml:space="preserve">
+    <value>应用无法从系统托盘恢复</value>
+  </data>
+  <data name="CopyDiagnostics" xml:space="preserve">
+    <value>复制诊断信息</value>
+  </data>
+  <data name="Report" xml:space="preserve">
+    <value>反馈问题</value>
+  </data>
+  <data name="DiagnosticsCopiedSnack" xml:space="preserve">
+    <value>已将脱敏后的诊断信息复制到剪贴板</value>
+  </data>
+  <data name="DiagnosticsCopyFailedSnack" xml:space="preserve">
+    <value>诊断信息无法复制到剪贴板，请重试</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="MessageShortenedSuffix" xml:space="preserve">
+    <value>[消息已被 Tarkov Monitor 截断]</value>
+  </data>
+  <data name="RepeatedOccurrencesSuffix" xml:space="preserve">
+    <value>（重复出现 {0} 次）</value>
+  </data>
+  <data name="RaidCompletedTimeInRaid" xml:space="preserve">
+    <value>战局结束——本次在战局内总时长：{0}</value>
+  </data>
+  <data name="DefaultDevice" xml:space="preserve">
+    <value>默认设备</value>
+  </data>
+  <data name="UpdateAvailableInstall" xml:space="preserve">
+    <value>Tarkov Monitor {0} 已发布。报告问题前请先安装</value>
+  </data>
+  <data name="UpdateAvailableDownload" xml:space="preserve">
+    <value>Tarkov Monitor {0} 已发布。报告问题前请先下载</value>
+  </data>
+  <data name="ViewTheRelease" xml:space="preserve">
+    <value>查看发布页</value>
+  </data>
+  <data name="InstallAndRestart" xml:space="preserve">
+    <value>安装并重启</value>
+  </data>
+  <data name="InstallUpdate" xml:space="preserve">
+    <value>安装更新</value>
+  </data>
+  <data name="InstallUpdateConfirmHtml" xml:space="preserve">
+    <value>Tarkov Monitor 将下载 {0} 版本，关闭并在重启后完成安装。&lt;br /&gt;&lt;br /&gt;请不要在战局中进行此操作</value>
+  </data>
+  <data name="Install" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="NotNow" xml:space="preserve">
+    <value>暂不</value>
+  </data>
+  <data name="PreparingDownload" xml:space="preserve">
+    <value>准备下载 Tarkov Monitor {0}……</value>
+  </data>
+  <data name="UpdateReadyRestarting" xml:space="preserve">
+    <value>Tarkov Monitor {0} 已就绪，正在重启……</value>
+  </data>
+  <data name="UpdateCancelled" xml:space="preserve">
+    <value>更新已取消</value>
+  </data>
+  <data name="UpdateInstallFailedDownloadManually" xml:space="preserve">
+    <value>无法安装 Tarkov Monitor {0}，请通过上方链接手动下载</value>
+  </data>
+  <data name="UpdateInstallFailedCopyDiagnostics" xml:space="preserve">
+    <value>安装更新失败；详情请复制诊断信息查看</value>
+  </data>
+  <data name="UpdateStillAvailable" xml:space="preserve">
+    <value>{0} Tarkov Monitor {1} 仍可安装</value>
+  </data>
+  <data name="DownloadingWithPercent" xml:space="preserve">
+    <value>正在下载 Tarkov Monitor {0}…… {1}%（{2} / {3}）</value>
+  </data>
+  <data name="DownloadingWithSize" xml:space="preserve">
+    <value>正在下载 Tarkov Monitor {0}…… {1}</value>
+  </data>
+  <data name="VerifyingDownload" xml:space="preserve">
+    <value>正在校验 Tarkov Monitor {0} 下载……</value>
+  </data>
+  <data name="UnpackingUpdate" xml:space="preserve">
+    <value>正在解压 Tarkov Monitor {0}……</value>
+  </data>
+  <data name="ReadyToInstall" xml:space="preserve">
+    <value>Tarkov Monitor {0} 已就绪，可以安装</value>
+  </data>
+  <data name="ApplierInstallFailedIntro" xml:space="preserve">
+    <value>Tarkov Monitor 无法安装更新，原版本保持不变</value>
+  </data>
+  <data name="ApplierManualDownloadHint" xml:space="preserve">
+    <value>请到发布页手动下载新版本</value>
+  </data>
+  <data name="ApplierFailureTitle" xml:space="preserve">
+    <value>Tarkov Monitor 更新失败</value>
+  </data>
+  <data name="Connect" xml:space="preserve">
+    <value>连接</value>
+  </data>
+  <data name="LastProfileLoaded" xml:space="preserve">
+    <value>最近/当前档案</value>
+  </data>
+  <data name="NoActiveEftSessionRecognized" xml:space="preserve">
+    <value>未识别到活动会话，请启动《逃离塔科夫》。</value>
+  </data>
+  <data name="WebsiteAlreadyConnectedMsg" xml:space="preserve">
+    <value>网站已连接</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>账户</value>
+  </data>
+  <data name="AccountId" xml:space="preserve">
+    <value>账户 ID</value>
+  </data>
+  <data name="AccountIdAria" xml:space="preserve">
+    <value>账户 ID {0}</value>
+  </data>
+  <data name="AccountIdValue" xml:space="preserve">
+    <value>账户 ID：{0}</value>
+  </data>
+  <data name="AccountNumber" xml:space="preserve">
+    <value>账户 {0}</value>
+  </data>
+  <data name="ModeLabel" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="ModesLabel" xml:space="preserve">
+    <value>模式</value>
+  </data>
+  <data name="LastPlayed" xml:space="preserve">
+    <value>最近游戏</value>
+  </data>
+  <data name="LastPlayedWithDate" xml:space="preserve">
+    <value>最近游戏：{0}</value>
+  </data>
+  <data name="ProfileLabel" xml:space="preserve">
+    <value>档案</value>
+  </data>
+  <data name="ProfileIdLabel" xml:space="preserve">
+    <value>档案 ID</value>
+  </data>
+  <data name="ProfileNicknameLabel" xml:space="preserve">
+    <value>档案昵称</value>
+  </data>
+  <data name="ProfileShortId" xml:space="preserve">
+    <value>档案 …{0}</value>
+  </data>
+  <data name="ApiToken" xml:space="preserve">
+    <value>API 令牌</value>
+  </data>
+  <data name="CharacterName" xml:space="preserve">
+    <value>角色名</value>
+  </data>
+  <data name="Rename" xml:space="preserve">
+    <value>重命名</value>
+  </data>
+  <data name="SetName" xml:space="preserve">
+    <value>设置名称</value>
+  </data>
+  <data name="SaveName" xml:space="preserve">
+    <value>保存名称</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>返回</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>编辑</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="Details" xml:space="preserve">
+    <value>详情</value>
+  </data>
+  <data name="Assign" xml:space="preserve">
+    <value>分配</value>
+  </data>
+  <data name="Reassign" xml:space="preserve">
+    <value>重新分配</value>
+  </data>
+  <data name="Unbind" xml:space="preserve">
+    <value>解绑</value>
+  </data>
+  <data name="Swap" xml:space="preserve">
+    <value>交换</value>
+  </data>
+  <data name="Move" xml:space="preserve">
+    <value>移动</value>
+  </data>
+  <data name="SelectLabel" xml:space="preserve">
+    <value>选择</value>
+  </data>
+  <data name="CurrentLabel" xml:space="preserve">
+    <value>当前</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>未知</value>
+  </data>
+  <data name="Available" xml:space="preserve">
+    <value>可用</value>
+  </data>
+  <data name="Unavailable" xml:space="preserve">
+    <value>不可用</value>
+  </data>
+  <data name="AlreadyAssigned" xml:space="preserve">
+    <value>已分配</value>
+  </data>
+  <data name="NotAssigned" xml:space="preserve">
+    <value>未分配</value>
+  </data>
+  <data name="Unassigned" xml:space="preserve">
+    <value>未分配</value>
+  </data>
+  <data name="Assigned" xml:space="preserve">
+    <value>已分配</value>
+  </data>
+  <data name="Verified" xml:space="preserve">
+    <value>已验证</value>
+  </data>
+  <data name="VerifiedState" xml:space="preserve">
+    <value>已验证</value>
+  </data>
+  <data name="UnverifiedRecoveredState" xml:space="preserve">
+    <value>未验证的已恢复</value>
+  </data>
+  <data name="VerifyOnAssign" xml:space="preserve">
+    <value>分配时验证</value>
+  </data>
+  <data name="NoKeyAssigned" xml:space="preserve">
+    <value>未分配令牌</value>
+  </data>
+  <data name="KeyAlreadyAssigned" xml:space="preserve">
+    <value>令牌已分配</value>
+  </data>
+  <data name="MoveKey" xml:space="preserve">
+    <value>移动令牌</value>
+  </data>
+  <data name="SwapKeys" xml:space="preserve">
+    <value>交换令牌</value>
+  </data>
+  <data name="ManualAssignmentOnly" xml:space="preserve">
+    <value>仅限手动分配</value>
+  </data>
+  <data name="NoNickname" xml:space="preserve">
+    <value>无昵称</value>
+  </data>
+  <data name="ScanProfiles" xml:space="preserve">
+    <value>扫描档案</value>
+  </data>
+  <data name="ScanProfilesAria" xml:space="preserve">
+    <value>从过去的 EFT 日志扫描档案</value>
+  </data>
+  <data name="ScanProfilesTrail" xml:space="preserve">
+    <value>以检查过去的 EFT 日志，或用想用的档案启动 EFT。</value>
+  </data>
+  <data name="ScanProfilesTooltip" xml:space="preserve">
+    <value>从过去的 EFT 日志读取账户、档案、模式和最近游戏信息。不会重放任务。</value>
+  </data>
+  <data name="ChooseAnotherEftProfile" xml:space="preserve">
+    <value>请选择另一个 EFT 档案。</value>
+  </data>
+  <data name="ChooseEftProfile" xml:space="preserve">
+    <value>请选择一个 EFT 档案。</value>
+  </data>
+  <data name="RecoveredKeyRequiresVerification" xml:space="preserve">
+    <value>这个恢复的令牌需要先验证才能分配。</value>
+  </data>
+  <data name="OnlyProfilesForGameModeShown" xml:space="preserve">
+    <value>仅显示与该令牌游戏模式匹配的已保存档案。</value>
+  </data>
+  <data name="ReviewAssignment" xml:space="preserve">
+    <value>确认分配信息</value>
+  </data>
+  <data name="SwapWarning" xml:space="preserve">
+    <value>该档案已有令牌。确认后将交换两个令牌，两者都不会变为未分配。档案昵称会随各自的令牌一起移动。</value>
+  </data>
+  <data name="MoveKeyConfirmation" xml:space="preserve">
+    <value>该令牌将移动到所选档案。</value>
+  </data>
+  <data name="NicknameMovesWithKey" xml:space="preserve">
+    <value>其档案昵称将随令牌一起移动。</value>
+  </data>
+  <data name="AssignKeyConfirmation" xml:space="preserve">
+    <value>该令牌将分配给所选档案。</value>
+  </data>
+  <data name="ScanningPastLogs" xml:space="preserve">
+    <value>正在扫描过去的 EFT 日志……</value>
+  </data>
+  <data name="NoMatchingProfilesLead" xml:space="preserve">
+    <value>没有已保存的 {0} 档案。</value>
+  </data>
+  <data name="NoMatchingProfilesLeadReassign" xml:space="preserve">
+    <value>没有其他已保存的 {0} 档案。</value>
+  </data>
+  <data name="NoEftProfilesFound" xml:space="preserve">
+    <value>在过去的日志中没有找到 EFT 档案。</value>
+  </data>
+  <data name="ScanFoundSkeleton" xml:space="preserve">
+    <value>发现 {0} 个{1}，更新了 {2} 条{3}</value>
+  </data>
+  <data name="ProfileSingular" xml:space="preserve">
+    <value>档案</value>
+  </data>
+  <data name="ProfilePlural" xml:space="preserve">
+    <value>档案</value>
+  </data>
+  <data name="SavedEntrySingular" xml:space="preserve">
+    <value>已保存记录</value>
+  </data>
+  <data name="SavedEntryPlural" xml:space="preserve">
+    <value>已保存记录</value>
+  </data>
+  <data name="ScanProfilesFailed" xml:space="preserve">
+    <value>无法扫描档案：{0}</value>
+  </data>
+  <data name="LinkedToEftProfile" xml:space="preserve">
+    <value>已关联到此 EFT 档案。</value>
+  </data>
+  <data name="KeyUsedWhenActive" xml:space="preserve">
+    <value>当下列账户、档案和游戏模式处于活动状态时，Tarkov Monitor 会使用此令牌。</value>
+  </data>
+  <data name="BindingDetails" xml:space="preserve">
+    <value>绑定详情</value>
+  </data>
+  <data name="ApiTokenBindingDetails" xml:space="preserve">
+    <value>API 令牌绑定详情</value>
+  </data>
+  <data name="QuarantinedKeyWarning" xml:space="preserve">
+    <value>此令牌的档案信息存在冲突或无效。请先移除并重新导入，然后再分配。</value>
+  </data>
+  <data name="ManageKey" xml:space="preserve">
+    <value>管理令牌</value>
+  </data>
+  <data name="ReassignDescription" xml:space="preserve">
+    <value>移动此令牌及其昵称，或与已有令牌交换。</value>
+  </data>
+  <data name="ReassignTitleQuarantined" xml:space="preserve">
+    <value>重新分配前请先修复或移除这个无效绑定</value>
+  </data>
+  <data name="ReassignTitleNormal" xml:space="preserve">
+    <value>将此令牌移动到另一个已保存档案，或与该档案已分配的令牌交换</value>
+  </data>
+  <data name="UnbindTitle" xml:space="preserve">
+    <value>保留此令牌但停止使用</value>
+  </data>
+  <data name="UnbindDescription" xml:space="preserve">
+    <value>保留令牌，但停止使用。</value>
+  </data>
+  <data name="RemoveTitle" xml:space="preserve">
+    <value>从此电脑删除此已保存令牌</value>
+  </data>
+  <data name="RemoveDescription" xml:space="preserve">
+    <value>从此电脑删除此已保存令牌。</value>
+  </data>
+  <data name="StorageMustBeRepaired" xml:space="preserve">
+    <value>必须先修复已保存令牌的存储，才能执行此操作。</value>
+  </data>
+  <data name="AddOrgTokenHeading" xml:space="preserve">
+    <value>添加 TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="VerifyBeforeSaving" xml:space="preserve">
+    <value>Tarkov Monitor 会先验证令牌并识别其游戏模式，然后将其保存为未分配。</value>
+  </data>
+  <data name="OrgTokenLabel" xml:space="preserve">
+    <value>TarkovTracker.org API 令牌</value>
+  </data>
+  <data name="PasteFullKey" xml:space="preserve">
+    <value>请原样粘贴从 TarkovTracker.org 复制的完整令牌。</value>
+  </data>
+  <data name="Verifying" xml:space="preserve">
+    <value>正在验证</value>
+  </data>
+  <data name="TryAgainIn" xml:space="preserve">
+    <value>{0} 秒后可重试</value>
+  </data>
+  <data name="VerifyAndSave" xml:space="preserve">
+    <value>验证并保存</value>
+  </data>
+  <data name="GenerateTokenLink" xml:space="preserve">
+    <value>点击这里在 Tarkov Tracker 生成新的 API 令牌。</value>
+  </data>
+  <data name="SanitizedReportAdded" xml:space="preserve">
+    <value>已在“消息”中添加脱敏后的错误报告，反馈问题时可以复制它。</value>
+  </data>
+  <data name="ConfirmThisChange" xml:space="preserve">
+    <value>确认此更改</value>
+  </data>
+  <data name="CheckTokenDetails" xml:space="preserve">
+    <value>继续之前请检查 API 令牌详情。</value>
+  </data>
+  <data name="AccountOverview" xml:space="preserve">
+    <value>账户概览。</value>
+  </data>
+  <data name="AccountOverviewDescription" xml:space="preserve">
+    <value>此处汇总分配到此 EFT 账户的 API 令牌。</value>
+  </data>
+  <data name="AccountDetails" xml:space="preserve">
+    <value>账户详情</value>
+  </data>
+  <data name="ChangeAccountNicknameHeading" xml:space="preserve">
+    <value>更改此账户的昵称。</value>
+  </data>
+  <data name="SetAccountNicknameHeading" xml:space="preserve">
+    <value>为此 EFT 账户设置昵称。</value>
+  </data>
+  <data name="AccountNicknameNote" xml:space="preserve">
+    <value>此昵称用于标识账户 ID {0}，并显示在该账户的每个档案上。不会更改你的 EFT 显示名称。</value>
+  </data>
+  <data name="AccountNickname" xml:space="preserve">
+    <value>账户昵称</value>
+  </data>
+  <data name="MainAccountPlaceholder" xml:space="preserve">
+    <value>主账户</value>
+  </data>
+  <data name="NicknameHelp" xml:space="preserve">
+    <value>使用 1-32 个字符，之后可以更改。</value>
+  </data>
+  <data name="NicknameLengthError" xml:space="preserve">
+    <value>请输入 1-32 个字符的名称。</value>
+  </data>
+  <data name="ChangeProfileNicknameHeading" xml:space="preserve">
+    <value>更改此 {0} 档案的昵称。</value>
+  </data>
+  <data name="SetProfileNicknameHeading" xml:space="preserve">
+    <value>为此 {0} 档案设置昵称。</value>
+  </data>
+  <data name="ProfileNicknameNote" xml:space="preserve">
+    <value>重新分配此 API 令牌时，昵称会随之移动。解绑令牌会清除昵称。不会更改你的 EFT 角色名。</value>
+  </data>
+  <data name="ProfileNicknameHelp" xml:space="preserve">
+    <value>使用 1-32 个字符，令牌保持分配期间可以更改。</value>
+  </data>
+  <data name="ShowFloatingRaidTimer" xml:space="preserve">
+    <value>显示悬浮战局计时器</value>
+  </data>
+  <data name="FloatingTimerDescription" xml:space="preserve">
+    <value>部署结束后在 Tarkov Monitor 中显示一个可移动的计时器。它在“计时器”页面保持隐藏。</value>
+  </data>
+  <data name="DisplayedTimers" xml:space="preserve">
+    <value>显示的计时器</value>
+  </data>
+  <data name="ElapsedRaidTime" xml:space="preserve">
+    <value>战局已进行时间</value>
+  </data>
+  <data name="RunthroughRemaining" xml:space="preserve">
+    <value>匆匆撤离剩余时间</value>
+  </data>
+  <data name="KeepOneTimerSelected" xml:space="preserve">
+    <value>至少选择一个计时器。悬浮面板不提供 Scav 冷却。</value>
+  </data>
+  <data name="RetiredServicePart1" xml:space="preserve">
+    <value>对 TarkovTracker.io 的支持已停止。请切换到 </value>
+  </data>
+  <data name="RetiredServicePart2" xml:space="preserve">
+    <value> 以获得持续支持。</value>
+  </data>
+  <data name="NoEftProfileDetected" xml:space="preserve">
+    <value>未检测到 EFT 档案。</value>
+  </data>
+  <data name="TrackerAutoManageBold" xml:space="preserve">
+    <value>Tarkov Monitor 会自动管理 API 令牌。</value>
+  </data>
+  <data name="TrackerAutoManageRest" xml:space="preserve">
+    <value> 只有在了解 EFT 档案与游戏模式的关联方式后，才更改分配。</value>
+  </data>
+  <data name="PendingDrawerBold" xml:space="preserve">
+    <value>已验证，但未分配。</value>
+  </data>
+  <data name="PendingDrawerRest" xml:space="preserve">
+    <value> Tarkov Monitor 会自动把一个符合条件的令牌分配给它观察到的第一个完整的 EFT 账户、档案和游戏模式。如果有多个符合条件的令牌，或者你主动解绑了令牌，请点击“分配”进行手动兜底。</value>
+  </data>
+  <data name="NoUnassignedTokenStored" xml:space="preserve">
+    <value>没有存储未分配的 API 令牌。</value>
+  </data>
+  <data name="AutoAssignBlockedTitle" xml:space="preserve">
+    <value>此令牌之前的账户已被阻止自动分配。</value>
+  </data>
+  <data name="PreviouslySavedKey" xml:space="preserve">
+    <value>之前保存的 TarkovTracker.org 令牌</value>
+  </data>
+  <data name="BoundDrawerBold" xml:space="preserve">
+    <value>已验证并分配。</value>
+  </data>
+  <data name="BoundDrawerRest" xml:space="preserve">
+    <value> 无需其他操作。Tarkov Monitor 会使用与你当前 EFT 账户、档案和游戏模式关联的令牌。如果分配有误（例如使用多个 EFT 账户时），请打开“编辑”并选择“重新分配”。可以按需设置或重命名账户和档案昵称。</value>
+  </data>
+  <data name="NoAssignedTokens" xml:space="preserve">
+    <value>没有已分配的 TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="FilterByNicknameOrAccountId" xml:space="preserve">
+    <value>按昵称或账户 ID 筛选</value>
+  </data>
+  <data name="NoAccountsMatchFilter" xml:space="preserve">
+    <value>没有符合筛选条件的账户。</value>
+  </data>
+  <data name="QuarantinedKeyInactive" xml:space="preserve">
+    <value>此令牌处于停用状态，因为其保存的记录存在歧义或无效。</value>
+  </data>
+  <data name="Updates" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="InstalledVersion" xml:space="preserve">
+    <value>已安装版本 {0}</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>检查更新</value>
+  </data>
+  <data name="UpToDateMessage" xml:space="preserve">
+    <value>Tarkov Monitor {0} 已是最新版本。</value>
+  </data>
+  <data name="OrgKeyChangesBlockedReason" xml:space="preserve">
+    <value>必须先修复 TarkovTracker.org 的令牌存储，才能更改已保存的令牌或档案。</value>
+  </data>
+  <data name="AllModesHaveUnassigned" xml:space="preserve">
+    <value>PVE、Regular (PVP) 和 Seasonal 都已有未分配的令牌。</value>
+  </data>
+  <data name="PendingAssignBlockedRecord" xml:space="preserve">
+    <value>必须先移除或修复此保存的记录，才能分配。</value>
+  </data>
+  <data name="ManualAssignmentOnlyLong" xml:space="preserve">
+    <value>仅限手动分配：此令牌之前的 EFT 账户已被阻止自动分配。请使用“分配”来选择其账户、档案和游戏模式。</value>
+  </data>
+  <data name="ManualAssignmentRequiredConflict" xml:space="preserve">
+    <value>需要手动分配：有多个 {0} 令牌在等待。此模式已暂停自动分配。</value>
+  </data>
+  <data name="ReadPastLogsTitle" xml:space="preserve">
+    <value>读取过去的日志文件</value>
+  </data>
+  <data name="ImportDialogTitle" xml:space="preserve">
+    <value>导入 TarkovTracker.org API 令牌</value>
+  </data>
+  <data name="ImportedAutoAssigned" xml:space="preserve">
+    <value>已导入、验证并自动把 {0} TarkovTracker.org API 令牌分配到当前 EFT 档案。</value>
+  </data>
+  <data name="ImportedUnassigned" xml:space="preserve">
+    <value>已导入并验证 {0} TarkovTracker.org API 令牌。它会在匹配的第一个 EFT 档案上自动分配，也可以手动分配。</value>
+  </data>
+  <data name="NoEftProfilesFoundScanAgain" xml:space="preserve">
+    <value>在过去的日志中没有找到 EFT 档案。请先启动一次 EFT，然后重新扫描。</value>
+  </data>
+  <data name="ScanOrgFoundSkeleton" xml:space="preserve">
+    <value>在过去的日志中找到 {0} 个 EFT {1}，并更新了 {2} 条已保存档案{3}</value>
+  </data>
+  <data name="RecordSingular" xml:space="preserve">
+    <value>记录</value>
+  </data>
+  <data name="RecordPlural" xml:space="preserve">
+    <value>记录</value>
+  </data>
+  <data name="ScanOrgFailed" xml:space="preserve">
+    <value>无法扫描 EFT 档案：{0}</value>
+  </data>
+  <data name="CouldNotSwap" xml:space="preserve">
+    <value>无法交换 TarkovTracker.org API 令牌：{0}</value>
+  </data>
+  <data name="CouldNotReassign" xml:space="preserve">
+    <value>无法重新分配 TarkovTracker.org API 令牌：{0}</value>
+  </data>
+  <data name="CouldNotAssign" xml:space="preserve">
+    <value>无法分配 TarkovTracker.org API 令牌：{0}</value>
+  </data>
+  <data name="SetAccountNicknameTitle" xml:space="preserve">
+    <value>设置账户昵称</value>
+  </data>
+  <data name="ChangeAccountNicknameTitle" xml:space="preserve">
+    <value>更改账户昵称</value>
+  </data>
+  <data name="SavedAccountNickname" xml:space="preserve">
+    <value>已保存 TarkovTracker.org 账户昵称“{0}”</value>
+  </data>
+  <data name="SaveAccountNicknameFailed" xml:space="preserve">
+    <value>无法保存账户昵称：{0}</value>
+  </data>
+  <data name="SetProfileNicknameTitle" xml:space="preserve">
+    <value>设置 {0} 档案昵称</value>
+  </data>
+  <data name="ChangeProfileNicknameTitle" xml:space="preserve">
+    <value>更改 {0} 档案昵称</value>
+  </data>
+  <data name="SavedProfileNickname" xml:space="preserve">
+    <value>已保存 {0} 档案昵称“{1}”</value>
+  </data>
+  <data name="SaveProfileNicknameFailed" xml:space="preserve">
+    <value>无法保存档案昵称：{0}</value>
+  </data>
+  <data name="UnbindTokenTitle" xml:space="preserve">
+    <value>解绑 {0} API 令牌</value>
+  </data>
+  <data name="UnbindMessageNoNickname" xml:space="preserve">
+    <value>令牌会保留并移到“未分配”，并为其之前的 EFT 账户标记“仅限手动分配”。再次使用时请明确分配。</value>
+  </data>
+  <data name="UnbindMessageWithNickname" xml:space="preserve">
+    <value>令牌会保留并移到“未分配”。其档案昵称会被清除，并为其之前的 EFT 账户标记“仅限手动分配”。</value>
+  </data>
+  <data name="MovedToUnassigned" xml:space="preserve">
+    <value>已把已验证的 {0} TarkovTracker.org API 令牌移到未分配。</value>
+  </data>
+  <data name="NicknameWasCleared" xml:space="preserve">
+    <value>其档案昵称已被清除。</value>
+  </data>
+  <data name="UnbindTokenFailed" xml:space="preserve">
+    <value>无法解绑 TarkovTracker.org API 令牌：{0}</value>
+  </data>
+  <data name="RemoveTokenTitle" xml:space="preserve">
+    <value>移除 {0} API 令牌</value>
+  </data>
+  <data name="DeleteTokenHeading" xml:space="preserve">
+    <value>删除此 API 令牌？</value>
+  </data>
+  <data name="RemoveTokenMessage" xml:space="preserve">
+    <value>这会从本机的 Tarkov Monitor 中删除该令牌。要恢复它，需要重新导入。</value>
+  </data>
+  <data name="TokenAlreadyRemoved" xml:space="preserve">
+    <value>此 TarkovTracker.org API 令牌已被移除。</value>
+  </data>
+  <data name="RemovedBoundToken" xml:space="preserve">
+    <value>已从 Tarkov Monitor 移除已验证的 {0} TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="RemovedUnboundToken" xml:space="preserve">
+    <value>已移除 {0} 的未分配 {1} TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="RemoveTokenFailed" xml:space="preserve">
+    <value>无法移除 TarkovTracker.org API 令牌：{0}</value>
+  </data>
+  <data name="ReassignedToken" xml:space="preserve">
+    <value>已重新分配已验证的 {0} TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="NicknameMovedWithKey" xml:space="preserve">
+    <value>其档案昵称随令牌一起移动。</value>
+  </data>
+  <data name="SwappedTokens" xml:space="preserve">
+    <value>已在两个已保存档案之间交换已验证的 {0} TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="NicknamesMovedWithKeys" xml:space="preserve">
+    <value>档案昵称随各自的令牌一起移动。</value>
+  </data>
+  <data name="AssignedTokenManually" xml:space="preserve">
+    <value>已手动分配已验证的 {0} TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="PreviousAccountId" xml:space="preserve">
+    <value>之前的账户 ID</value>
+  </data>
+  <data name="PreviousProfileId" xml:space="preserve">
+    <value>之前的档案 ID</value>
+  </data>
+  <data name="NewAccountId" xml:space="preserve">
+    <value>新账户 ID</value>
+  </data>
+  <data name="NewProfileId" xml:space="preserve">
+    <value>新档案 ID</value>
+  </data>
+  <data name="FirstAccountId" xml:space="preserve">
+    <value>第一个账户 ID</value>
+  </data>
+  <data name="FirstProfileId" xml:space="preserve">
+    <value>第一个档案 ID</value>
+  </data>
+  <data name="SecondAccountId" xml:space="preserve">
+    <value>第二个账户 ID</value>
+  </data>
+  <data name="SecondProfileId" xml:space="preserve">
+    <value>第二个档案 ID</value>
+  </data>
+  <data name="NotSet" xml:space="preserve">
+    <value>未设置</value>
+  </data>
+  <data name="AssignedProfiles" xml:space="preserve">
+    <value>已分配档案</value>
+  </data>
+  <data name="EftAccountDetailsTitle" xml:space="preserve">
+    <value>EFT 账户详情</value>
+  </data>
+  <data name="CurrentAccountMarker" xml:space="preserve">
+    <value>• 当前账户</value>
+  </data>
+  <data name="ActiveProfileMarker" xml:space="preserve">
+    <value>• 活动档案</value>
+  </data>
+  <data name="LastActiveProfileMarker" xml:space="preserve">
+    <value>• 上次活动档案</value>
+  </data>
+  <data name="ServiceChangeCancelled" xml:space="preserve">
+    <value>Tarkov Tracker 服务切换已取消并恢复为 {0}：{1}</value>
+  </data>
+  <data name="ServiceChangeFailed" xml:space="preserve">
+    <value>Tarkov Tracker 服务切换失败且无法完全恢复。使用 Tarkov Tracker 前请重启 Tarkov Monitor。切换错误：{0} 恢复错误：{1}</value>
+  </data>
+  <data name="TrackerProfileLoadFailed" xml:space="preserve">
+    <value>无法加载 Tarkov Tracker 档案。</value>
+  </data>
+  <data name="RestartToApplyLanguage" xml:space="preserve">
+    <value>请重启 Tarkov Monitor 以完成语言切换。</value>
+  </data>
+  <data name="SelectLogsFolderDescription" xml:space="preserve">
+    <value>选择你的《逃离塔科夫》日志文件夹。</value>
+  </data>
+  <data name="LogsFolderLocateFailed" xml:space="preserve">
+    <value>无法定位默认的 EFT 日志文件夹。</value>
+  </data>
+  <data name="LogsFolderPickerFailed" xml:space="preserve">
+    <value>无法打开 EFT 日志文件夹选择器。</value>
+  </data>
+  <data name="EditTokenTitle" xml:space="preserve">
+    <value>编辑 {0} API 令牌</value>
+  </data>
+  <data name="RepairNicknameBlockedBindings" xml:space="preserve">
+    <value>命名此账户前，请先修复或移除无效的档案绑定。</value>
+  </data>
+  <data name="ImportApiToken" xml:space="preserve">
+    <value>导入 API 令牌</value>
+  </data>
 </root>

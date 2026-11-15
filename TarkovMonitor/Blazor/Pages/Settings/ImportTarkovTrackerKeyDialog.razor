@@ -1,24 +1,25 @@
 @implements IDisposable
 @inject MessageLog MessageLog
+@inject LocalizationService LocalizationService
 
 <MudDialog Class="tracker-settings-dialog">
     <DialogContent>
         <div class="tracker-dialog-note" role="note">
             <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" Class="tracker-dialog-note__icon" />
             <span class="tracker-dialog-note__copy">
-                <strong>Add a TarkovTracker.org API token.</strong>
-                <span>Tarkov Monitor verifies the key and identifies its game mode before saving it as Unassigned.</span>
+                <strong>@LocalizationService.GetString("AddOrgTokenHeading")</strong>
+                <span>@LocalizationService.GetString("VerifyBeforeSaving")</span>
             </span>
         </div>
 
         <div class="tracker-dialog-section-heading">
             <MudIcon Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" />
-            <span>API token</span>
+            <span>@LocalizationService.GetString("ApiToken")</span>
         </div>
         <div class="tracker-dialog-form-card">
             <MudTextField @bind-Value="apiKey"
                           Immediate="true"
-                          Label="TarkovTracker.org API token"
+                          Label="@LocalizationService.GetString("OrgTokenLabel")"
                           InputType="@passwordInput"
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
@@ -26,7 +27,7 @@
                           Adornment="Adornment.End"
                           AdornmentIcon="@passwordIcon"
                           OnAdornmentClick="ToggleKeyVisibility" />
-            <span class="tracker-dialog-field-help">Paste the full key exactly as copied from TarkovTracker.org.</span>
+            <span class="tracker-dialog-field-help">@LocalizationService.GetString("PasteFullKey")</span>
         </div>
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
@@ -40,20 +41,20 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Disabled="@saving" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
+        <MudButton OnClick="Cancel" Disabled="@saving" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">@LocalizationService.GetString("Cancel")</MudButton>
         <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Save" Disabled="@(saving || cooldownSeconds > 0 || string.IsNullOrWhiteSpace(apiKey))" StartIcon="@Icons.Material.Filled.Verified" Class="tracker-dialog-footer-button">
             @if (saving)
             {
                 <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
-                <span>Verifying</span>
+                <span>@LocalizationService.GetString("Verifying")</span>
             }
             else if (cooldownSeconds > 0)
             {
-                <span>@($"Try again in {cooldownSeconds}s")</span>
+                <span>@LocalizationService.GetString("TryAgainIn", cooldownSeconds)</span>
             }
             else
             {
-                <span>Verify and save</span>
+                <span>@LocalizationService.GetString("VerifyAndSave")</span>
             }
         </MudButton>
     </DialogActions>
@@ -74,11 +75,12 @@
     private string passwordIcon = Icons.Material.Filled.VisibilityOff;
     private Exception importException;
     private string trackerTokenSettingsLink = "https://tarkovtracker.org/settings#api";
-    private string trackerTokenGenerateText = "Click here to generate a new API token on Tarkov Tracker.";
+    private string trackerTokenGenerateText = "";
 
     protected override void OnInitialized()
     {
         apiKey = InitialApiKey;
+        trackerTokenGenerateText = LocalizationService.GetString("GenerateTokenLink");
         StartCooldownCountdown();
     }
 
@@ -130,7 +132,7 @@
                         $"Error: {ex.Message}",
                         "The API token was intentionally excluded from this report.");
                     MessageLog.AddMessage(report, "exception");
-                    errorMessage += " A sanitized error report was added to Messages so you can copy it when reporting the problem.";
+                    errorMessage += LocalizationService.GetString("SanitizedReportAdded");
                 }
                 else if (ex is TarkovTracker.MissingWritePermissionTokenException)
                 {

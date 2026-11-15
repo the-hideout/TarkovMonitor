@@ -1,28 +1,30 @@
+@inject LocalizationService LocalizationService
+
 <MudDialog Class="tracker-settings-dialog">
     <DialogContent>
         <div class="tracker-dialog-note tracker-dialog-note--assigned" role="note">
             <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="tracker-dialog-note__icon" />
             <span class="tracker-dialog-note__copy">
-                <strong>@(HasNickname ? $"Change this {Mode} profile's nickname." : $"Set a nickname for this {Mode} profile.")</strong>
-                <span>If you reassign this API token, the nickname moves with it. Unbinding the key clears the nickname. It does not change your EFT character name.</span>
+                <strong>@(HasNickname ? LocalizationService.GetString("ChangeProfileNicknameHeading", Mode) : LocalizationService.GetString("SetProfileNicknameHeading", Mode))</strong>
+                <span>@LocalizationService.GetString("ProfileNicknameNote")</span>
             </span>
         </div>
 
         <div class="tracker-dialog-section-heading">
             <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" />
-            <span>Profile nickname</span>
+            <span>@LocalizationService.GetString("ProfileNicknameLabel")</span>
         </div>
         <div class="tracker-dialog-form-card">
             <MudTextField @bind-Value="nickname"
                           Immediate="true"
-                          Label="Profile nickname"
-                          Placeholder="Character name"
+                          Label="@LocalizationService.GetString("ProfileNicknameLabel")"
+                          Placeholder="@LocalizationService.GetString("CharacterName")"
                           MaxLength="32"
                           Counter="32"
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
                           AutoFocus="true" />
-            <span class="tracker-dialog-field-help">Use 1-32 characters. You can change it while the key remains assigned.</span>
+            <span class="tracker-dialog-field-help">@LocalizationService.GetString("ProfileNicknameHelp")</span>
         </div>
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
@@ -30,9 +32,9 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">@LocalizationService.GetString("Cancel")</MudButton>
         <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Save" Disabled="@string.IsNullOrWhiteSpace(nickname)" StartIcon="@Icons.Material.Filled.Save" Class="tracker-dialog-footer-button">
-            @(HasNickname ? "Save name" : "Set name")
+            @(HasNickname ? LocalizationService.GetString("SaveName") : LocalizationService.GetString("SetName"))
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -59,7 +61,7 @@
         var normalizedNickname = nickname.Trim();
         if (normalizedNickname.Length is < 1 or > 32 || normalizedNickname.Any(char.IsControl))
         {
-            errorMessage = "Enter a name between 1 and 32 characters.";
+            errorMessage = LocalizationService.GetString("NicknameLengthError");
             return;
         }
         MudDialog.Close(DialogResult.Ok(normalizedNickname));
