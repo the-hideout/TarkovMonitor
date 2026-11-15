@@ -15,7 +15,7 @@
             }
             else
             {
-                <span>No EFT profile loaded.</span>
+                <span>@LocalizationService.GetString("NoEftProfileLoaded")</span>
             }
         </MudText>
         <MudText>
@@ -24,7 +24,7 @@
         @if (eft.IsGameRunning)
         {
             <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
-                Read Past Logs is unavailable while Escape from Tarkov is running. Close EFT before importing historical task updates.
+                @LocalizationService.GetString("ReadPastLogsUnavailableWhileRunning")
             </MudAlert>
         }
         @if (customWatcher.LogsPath != "")
@@ -157,28 +157,28 @@
         if (eft.IsGameRunning)
         {
             messageLog.AddMessage(
-                "Read Past Logs was not started because Escape from Tarkov is running. Close EFT before importing historical task updates.",
+                LocalizationService.GetString("ReadPastLogsNotStartedRunning"),
                 "warning");
             return;
         }
         if (!breakpoint.Profile.HasIdentity || !breakpoint.Profile.SupportsTarkovTrackerWrites)
         {
             messageLog.AddMessage(
-                $"Tarkov Tracker does not support {breakpoint.Profile.DisplayName} historical task updates. No updates were sent.",
+                LocalizationService.GetString("TrackerUnsupportedModeHistory", breakpoint.Profile.DisplayName),
                 "warning");
             return;
         }
         if (TarkovTracker.IsLegacyService)
         {
             messageLog.AddMessage(
-                "Read Past Logs requires TarkovTracker.org. Switch the Tarkov Tracker service in Settings and try again.",
+                LocalizationService.GetString("ReadPastLogsRequiresOrg"),
                 "warning");
             return;
         }
         if (string.IsNullOrWhiteSpace(TarkovTracker.GetTokenForProfile(breakpoint.Profile)))
         {
             messageLog.AddMessage(
-                $"A verified {breakpoint.Profile.DisplayName} TarkovTracker.org API token assigned to this exact EFT profile is required to read past logs.",
+                LocalizationService.GetString("ReadPastLogsRequiresToken", breakpoint.Profile.DisplayName),
                 "warning");
             return;
         }
@@ -205,7 +205,7 @@
                 if (eft.IsGameRunning)
                 {
                     messageLog.AddMessage(
-                        "Read Past Logs was cancelled because Escape from Tarkov started before historical processing began.",
+                        LocalizationService.GetString("ReadPastLogsCancelledStarted"),
                         "warning");
                     return;
                 }
@@ -268,8 +268,14 @@
                         continue;
                     }
                     updateTasks.Add(kvp.Key, kvp.Value);
+                    var taskMessageKey = kvp.Value switch
+                    {
+                        TarkovMonitor.TaskStatus.Finished => "TaskCompleted",
+                        TarkovMonitor.TaskStatus.Failed => "TaskFailed",
+                        _ => "TaskStarted",
+                    };
                     taskMessages.Add(new MonitorMessage(
-                        $"{kvp.Value} task: {task.name}.",
+                        LocalizationService.GetString(taskMessageKey, task.name),
                         "quest",
                         $"https://tarkov.dev/task/{task.normalizedName}"));
                 }
@@ -277,14 +283,14 @@
                 if (eft.IsGameRunning)
                 {
                     messageLog.AddMessage(
-                        "Read Past Logs was cancelled because Escape from Tarkov started before task updates were sent.",
+                        LocalizationService.GetString("ReadPastLogsCancelledBeforeSend"),
                         "warning");
                     return;
                 }
             }
             catch (Exception ex)
             {
-                messageLog.AddException("Past-log task updates could not be compiled.", "TM-LOG-001", "CompileTaskUpdates", ex, "LogParser", "PastLogs", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                messageLog.AddException(LocalizationService.GetString("PastLogUpdatesCompileFailed"), "TM-LOG-001", "CompileTaskUpdates", ex, "LogParser", "PastLogs", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
                 return;
             }
 
@@ -306,20 +312,20 @@
                     await TarkovTracker.SetTaskStatuses(updateTasks, trackerLease);
                     messageLog.AddMessages(taskMessages, preserveDisplayOrder: true);
                     messageLog.AddMessage(
-                        $"Updated {updateTasks.Count} of {totalTasks} tasks found in the selected logs.",
+                        LocalizationService.GetString("PastLogUpdatedTasks", updateTasks.Count, totalTasks),
                         "info");
                 }
                 else
                 {
                     messageLog.AddMessage(
-                        $"Checked {totalTasks} tasks in the selected logs. Tarkov Tracker was already up to date.",
+                        LocalizationService.GetString("PastLogCheckedTasks", totalTasks),
                         "info");
                 }
                 MudDialog.Close(DialogResult.Ok(true));
             }
             catch (Exception ex)
             {
-                messageLog.AddException("Past-log task updates could not be sent.", "TM-API-TRACKER-007", "UpdatePastLogTasks", ex, "TarkovTracker", "PastLogs", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(updateStartedUtc));
+                messageLog.AddException(LocalizationService.GetString("PastLogUpdatesSendFailed"), "TM-API-TRACKER-007", "UpdatePastLogTasks", ex, "TarkovTracker", "PastLogs", $"https://{Properties.Settings.Default.tarkovTrackerDomain}", DiagnosticsService.ElapsedMilliseconds(updateStartedUtc));
             }
         }
         finally

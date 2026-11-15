@@ -1284,4 +1284,352 @@
   <data name="ImportApiToken" xml:space="preserve">
     <value>导入 API 令牌</value>
   </data>
+  <data name="WindowControls" xml:space="preserve">
+    <value>窗口控制</value>
+  </data>
+  <data name="Minimize" xml:space="preserve">
+    <value>最小化</value>
+  </data>
+  <data name="Maximize" xml:space="preserve">
+    <value>最大化</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>还原</value>
+  </data>
+  <data name="CollapseNavigation" xml:space="preserve">
+    <value>收起导航</value>
+  </data>
+  <data name="RaidTimers" xml:space="preserve">
+    <value>战局计时器</value>
+  </data>
+  <data name="ResetTimerPosition" xml:space="preserve">
+    <value>重置计时器位置</value>
+  </data>
+  <data name="ExpandTimerPanel" xml:space="preserve">
+    <value>展开计时器面板</value>
+  </data>
+  <data name="CollapseTimerPanel" xml:space="preserve">
+    <value>收起计时器面板</value>
+  </data>
+  <data name="CompactTimerElapsed" xml:space="preserve">
+    <value>已用</value>
+  </data>
+  <data name="CompactTimerRemaining" xml:space="preserve">
+    <value>剩余</value>
+  </data>
+  <data name="MediaControls" xml:space="preserve">
+    <value>媒体控制</value>
+  </data>
+  <data name="PauseMediaOnRaidStart" xml:space="preserve">
+    <value>进入战局时暂停媒体播放</value>
+  </data>
+  <data name="PauseMediaDescription" xml:space="preserve">
+    <value>进入战局时自动淡出并暂停音乐，撤离后恢复播放。</value>
+  </data>
+  <data name="Mp3FilesFilter" xml:space="preserve">
+    <value>MP3 文件 (*.mp3)|*.mp3</value>
+  </data>
+  <data name="SelectSoundRaidStart" xml:space="preserve">
+    <value>选择战局开始音效</value>
+  </data>
+  <data name="SelectSoundMatchFound" xml:space="preserve">
+    <value>选择找到战局音效</value>
+  </data>
+  <data name="SelectSoundTaskRestart" xml:space="preserve">
+    <value>选择重启任务音效</value>
+  </data>
+  <data name="SelectSoundRunthrough" xml:space="preserve">
+    <value>选择匆匆撤离音效</value>
+  </data>
+  <data name="SelectSoundAirFilterOn" xml:space="preserve">
+    <value>选择空气过滤器开启音效</value>
+  </data>
+  <data name="SelectSoundAirFilterOff" xml:space="preserve">
+    <value>选择空气过滤器关闭音效</value>
+  </data>
+  <data name="SelectSoundScavAvailable" xml:space="preserve">
+    <value>选择 Scav 就绪音效</value>
+  </data>
+  <data name="CustomSoundRemoveFailed" xml:space="preserve">
+    <value>无法移除自定义音效</value>
+  </data>
+  <data name="FloatingTimerPanel" xml:space="preserve">
+    <value>悬浮计时器面板</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>已启用</value>
+  </data>
+  <data name="Disabled" xml:space="preserve">
+    <value>已停用</value>
+  </data>
+  <data name="TimersShown" xml:space="preserve">
+    <value>显示的计时器：{0}</value>
+  </data>
+  <data name="LogActions" xml:space="preserve">
+    <value>日志操作</value>
+  </data>
+  <data name="ProcessCustomLogData" xml:space="preserve">
+    <value>处理自定义日志数据</value>
+  </data>
+  <data name="LogType" xml:space="preserve">
+    <value>日志类型</value>
+  </data>
+  <data name="LogTypeHelper" xml:space="preserve">
+    <value>选择处理此日志的 GameWatcher 监视器</value>
+  </data>
+  <data name="LogData" xml:space="preserve">
+    <value>日志数据</value>
+  </data>
+  <data name="NoEftProfileLoaded" xml:space="preserve">
+    <value>未加载 EFT 档案。</value>
+  </data>
+  <data name="ReadPastLogsUnavailableWhileRunning" xml:space="preserve">
+    <value>《逃离塔科夫》运行期间无法使用“读取过去的日志”。请先关闭 EFT 再导入历史任务进度。</value>
+  </data>
+  <data name="ReadPastLogsNotStartedRunning" xml:space="preserve">
+    <value>因《逃离塔科夫》正在运行，未开始读取过去的日志。请先关闭 EFT 再导入历史任务进度。</value>
+  </data>
+  <data name="TrackerUnsupportedModeHistory" xml:space="preserve">
+    <value>Tarkov Tracker 不支持 {0} 的历史任务进度同步，未发送任何更新。</value>
+  </data>
+  <data name="ReadPastLogsRequiresOrg" xml:space="preserve">
+    <value>读取过去的日志需要 TarkovTracker.org。请在设置中切换 Tarkov Tracker 服务后重试。</value>
+  </data>
+  <data name="ReadPastLogsRequiresToken" xml:space="preserve">
+    <value>读取过去的日志需要一个已验证并分配到该 EFT 档案的 {0} TarkovTracker.org API 令牌。</value>
+  </data>
+  <data name="ReadPastLogsCancelledStarted" xml:space="preserve">
+    <value>因《逃离塔科夫》已启动，读取过去的日志已取消（历史处理尚未开始）。</value>
+  </data>
+  <data name="ReadPastLogsCancelledBeforeSend" xml:space="preserve">
+    <value>因《逃离塔科夫》已启动，读取过去的日志已取消（任务进度尚未发送）。</value>
+  </data>
+  <data name="PastLogUpdatesCompileFailed" xml:space="preserve">
+    <value>无法整理历史日志中的任务进度</value>
+  </data>
+  <data name="PastLogUpdatesSendFailed" xml:space="preserve">
+    <value>无法发送历史日志中的任务进度</value>
+  </data>
+  <data name="PastLogUpdatedTasks" xml:space="preserve">
+    <value>已更新所选日志中 {1} 个任务里的 {0} 个。</value>
+  </data>
+  <data name="PastLogCheckedTasks" xml:space="preserve">
+    <value>已检查所选日志中的 {0} 个任务，Tarkov Tracker 已是最新状态。</value>
+  </data>
+  <data name="NoNewLogEntries" xml:space="preserve">
+    <value>Tarkov Monitor 启动后暂无新日志。</value>
+  </data>
+  <data name="ProtectedValueAriaSuffix" xml:space="preserve">
+    <value>（敏感值将在聚焦时显示）</value>
+  </data>
+  <data name="ProtectedValueHidden" xml:space="preserve">
+    <value>已隐藏，悬停显示</value>
+  </data>
+  <data name="InfoTitle" xml:space="preserve">
+    <value>信息</value>
+  </data>
+  <data name="TrackerOrgStorageUnreadable" xml:space="preserve">
+    <value>无法读取 TarkovTracker.org 的令牌存储。原始值已保留，修复前无法更改令牌。{0}</value>
+  </data>
+  <data name="TrackerOrgTokenProtectionFailed" xml:space="preserve">
+    <value>无法为此 Windows 用户保护 TarkovTracker.org 的 API 令牌。原始值已保留，存储修复前无法更改令牌。{0}</value>
+  </data>
+  <data name="TrackerSingletonKeyUndecryptable" xml:space="preserve">
+    <value>已保存的 TarkovTracker 单例令牌无法解密，存储修复前将保持不可用。{0}</value>
+  </data>
+  <data name="TrackerLegacyKeysProtectionFailed" xml:space="preserve">
+    <value>无法为此 Windows 用户保护旧版 TarkovTracker 令牌。原始值已保留。{0}</value>
+  </data>
+  <data name="TrackerSettingUnreadable" xml:space="preserve">
+    <value>无法读取 Tarkov Tracker 存储设置 {0}。原始值已保留，Tarkov Monitor 不会覆盖它。在设置修复前{1}。</value>
+  </data>
+  <data name="TrackerLegacyIoDisabled" xml:space="preserve">
+    <value>旧版 TarkovTracker.io 令牌更改和按档案恢复 TarkovTracker.org 令牌的功能已停用</value>
+  </data>
+  <data name="TrackerOrgRecoveryUnavailable" xml:space="preserve">
+    <value>恢复之前保存的 TarkovTracker.org 令牌的功能不可用</value>
+  </data>
+  <data name="TrackerTokenFormatInvalid" xml:space="preserve">
+    <value>TarkovTracker.org API 令牌格式无效</value>
+  </data>
+  <data name="TrackerTokenMismatchReturned" xml:space="preserve">
+    <value>TarkovTracker 返回的 API 令牌与提交的不一致</value>
+  </data>
+  <data name="TrackerUnsupportedGameMode" xml:space="preserve">
+    <value>TarkovTracker 为此 API 令牌返回了不支持的游戏模式</value>
+  </data>
+  <data name="TrackerPrefixMismatch" xml:space="preserve">
+    <value>此 API 令牌是 {0}，但 TarkovTracker 验证结果为 {1}</value>
+  </data>
+  <data name="TrackerServiceChanged" xml:space="preserve">
+    <value>Tarkov Tracker 服务已变更。请切换到 TarkovTracker.org 后重试</value>
+  </data>
+  <data name="AssignOrRemoveBeforeImport" xml:space="preserve">
+    <value>导入下一个令牌前，请先分配或移除未分配的 {0} API 令牌</value>
+  </data>
+  <data name="TrackerTokenAlreadySaved" xml:space="preserve">
+    <value>此 {0} API 令牌已保存在本地</value>
+  </data>
+  <data name="TrackerTokenNoWritePermission" xml:space="preserve">
+    <value>此 API 令牌有效但没有写入权限</value>
+  </data>
+  <data name="TrackerAnotherPendingAdded" xml:space="preserve">
+    <value>在此次导入完成前，另一个未分配的 {0} API 令牌已被添加</value>
+  </data>
+  <data name="TrackerPendingTokenNotFound" xml:space="preserve">
+    <value>未找到待处理的 API 令牌</value>
+  </data>
+  <data name="TrackerSavedModeMismatch" xml:space="preserve">
+    <value>已保存 API 令牌的模式与其验证时的模式不再一致</value>
+  </data>
+  <data name="TrackerPendingTokenChanged" xml:space="preserve">
+    <value>分配完成前，未分配的 API 令牌发生了变化</value>
+  </data>
+  <data name="TrackerTokenNotFound" xml:space="preserve">
+    <value>未找到已保存的 API 令牌</value>
+  </data>
+  <data name="AssignOrRemoveBeforeUnbind" xml:space="preserve">
+    <value>解绑下一个令牌前，请先分配或移除未分配的 {0} API 令牌</value>
+  </data>
+  <data name="TrackerRecoverySourceChanged" xml:space="preserve">
+    <value>更新恢复来源前，已保存的 API 令牌发生了变化</value>
+  </data>
+  <data name="TrackerOrgStorageNeedsRepair" xml:space="preserve">
+    <value>TarkovTracker.org 令牌存储需要修复后才能更改令牌。无法读取的已保存值已保留</value>
+  </data>
+  <data name="TrackerProfileChangedSelectAgain" xml:space="preserve">
+    <value>所选 EFT 档案已变更。请选择匹配的档案后重试</value>
+  </data>
+  <data name="TrackerPasteTokenFirst" xml:space="preserve">
+    <value>验证前请先粘贴 TarkovTracker.org API 令牌</value>
+  </data>
+  <data name="TrackerTokenHasSpaces" xml:space="preserve">
+    <value>API 令牌前后含有空格。请直接从 TarkovTracker.org 复制后重试</value>
+  </data>
+  <data name="TrackerTokenNonAscii" xml:space="preserve">
+    <value>API 令牌含有非 ASCII 字符。请直接从 TarkovTracker.org 复制，不要手动输入或修改</value>
+  </data>
+  <data name="TrackerTokenFormatExpected" xml:space="preserve">
+    <value>API 令牌格式无效。应为 PVP_、PVE_ 或 SZN_ 后接 18 位十六进制标识符。请直接从 TarkovTracker.org 复制后重试</value>
+  </data>
+  <data name="TrackerVerifyCooldown" xml:space="preserve">
+    <value>请等待 {0} 秒后再验证下一个 API 令牌</value>
+  </data>
+  <data name="TrackerVerifyInProgress" xml:space="preserve">
+    <value>已有一个 API 令牌验证正在进行</value>
+  </data>
+  <data name="TrackerNoEftProfile" xml:space="preserve">
+    <value>尚未初始化 EFT 档案，请先启动《逃离塔科夫》</value>
+  </data>
+  <data name="TrackerLegacyStorageUnreadable" xml:space="preserve">
+    <value>无法读取旧版 Tarkov Tracker 令牌存储，因此未覆盖它</value>
+  </data>
+  <data name="TrackerOrgTokenOnLegacyService" xml:space="preserve">
+    <value>这是 TarkovTracker.org 的 API 令牌。请切换到 TarkovTracker.org 以恢复或管理它</value>
+  </data>
+  <data name="TrackerIoRetired" xml:space="preserve">
+    <value>对 TarkovTracker.io 的支持已停止。请切换到 TarkovTracker.org</value>
+  </data>
+  <data name="TrackerTokenModeMismatchActive" xml:space="preserve">
+    <value>当前使用的 API 令牌与当前 EFT 模式不匹配</value>
+  </data>
+  <data name="OrgStoreVerifiedPrefixMismatch" xml:space="preserve">
+    <value>已验证的 API 令牌与模式前缀不匹配</value>
+  </data>
+  <data name="OrgStoreTokenProfileMismatch" xml:space="preserve">
+    <value>此 {0} API 令牌与所选的 {1} 档案不匹配</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyAssigned" xml:space="preserve">
+    <value>此 API 令牌已被分配</value>
+  </data>
+  <data name="OrgStoreTokenMustBeVerified" xml:space="preserve">
+    <value>此 API 令牌需要先验证才能分配</value>
+  </data>
+  <data name="OrgStoreRecordMustBeRepaired" xml:space="preserve">
+    <value>此 API 令牌记录需要先修复才能分配</value>
+  </data>
+  <data name="OrgStoreTokenCannotAssignProfile" xml:space="preserve">
+    <value>此 {0} API 令牌无法分配到所选的 {1} 档案</value>
+  </data>
+  <data name="OrgStoreTokenDecryptFailed" xml:space="preserve">
+    <value>一条已保存的 TarkovTracker.org API 令牌无法解密</value>
+  </data>
+  <data name="OrgStoreTokenNotAssigned" xml:space="preserve">
+    <value>此 API 令牌未分配</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyAssignedToProfile" xml:space="preserve">
+    <value>此 API 令牌已分配到该档案</value>
+  </data>
+  <data name="OrgStoreProfileHasIncompatibleToken" xml:space="preserve">
+    <value>所选档案已有一个不兼容的 API 令牌</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyUnassigned" xml:space="preserve">
+    <value>此 API 令牌已是未分配状态</value>
+  </data>
+  <data name="OrgStoreAssignBeforeNickname" xml:space="preserve">
+    <value>设置档案昵称前，请先分配此 API 令牌</value>
+  </data>
+  <data name="NicknameRangeError" xml:space="preserve">
+    <value>请输入 1-32 个字符的昵称</value>
+  </data>
+  <data name="OrgStoreAssignAccountBeforeNickname" xml:space="preserve">
+    <value>设置此账户昵称前，请先为其分配 API 令牌</value>
+  </data>
+  <data name="OrgStoreProfileNotInList" xml:space="preserve">
+    <value>所选 EFT 档案不在已保存的档案列表中。请先扫描档案后重试</value>
+  </data>
+  <data name="OrgStoreBindingOccupied" xml:space="preserve">
+    <value>所选 EFT 账户、档案和模式已有已分配的 API 令牌。请先重新分配、解绑或移除它，再分配另一个令牌</value>
+  </data>
+  <data name="OrgStoreValueEmpty" xml:space="preserve">
+    <value>存储值为空</value>
+  </data>
+  <data name="OrgStoreValueNull" xml:space="preserve">
+    <value>存储值为 null</value>
+  </data>
+  <data name="OrgStoreValueNullKeyOrValue" xml:space="preserve">
+    <value>存储值包含 null 键或值</value>
+  </data>
+  <data name="OrgStoreUnsupportedVersion" xml:space="preserve">
+    <value>不支持的存储版本 {0}</value>
+  </data>
+  <data name="OrgStoreKeyListNull" xml:space="preserve">
+    <value>令牌列表为 null</value>
+  </data>
+  <data name="OrgStoreKeyListNullRecord" xml:space="preserve">
+    <value>令牌列表包含 null 记录</value>
+  </data>
+  <data name="OrgStoreKeyNoId" xml:space="preserve">
+    <value>某条已保存的令牌记录没有标识符</value>
+  </data>
+  <data name="OrgStoreKeyDuplicateIds" xml:space="preserve">
+    <value>已保存的令牌列表包含重复标识符</value>
+  </data>
+  <data name="OrgStoreNicknameInvalid" xml:space="preserve">
+    <value>某条已保存的档案昵称记录无效</value>
+  </data>
+  <data name="OrgStoreAccountNicknameConflict" xml:space="preserve">
+    <value>账户 ID {0} 存在相互冲突的已保存昵称</value>
+  </data>
+  <data name="OrgStoreAccountListNull" xml:space="preserve">
+    <value>账户列表为 null</value>
+  </data>
+  <data name="OrgStoreAccountListNullRecord" xml:space="preserve">
+    <value>账户列表包含 null 记录</value>
+  </data>
+  <data name="OrgStoreAccountDuplicateIds" xml:space="preserve">
+    <value>已保存的账户列表包含重复的账户 ID</value>
+  </data>
+  <data name="OrgStoreAccountNicknameInvalid" xml:space="preserve">
+    <value>某条已保存的账户昵称记录无效</value>
+  </data>
+  <data name="OrgStoreProfileListNull" xml:space="preserve">
+    <value>档案列表为 null</value>
+  </data>
+  <data name="OrgStoreProfileListNullRecord" xml:space="preserve">
+    <value>档案列表包含 null 记录</value>
+  </data>
+  <data name="ProtectedValueDecryptFailed" xml:space="preserve">
+    <value>一条受保护的 TarkovTracker 设置值无法解密</value>
+  </data>
 </root>

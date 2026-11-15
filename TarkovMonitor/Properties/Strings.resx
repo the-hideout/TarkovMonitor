@@ -1284,4 +1284,352 @@
   <data name="ImportApiToken" xml:space="preserve">
     <value>Import API Token</value>
   </data>
+  <data name="WindowControls" xml:space="preserve">
+    <value>Window controls</value>
+  </data>
+  <data name="Minimize" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="Maximize" xml:space="preserve">
+    <value>Maximize</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="CollapseNavigation" xml:space="preserve">
+    <value>Collapse navigation</value>
+  </data>
+  <data name="RaidTimers" xml:space="preserve">
+    <value>Raid timers</value>
+  </data>
+  <data name="ResetTimerPosition" xml:space="preserve">
+    <value>Reset timer position</value>
+  </data>
+  <data name="ExpandTimerPanel" xml:space="preserve">
+    <value>Expand the timer panel</value>
+  </data>
+  <data name="CollapseTimerPanel" xml:space="preserve">
+    <value>Collapse the timer panel</value>
+  </data>
+  <data name="CompactTimerElapsed" xml:space="preserve">
+    <value>ERT</value>
+  </data>
+  <data name="CompactTimerRemaining" xml:space="preserve">
+    <value>RT</value>
+  </data>
+  <data name="MediaControls" xml:space="preserve">
+    <value>Media controls</value>
+  </data>
+  <data name="PauseMediaOnRaidStart" xml:space="preserve">
+    <value>Pause media on raid start</value>
+  </data>
+  <data name="PauseMediaDescription" xml:space="preserve">
+    <value>Automatically fade and pause music when you enter a raid, then resume it when you leave.</value>
+  </data>
+  <data name="Mp3FilesFilter" xml:space="preserve">
+    <value>MP3 files (*.mp3)|*.mp3</value>
+  </data>
+  <data name="SelectSoundRaidStart" xml:space="preserve">
+    <value>Select a sound for raid start</value>
+  </data>
+  <data name="SelectSoundMatchFound" xml:space="preserve">
+    <value>Select a sound for match found</value>
+  </data>
+  <data name="SelectSoundTaskRestart" xml:space="preserve">
+    <value>Select a sound for task restart</value>
+  </data>
+  <data name="SelectSoundRunthrough" xml:space="preserve">
+    <value>Select a sound for run-through</value>
+  </data>
+  <data name="SelectSoundAirFilterOn" xml:space="preserve">
+    <value>Select a sound for air filter on</value>
+  </data>
+  <data name="SelectSoundAirFilterOff" xml:space="preserve">
+    <value>Select a sound for air filter off</value>
+  </data>
+  <data name="SelectSoundScavAvailable" xml:space="preserve">
+    <value>Select a sound for Scav availability</value>
+  </data>
+  <data name="CustomSoundRemoveFailed" xml:space="preserve">
+    <value>The custom sound could not be removed.</value>
+  </data>
+  <data name="FloatingTimerPanel" xml:space="preserve">
+    <value>Floating timer panel</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="TimersShown" xml:space="preserve">
+    <value>Timers shown: {0}</value>
+  </data>
+  <data name="LogActions" xml:space="preserve">
+    <value>Log actions</value>
+  </data>
+  <data name="ProcessCustomLogData" xml:space="preserve">
+    <value>Process custom log data</value>
+  </data>
+  <data name="LogType" xml:space="preserve">
+    <value>Log type</value>
+  </data>
+  <data name="LogTypeHelper" xml:space="preserve">
+    <value>Choose which GameWatcher monitor should process this log</value>
+  </data>
+  <data name="LogData" xml:space="preserve">
+    <value>Log data</value>
+  </data>
+  <data name="NoEftProfileLoaded" xml:space="preserve">
+    <value>No EFT profile loaded.</value>
+  </data>
+  <data name="ReadPastLogsUnavailableWhileRunning" xml:space="preserve">
+    <value>Read Past Logs is unavailable while Escape from Tarkov is running. Close EFT before importing historical task updates.</value>
+  </data>
+  <data name="ReadPastLogsNotStartedRunning" xml:space="preserve">
+    <value>Read Past Logs was not started because Escape from Tarkov is running. Close EFT before importing historical task updates.</value>
+  </data>
+  <data name="TrackerUnsupportedModeHistory" xml:space="preserve">
+    <value>Tarkov Tracker does not support {0} historical task updates. No updates were sent.</value>
+  </data>
+  <data name="ReadPastLogsRequiresOrg" xml:space="preserve">
+    <value>Read Past Logs requires TarkovTracker.org. Switch the Tarkov Tracker service in Settings and try again.</value>
+  </data>
+  <data name="ReadPastLogsRequiresToken" xml:space="preserve">
+    <value>A verified {0} TarkovTracker.org API token assigned to this exact EFT profile is required to read past logs.</value>
+  </data>
+  <data name="ReadPastLogsCancelledStarted" xml:space="preserve">
+    <value>Read Past Logs was cancelled because Escape from Tarkov started before historical processing began.</value>
+  </data>
+  <data name="ReadPastLogsCancelledBeforeSend" xml:space="preserve">
+    <value>Read Past Logs was cancelled because Escape from Tarkov started before task updates were sent.</value>
+  </data>
+  <data name="PastLogUpdatesCompileFailed" xml:space="preserve">
+    <value>Past-log task updates could not be compiled.</value>
+  </data>
+  <data name="PastLogUpdatesSendFailed" xml:space="preserve">
+    <value>Past-log task updates could not be sent.</value>
+  </data>
+  <data name="PastLogUpdatedTasks" xml:space="preserve">
+    <value>Updated {0} of {1} tasks found in the selected logs.</value>
+  </data>
+  <data name="PastLogCheckedTasks" xml:space="preserve">
+    <value>Checked {0} tasks in the selected logs. Tarkov Tracker was already up to date.</value>
+  </data>
+  <data name="NoNewLogEntries" xml:space="preserve">
+    <value>No new log entries since Tarkov Monitor started.</value>
+  </data>
+  <data name="ProtectedValueAriaSuffix" xml:space="preserve">
+    <value>. Protected value revealed on focus.</value>
+  </data>
+  <data name="ProtectedValueHidden" xml:space="preserve">
+    <value>Hidden - hover to reveal</value>
+  </data>
+  <data name="InfoTitle" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="TrackerOrgStorageUnreadable" xml:space="preserve">
+    <value>TarkovTracker.org key storage could not be read. Its original value was preserved and key changes are disabled until it is repaired. {0}</value>
+  </data>
+  <data name="TrackerOrgTokenProtectionFailed" xml:space="preserve">
+    <value>TarkovTracker.org API tokens could not be protected for this Windows user. The original value was preserved and key changes remain disabled until storage is repaired. {0}</value>
+  </data>
+  <data name="TrackerSingletonKeyUndecryptable" xml:space="preserve">
+    <value>The saved TarkovTracker singleton key could not be decrypted and will remain unavailable until storage is repaired. {0}</value>
+  </data>
+  <data name="TrackerLegacyKeysProtectionFailed" xml:space="preserve">
+    <value>Legacy TarkovTracker keys could not be protected for this Windows user. Their original values were preserved. {0}</value>
+  </data>
+  <data name="TrackerSettingUnreadable" xml:space="preserve">
+    <value>Tarkov Tracker storage setting {0} could not be read. Its original value was preserved and Tarkov Monitor will not overwrite it. {1} until the setting is repaired.</value>
+  </data>
+  <data name="TrackerLegacyIoDisabled" xml:space="preserve">
+    <value>Legacy TarkovTracker.io key changes and profile-keyed TarkovTracker.org recovery are disabled</value>
+  </data>
+  <data name="TrackerOrgRecoveryUnavailable" xml:space="preserve">
+    <value>Recovery of previously saved TarkovTracker.org keys is unavailable</value>
+  </data>
+  <data name="TrackerTokenFormatInvalid" xml:space="preserve">
+    <value>The TarkovTracker.org API token format is invalid.</value>
+  </data>
+  <data name="TrackerTokenMismatchReturned" xml:space="preserve">
+    <value>TarkovTracker returned a different API token than the one supplied.</value>
+  </data>
+  <data name="TrackerUnsupportedGameMode" xml:space="preserve">
+    <value>TarkovTracker returned an unsupported game mode for this API token.</value>
+  </data>
+  <data name="TrackerPrefixMismatch" xml:space="preserve">
+    <value>This API token is {0}, but TarkovTracker verified it as {1}.</value>
+  </data>
+  <data name="TrackerServiceChanged" xml:space="preserve">
+    <value>The Tarkov Tracker service changed. Switch to TarkovTracker.org and try again.</value>
+  </data>
+  <data name="AssignOrRemoveBeforeImport" xml:space="preserve">
+    <value>Assign or remove the unassigned {0} API token before importing another one.</value>
+  </data>
+  <data name="TrackerTokenAlreadySaved" xml:space="preserve">
+    <value>This {0} API token is already saved locally.</value>
+  </data>
+  <data name="TrackerTokenNoWritePermission" xml:space="preserve">
+    <value>This API token is valid but does not have write permission.</value>
+  </data>
+  <data name="TrackerAnotherPendingAdded" xml:space="preserve">
+    <value>Another unassigned {0} API token was added before this import finished.</value>
+  </data>
+  <data name="TrackerPendingTokenNotFound" xml:space="preserve">
+    <value>The pending API token was not found.</value>
+  </data>
+  <data name="TrackerSavedModeMismatch" xml:space="preserve">
+    <value>The saved API token mode no longer matches its verified mode.</value>
+  </data>
+  <data name="TrackerPendingTokenChanged" xml:space="preserve">
+    <value>The unassigned API token changed before assignment finished.</value>
+  </data>
+  <data name="TrackerTokenNotFound" xml:space="preserve">
+    <value>The saved API token was not found.</value>
+  </data>
+  <data name="AssignOrRemoveBeforeUnbind" xml:space="preserve">
+    <value>Assign or remove the unassigned {0} API token before unbinding another one.</value>
+  </data>
+  <data name="TrackerRecoverySourceChanged" xml:space="preserve">
+    <value>The saved API token changed before its recovery source could be updated.</value>
+  </data>
+  <data name="TrackerOrgStorageNeedsRepair" xml:space="preserve">
+    <value>TarkovTracker.org key storage needs repair before keys can be changed. The unreadable saved value was preserved.</value>
+  </data>
+  <data name="TrackerProfileChangedSelectAgain" xml:space="preserve">
+    <value>The selected EFT profile changed. Select the matching profile and try again.</value>
+  </data>
+  <data name="TrackerPasteTokenFirst" xml:space="preserve">
+    <value>Paste a TarkovTracker.org API token before validating.</value>
+  </data>
+  <data name="TrackerTokenHasSpaces" xml:space="preserve">
+    <value>The API token contains a space before or after the key. Copy it directly from TarkovTracker.org and try again.</value>
+  </data>
+  <data name="TrackerTokenNonAscii" xml:space="preserve">
+    <value>The API token contains a non-ASCII character. Copy it directly from TarkovTracker.org instead of typing or editing it manually.</value>
+  </data>
+  <data name="TrackerTokenFormatExpected" xml:space="preserve">
+    <value>The API token format is invalid. Expected PVP_, PVE_, or SZN_ followed by an 18-character hexadecimal identifier. Copy the key directly from TarkovTracker.org and try again.</value>
+  </data>
+  <data name="TrackerVerifyCooldown" xml:space="preserve">
+    <value>Please wait {0} seconds before verifying another API token.</value>
+  </data>
+  <data name="TrackerVerifyInProgress" xml:space="preserve">
+    <value>An API token verification is already in progress.</value>
+  </data>
+  <data name="TrackerNoEftProfile" xml:space="preserve">
+    <value>No EFT profile initialized, please launch Escape from Tarkov first</value>
+  </data>
+  <data name="TrackerLegacyStorageUnreadable" xml:space="preserve">
+    <value>Legacy Tarkov Tracker token storage could not be read, so it was not overwritten.</value>
+  </data>
+  <data name="TrackerOrgTokenOnLegacyService" xml:space="preserve">
+    <value>This is a TarkovTracker.org API token. Switch to TarkovTracker.org to recover or manage it.</value>
+  </data>
+  <data name="TrackerIoRetired" xml:space="preserve">
+    <value>Support for TarkovTracker.io has been retired. Switch to TarkovTracker.org.</value>
+  </data>
+  <data name="TrackerTokenModeMismatchActive" xml:space="preserve">
+    <value>The active API token does not match the current EFT mode.</value>
+  </data>
+  <data name="OrgStoreVerifiedPrefixMismatch" xml:space="preserve">
+    <value>The verified API token and mode prefix do not match.</value>
+  </data>
+  <data name="OrgStoreTokenProfileMismatch" xml:space="preserve">
+    <value>The {0} API token does not match the selected {1} profile.</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyAssigned" xml:space="preserve">
+    <value>This API token is already assigned.</value>
+  </data>
+  <data name="OrgStoreTokenMustBeVerified" xml:space="preserve">
+    <value>This API token must be verified before it can be assigned.</value>
+  </data>
+  <data name="OrgStoreRecordMustBeRepaired" xml:space="preserve">
+    <value>This API token record must be repaired before it can be assigned.</value>
+  </data>
+  <data name="OrgStoreTokenCannotAssignProfile" xml:space="preserve">
+    <value>This {0} API token cannot be assigned to the selected {1} profile.</value>
+  </data>
+  <data name="OrgStoreTokenDecryptFailed" xml:space="preserve">
+    <value>A stored TarkovTracker.org API token could not be decrypted.</value>
+  </data>
+  <data name="OrgStoreTokenNotAssigned" xml:space="preserve">
+    <value>This API token is not assigned.</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyAssignedToProfile" xml:space="preserve">
+    <value>This API token is already assigned to that profile.</value>
+  </data>
+  <data name="OrgStoreProfileHasIncompatibleToken" xml:space="preserve">
+    <value>The selected profile already has an incompatible API token.</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyUnassigned" xml:space="preserve">
+    <value>This API token is already unassigned.</value>
+  </data>
+  <data name="OrgStoreAssignBeforeNickname" xml:space="preserve">
+    <value>Assign this API token before setting its profile nickname.</value>
+  </data>
+  <data name="NicknameRangeError" xml:space="preserve">
+    <value>Enter a nickname between 1 and 32 characters.</value>
+  </data>
+  <data name="OrgStoreAssignAccountBeforeNickname" xml:space="preserve">
+    <value>Assign an API token to this account before setting its nickname.</value>
+  </data>
+  <data name="OrgStoreProfileNotInList" xml:space="preserve">
+    <value>The selected EFT profile is not in the saved profile list. Scan profiles and try again.</value>
+  </data>
+  <data name="OrgStoreBindingOccupied" xml:space="preserve">
+    <value>The selected EFT account, profile, and mode already have an assigned API token. Reassign, unbind, or remove it before assigning another key.</value>
+  </data>
+  <data name="OrgStoreValueEmpty" xml:space="preserve">
+    <value>The stored value is empty.</value>
+  </data>
+  <data name="OrgStoreValueNull" xml:space="preserve">
+    <value>The stored value is null.</value>
+  </data>
+  <data name="OrgStoreValueNullKeyOrValue" xml:space="preserve">
+    <value>The stored value contains a null key or value.</value>
+  </data>
+  <data name="OrgStoreUnsupportedVersion" xml:space="preserve">
+    <value>Unsupported store version {0}.</value>
+  </data>
+  <data name="OrgStoreKeyListNull" xml:space="preserve">
+    <value>The key list is null.</value>
+  </data>
+  <data name="OrgStoreKeyListNullRecord" xml:space="preserve">
+    <value>The key list contains a null record.</value>
+  </data>
+  <data name="OrgStoreKeyNoId" xml:space="preserve">
+    <value>A stored key record has no identifier.</value>
+  </data>
+  <data name="OrgStoreKeyDuplicateIds" xml:space="preserve">
+    <value>The stored key list contains duplicate identifiers.</value>
+  </data>
+  <data name="OrgStoreNicknameInvalid" xml:space="preserve">
+    <value>A stored profile nickname record is invalid.</value>
+  </data>
+  <data name="OrgStoreAccountNicknameConflict" xml:space="preserve">
+    <value>Account ID {0} has conflicting saved nicknames.</value>
+  </data>
+  <data name="OrgStoreAccountListNull" xml:space="preserve">
+    <value>The account list is null.</value>
+  </data>
+  <data name="OrgStoreAccountListNullRecord" xml:space="preserve">
+    <value>The account list contains a null record.</value>
+  </data>
+  <data name="OrgStoreAccountDuplicateIds" xml:space="preserve">
+    <value>The stored account list contains duplicate Account IDs.</value>
+  </data>
+  <data name="OrgStoreAccountNicknameInvalid" xml:space="preserve">
+    <value>A stored account nickname record is invalid.</value>
+  </data>
+  <data name="OrgStoreProfileListNull" xml:space="preserve">
+    <value>The profile list is null.</value>
+  </data>
+  <data name="OrgStoreProfileListNullRecord" xml:space="preserve">
+    <value>The profile list contains a null record.</value>
+  </data>
+  <data name="ProtectedValueDecryptFailed" xml:space="preserve">
+    <value>A protected TarkovTracker settings value could not be decrypted.</value>
+  </data>
 </root>

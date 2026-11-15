@@ -19,15 +19,15 @@
 			<div class="window-drag-region" @onmousedown="BeginWindowDrag">
 				<span class="window-product-title">@LocalizationService.GetString("TarkovMonitor")</span>
 			</div>
-			<div class="window-controls" aria-label="Window controls">
-				<MudIconButton Class="window-control" Icon="@Icons.Material.Filled.Remove" Color="Color.Inherit" Size="Size.Small" OnClick="MinimizeWindow" aria-label="Minimize" />
-				<MudIconButton Class="window-control" Icon="@(isWindowMaximized ? Icons.Material.Filled.FilterNone : Icons.Material.Filled.CropSquare)" Color="Color.Inherit" Size="Size.Small" OnClick="ToggleMaximizeWindow" aria-label="@(isWindowMaximized ? "Restore" : "Maximize")" />
-				<MudIconButton Class="window-control window-control-close" Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Size="Size.Small" OnClick="CloseWindow" aria-label="Close" />
+			<div class="window-controls" aria-label="@LocalizationService.GetString("WindowControls")">
+				<MudIconButton Class="window-control" Icon="@Icons.Material.Filled.Remove" Color="Color.Inherit" Size="Size.Small" OnClick="MinimizeWindow" aria-label="@LocalizationService.GetString("Minimize")" />
+				<MudIconButton Class="window-control" Icon="@(isWindowMaximized ? Icons.Material.Filled.FilterNone : Icons.Material.Filled.CropSquare)" Color="Color.Inherit" Size="Size.Small" OnClick="ToggleMaximizeWindow" aria-label="@(isWindowMaximized ? LocalizationService.GetString("Restore") : LocalizationService.GetString("Maximize"))" />
+				<MudIconButton Class="window-control window-control-close" Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" Size="Size.Small" OnClick="CloseWindow" aria-label="@LocalizationService.GetString("Close")" />
 			</div>
 		</MudAppBar>
 		<MudDrawer Class="navigation-drawer" @bind-Open="@drawerOpen" Elevation="1" Anchor="Anchor.Left" Variant="@DrawerVariant.Responsive" Breakpoint="Breakpoint.None">
 			<MudDrawerHeader Class="navigation-drawer-header">
-				<button class="navigation-brand" type="button" @onclick="@ToggleDrawer" aria-label="Collapse navigation">
+				<button class="navigation-brand" type="button" @onclick="@ToggleDrawer" aria-label="@LocalizationService.GetString("CollapseNavigation")">
 					<div class="navigation-brand-copy">
 						<img class="navigation-brand-logo" src="tarkov-dev-logo.svg" alt="Tarkov.dev" />
 					</div>
@@ -60,13 +60,13 @@
 					}
 					else
 					{
-						<MudText Typo="Typo.subtitle2">Raid timers</MudText>
+						<MudText Typo="Typo.subtitle2">@LocalizationService.GetString("RaidTimers")</MudText>
 						<MudIconButton Icon="@Icons.Material.Filled.Restore" Size="Size.Small" Color="Color.Inherit"
-							Title="Reset timer position" OnClick="ResetFloatingTimerPosition" />
+							Title="@LocalizationService.GetString("ResetTimerPosition")" OnClick="ResetFloatingTimerPosition" />
 					}
 					<MudIconButton Icon="@(floatingTimerPanelCollapsed ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
 						Size="Size.Small" Color="Color.Inherit"
-						Title="@(floatingTimerPanelCollapsed ? "Expand the timer panel" : "Collapse the timer panel")"
+						Title="@(floatingTimerPanelCollapsed ? LocalizationService.GetString("ExpandTimerPanel") : LocalizationService.GetString("CollapseTimerPanel"))"
 						OnClick="ToggleFloatingTimerPanel" />
 				</div>
 				@if (!floatingTimerPanelCollapsed)
@@ -75,7 +75,7 @@
 					@if (TimersManager.FloatingPanelShowTimeInRaid)
 					{
 						<div class="floating-timer-panel__timer">
-						<MudText Typo="Typo.caption">Elapsed raid time</MudText>
+							<MudText Typo="Typo.caption">@LocalizationService.GetString("ElapsedRaidTime")</MudText>
 							<MudText Typo="Typo.h5" Class="floating-timer-panel__value">@FormatTimer(timeInRaid)</MudText>
 						</div>
 					}
@@ -127,8 +127,8 @@
 	private string FloatingTimerPanelClass => $"floating-timer-panel{(floatingTimerPanelCollapsed ? " floating-timer-panel--collapsed" : string.Empty)}";
 	private string CompactTimerValues => string.Join(" | ", new[]
 	{
-		TimersManager.FloatingPanelShowTimeInRaid ? $"ERT {FormatTimer(timeInRaid)}" : null,
-		TimersManager.FloatingPanelShowRunThrough ? $"RT {FormatTimer(runThroughRemaining)}" : null
+		TimersManager.FloatingPanelShowTimeInRaid ? $"{LocalizationService.GetString("CompactTimerElapsed")} {FormatTimer(timeInRaid)}" : null,
+		TimersManager.FloatingPanelShowRunThrough ? $"{LocalizationService.GetString("CompactTimerRemaining")} {FormatTimer(runThroughRemaining)}" : null
 	}.Where(value => value is not null));
 
 	protected override void OnInitialized()

@@ -43,10 +43,10 @@
         </MudPaper>
         
         <MudPaper Class="app-surface pa-2 ma-2 mx-4" Elevation="3">
-                <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.MusicNote" Class="mr-2"/><span class="tm-card-heading-text">Media controls</span></MudText>
+                <MudText Typo="Typo.h6" Class="d-flex align-center"><MudIcon Icon="@Icons.Material.Filled.MusicNote" Class="mr-2"/><span class="tm-card-heading-text">@LocalizationService.GetString("MediaControls")</span></MudText>
             <div>
-                <MudSwitch @bind-Value="@PauseMediaOnRaidSwitch" Label="Pause media on raid start" Color="Color.Primary" />
-                <MudText Typo="Typo.caption" Class="ml-7">Automatically fade and pause music when you enter a raid, then resume it when you leave.</MudText>
+                <MudSwitch @bind-Value="@PauseMediaOnRaidSwitch" Label="@LocalizationService.GetString("PauseMediaOnRaidStart")" Color="Color.Primary" />
+                <MudText Typo="Typo.caption" Class="ml-7">@LocalizationService.GetString("PauseMediaDescription")</MudText>
             </div>
         </MudPaper>
 	</MudItem>
@@ -122,6 +122,12 @@
         Filter = "MP3 files (*.mp3)|*.mp3"
     };
 
+    private void SetFileDialogTitle(string titleKey)
+    {
+        fileDialog.Title = LocalizationService.GetString(titleKey);
+        fileDialog.Filter = LocalizationService.GetString("Mp3FilesFilter");
+    }
+
     public bool PauseMediaOnRaidSwitch
     {
         get
@@ -144,7 +150,7 @@
         {
             if (value)
             {
-                fileDialog.Title = "Select a sound for raid start";
+                SetFileDialogTitle("SelectSoundRaidStart");
             }
             ToggleCustomSound("raid_starting", value);
         }
@@ -159,7 +165,7 @@
         {
             if (value)
             {
-                fileDialog.Title = "Select a sound for match found";
+                SetFileDialogTitle("SelectSoundMatchFound");
             }
             ToggleCustomSound("match_found", value);
         }
@@ -175,7 +181,7 @@
         {
             if (value)
             {
-                fileDialog.Title = "Select a sound for task restart";
+                SetFileDialogTitle("SelectSoundTaskRestart");
             }
             ToggleCustomSound("restart_failed_tasks", value);
         }
@@ -191,7 +197,7 @@
         {
             if (value)
             {
-                fileDialog.Title = "Select a sound for run-through";
+                SetFileDialogTitle("SelectSoundRunthrough");
             }
             ToggleCustomSound("runthrough_over", value);
         }
@@ -207,7 +213,7 @@
         {
             if (value)
             {
-                fileDialog.Title = "Select a sound for air filter on";
+                SetFileDialogTitle("SelectSoundAirFilterOn");
             }
             ToggleCustomSound("air_filter_on", value);
         }
@@ -223,7 +229,7 @@
         {
             if (value)
             {
-                fileDialog.Title = "Select a sound for air filter off";
+                SetFileDialogTitle("SelectSoundAirFilterOff");
             }
             ToggleCustomSound("air_filter_off", value);
         }
@@ -239,7 +245,7 @@
         {
             if (value)
             {
-                fileDialog.Title = "Select a sound for Scav availability";
+                SetFileDialogTitle("SelectSoundScavAvailable");
             }
             ToggleCustomSound("scav_available", value);
         }
@@ -265,7 +271,7 @@
             }
             catch (Exception ex)
             {
-                messageLog.AddException("The custom sound could not be removed.", "TM-FILES-003", "RemoveCustomSound", ex, "Filesystem", "Sounds", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
+                messageLog.AddException(LocalizationService.GetString("CustomSoundRemoveFailed"), "TM-FILES-003", "RemoveCustomSound", ex, "Filesystem", "Sounds", durationMilliseconds: DiagnosticsService.ElapsedMilliseconds(startedUtc));
             }
         }
     }

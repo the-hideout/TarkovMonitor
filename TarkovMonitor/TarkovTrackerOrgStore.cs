@@ -194,23 +194,23 @@ namespace TarkovMonitor
             {
                 if (string.IsNullOrWhiteSpace(rawValue))
                 {
-                    throw new JsonException("The stored value is empty.");
+                    throw new JsonException(LocalizationService.T("OrgStoreValueEmpty"));
                 }
 
                 var document = JsonSerializer.Deserialize<TarkovTrackerOrgStoreDocument>(rawValue)
-                    ?? throw new JsonException("The stored value is null.");
+                    ?? throw new JsonException(LocalizationService.T("OrgStoreValueNull"));
                 if (document.Version is not (1 or 2 or 3 or 4 or 5 or TarkovTrackerOrgStoreDocument.CurrentVersion))
                 {
-                    throw new JsonException($"Unsupported store version {document.Version}.");
+                    throw new JsonException(LocalizationService.T("OrgStoreUnsupportedVersion", document.Version));
                 }
                 if (document.Keys == null)
                 {
-                    throw new JsonException("The key list is null.");
+                    throw new JsonException(LocalizationService.T("OrgStoreKeyListNull"));
                 }
 
                 if (document.Keys.Any(key => key == null))
                 {
-                    throw new JsonException("The key list contains a null record.");
+                    throw new JsonException(LocalizationService.T("OrgStoreKeyListNullRecord"));
                 }
 
                 var needsTokenProtectionMigration = document.Keys.Any(key =>
@@ -225,15 +225,15 @@ namespace TarkovMonitor
                 }
                 if (normalizedKeys.Any(key => string.IsNullOrWhiteSpace(key.Id)))
                 {
-                    throw new JsonException("A stored key record has no identifier.");
+                    throw new JsonException(LocalizationService.T("OrgStoreKeyNoId"));
                 }
                 if (normalizedKeys.GroupBy(key => key.Id, StringComparer.Ordinal).Any(group => group.Count() > 1))
                 {
-                    throw new JsonException("The stored key list contains duplicate identifiers.");
+                    throw new JsonException(LocalizationService.T("OrgStoreKeyDuplicateIds"));
                 }
                 if (normalizedKeys.Any(key => !IsValidProfileNickname(key)))
                 {
-                    throw new JsonException("A stored profile nickname record is invalid.");
+                    throw new JsonException(LocalizationService.T("OrgStoreNicknameInvalid"));
                 }
 
                 List<TarkovTrackerOrgAccount> normalizedAccounts;
@@ -250,7 +250,7 @@ namespace TarkovMonitor
                                 .ToList();
                             if (nicknames.Count != 1)
                             {
-                                throw new JsonException($"Account ID {group.Key} has conflicting saved nicknames.");
+                                throw new JsonException(LocalizationService.T("OrgStoreAccountNicknameConflict", group.Key));
                             }
                             return new TarkovTrackerOrgAccount
                             {
@@ -264,22 +264,22 @@ namespace TarkovMonitor
                 {
                     if (document.Accounts == null)
                     {
-                        throw new JsonException("The account list is null.");
+                        throw new JsonException(LocalizationService.T("OrgStoreAccountListNull"));
                     }
                     if (document.Accounts.Any(account => account == null))
                     {
-                        throw new JsonException("The account list contains a null record.");
+                        throw new JsonException(LocalizationService.T("OrgStoreAccountListNullRecord"));
                     }
                     normalizedAccounts = document.Accounts.Select(Normalize).ToList();
                 }
 
                 if (normalizedAccounts.GroupBy(account => account.AccountId, StringComparer.Ordinal).Any(group => group.Count() > 1))
                 {
-                    throw new JsonException("The stored account list contains duplicate Account IDs.");
+                    throw new JsonException(LocalizationService.T("OrgStoreAccountDuplicateIds"));
                 }
                 if (normalizedAccounts.Any(account => !IsValidAccountNickname(account.AccountId, account.Nickname)))
                 {
-                    throw new JsonException("A stored account nickname record is invalid.");
+                    throw new JsonException(LocalizationService.T("OrgStoreAccountNicknameInvalid"));
                 }
 
                 List<TarkovTrackerOrgProfile> normalizedProfiles;
@@ -301,11 +301,11 @@ namespace TarkovMonitor
                 {
                     if (document.Profiles == null)
                     {
-                        throw new JsonException("The profile list is null.");
+                        throw new JsonException(LocalizationService.T("OrgStoreProfileListNull"));
                     }
                     if (document.Profiles.Any(profile => profile == null))
                     {
-                        throw new JsonException("The profile list contains a null record.");
+                        throw new JsonException(LocalizationService.T("OrgStoreProfileListNullRecord"));
                     }
                     normalizedProfiles = document.Profiles
                         .Select(Normalize)
@@ -454,17 +454,17 @@ namespace TarkovMonitor
                     TarkovTracker.GetTokenPrefix(normalizedToken),
                     StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException("The verified API token and mode prefix do not match.", nameof(token));
+                throw new ArgumentException(LocalizationService.T("OrgStoreVerifiedPrefixMismatch"), nameof(token));
             }
             if (keys.Any(key => TokenIdentityMatches(key.Token, normalizedToken)))
             {
                 throw new TarkovTracker.DuplicateImportedTokenException(
-                    $"This {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API token is already saved locally.");
+                    LocalizationService.T("TrackerTokenAlreadySaved", TarkovTracker.GetPrefixDisplayName(normalizedPrefix)));
             }
             if (bindingProfile == null && HasPendingKey(normalizedPrefix))
             {
                 throw new InvalidOperationException(
-                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(normalizedPrefix)} API token before importing another one.");
+                    LocalizationService.T("AssignOrRemoveBeforeImport", TarkovTracker.GetPrefixDisplayName(normalizedPrefix)));
             }
 
             var key = new TarkovTrackerOrgKey
@@ -492,7 +492,7 @@ namespace TarkovMonitor
             {
                 keys.RemoveAll(candidate => string.Equals(candidate.Id, key.Id, StringComparison.Ordinal));
                 throw new InvalidOperationException(
-                    $"The {TarkovTracker.GetPrefixDisplayName(prefix)} API token does not match the selected {bindingProfile.DisplayName} profile.");
+                    LocalizationService.T("OrgStoreTokenProfileMismatch", TarkovTracker.GetPrefixDisplayName(prefix), bindingProfile.DisplayName));
             }
             return key;
         }
@@ -502,20 +502,20 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (key.IsBound)
             {
-                throw new InvalidOperationException("This API token is already assigned.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreTokenAlreadyAssigned"));
             }
             if (!IsVerified(key))
             {
-                throw new InvalidOperationException("This API token must be verified before it can be assigned.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreTokenMustBeVerified"));
             }
             if (!string.IsNullOrEmpty(GetStoreIssue(key)))
             {
-                throw new InvalidOperationException("This API token record must be repaired before it can be assigned.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreRecordMustBeRepaired"));
             }
             if (!CanBindToProfile(key, profile))
             {
                 throw new InvalidOperationException(
-                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API token cannot be assigned to the selected {profile.DisplayName} profile.");
+                    LocalizationService.T("OrgStoreTokenCannotAssignProfile", TarkovTracker.GetPrefixDisplayName(key.Prefix), profile.DisplayName));
             }
 
             ApplyBinding(key, profile);
@@ -583,7 +583,7 @@ namespace TarkovMonitor
                 }
                 catch (Exception ex) when (ex is CryptographicException or FormatException)
                 {
-                    throw new JsonException("A stored TarkovTracker.org API token could not be decrypted.", ex);
+                    throw new JsonException(LocalizationService.T("OrgStoreTokenDecryptFailed"), ex);
                 }
             }
             else
@@ -640,18 +640,18 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound)
             {
-                throw new InvalidOperationException("This API token is not assigned.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreTokenNotAssigned"));
             }
 
             var target = GetKnownProfile(accountId, profileId, sessionMode);
             if (!CanBindToProfile(key, target))
             {
                 throw new InvalidOperationException(
-                    $"This {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API token cannot be assigned to the selected {target.DisplayName} profile.");
+                    LocalizationService.T("OrgStoreTokenCannotAssignProfile", TarkovTracker.GetPrefixDisplayName(key.Prefix), target.DisplayName));
             }
             if (BindingMatches(key, target))
             {
-                throw new InvalidOperationException("This API token is already assigned to that profile.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreTokenAlreadyAssignedToProfile"));
             }
 
             var previous = new Profile
@@ -670,7 +670,7 @@ namespace TarkovMonitor
             {
                 if (!CanBindToProfile(occupant, previous))
                 {
-                    throw new InvalidOperationException("The selected profile already has an incompatible API token.");
+                    throw new InvalidOperationException(LocalizationService.T("OrgStoreProfileHasIncompatibleToken"));
                 }
                 ApplyBinding(occupant, previous);
             }
@@ -688,14 +688,14 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound)
             {
-                throw new InvalidOperationException("This API token is already unassigned.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreTokenAlreadyUnassigned"));
             }
             if (keys.Any(candidate => !candidate.IsBound
                 && !string.Equals(candidate.Id, key.Id, StringComparison.Ordinal)
                 && string.Equals(candidate.Prefix, key.Prefix, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
-                    $"Assign or remove the unassigned {TarkovTracker.GetPrefixDisplayName(key.Prefix)} API token before unbinding another one.");
+                    LocalizationService.T("AssignOrRemoveBeforeUnbind", TarkovTracker.GetPrefixDisplayName(key.Prefix)));
             }
 
             var previousAccountId = key.AccountId;
@@ -713,13 +713,13 @@ namespace TarkovMonitor
             var key = GetMutableKey(id);
             if (!key.IsBound || !string.IsNullOrEmpty(GetStoreIssue(key)))
             {
-                throw new InvalidOperationException("Assign this API token before setting its profile nickname.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreAssignBeforeNickname"));
             }
 
             var normalizedNickname = NormalizeNickname(nickname);
             if (!IsValidNickname(normalizedNickname))
             {
-                throw new ArgumentException("Enter a nickname between 1 and 32 characters.", nameof(nickname));
+                throw new ArgumentException(LocalizationService.T("NicknameRangeError"), nameof(nickname));
             }
 
             key.ProfileNickname = normalizedNickname;
@@ -732,14 +732,14 @@ namespace TarkovMonitor
                 && string.IsNullOrEmpty(GetStoreIssue(key))
                 && string.Equals(key.AccountId, accountId, StringComparison.Ordinal)))
             {
-                throw new InvalidOperationException("Assign an API token to this account before setting its nickname.");
+                throw new InvalidOperationException(LocalizationService.T("OrgStoreAssignAccountBeforeNickname"));
             }
 
             var normalizedAccountId = accountId.Trim();
             var normalizedNickname = NormalizeNickname(nickname);
             if (!IsValidAccountNickname(normalizedAccountId, normalizedNickname))
             {
-                throw new ArgumentException("Enter a nickname between 1 and 32 characters.", nameof(nickname));
+                throw new ArgumentException(LocalizationService.T("NicknameRangeError"), nameof(nickname));
             }
 
             var account = accounts.FirstOrDefault(candidate => string.Equals(
@@ -931,7 +931,7 @@ namespace TarkovMonitor
                     ProfileIdentity(profile),
                     identity,
                     StringComparison.Ordinal))?.ToProfile()
-                ?? throw new InvalidOperationException("The selected EFT profile is not in the saved profile list. Scan profiles and try again.");
+                ?? throw new InvalidOperationException(LocalizationService.T("OrgStoreProfileNotInList"));
         }
 
         private static string ProfileIdentity(TarkovTrackerOrgProfile profile)
@@ -987,14 +987,14 @@ namespace TarkovMonitor
                 && string.Equals(key.SessionMode, proposedKey.SessionMode, StringComparison.OrdinalIgnoreCase)))
             {
                 throw new InvalidOperationException(
-                    "The selected EFT account, profile, and mode already have an assigned API token. Reassign, unbind, or remove it before assigning another key.");
+                    LocalizationService.T("OrgStoreBindingOccupied"));
             }
         }
 
         private TarkovTrackerOrgKey GetMutableKey(string id)
         {
             return keys.FirstOrDefault(key => string.Equals(key.Id, id, StringComparison.Ordinal))
-                ?? throw new KeyNotFoundException("The saved API token was not found.");
+                ?? throw new KeyNotFoundException(LocalizationService.T("TrackerTokenNotFound"));
         }
 
         private static bool TokenIdentityMatches(string first, string second)
