@@ -237,6 +237,14 @@ public sealed class DiagnosticsService
             var socketError = current is SocketException socket
                 ? $"{socket.SocketErrorCode} ({socket.ErrorCode})"
                 : "";
+            if (socketError == "")
+            {
+                socketError = current is System.Text.Json.JsonException jsonException ? jsonException.Path : "";
+            }
+            if (socketError == "")
+            {
+                socketError = current is LogJsonParseException parseEx ? parseEx.Input : "";
+            }
             details.Add(new ExceptionDetail(
                 current.GetType().FullName ?? current.GetType().Name,
                 DiagnosticRedactor.Sanitize(current.Message),

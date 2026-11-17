@@ -812,7 +812,17 @@ namespace TarkovMonitor
                     Debug.WriteLine(eventLine);
                     Debug.WriteLine("logged json");
                     Debug.WriteLine(jsonString);*/
-                    var jsonNode = JsonNode.Parse(jsonString);
+                    JsonNode jsonNode;
+                    try
+                    {
+                        jsonNode = JsonNode.Parse(jsonString);
+                    }
+                    catch (JsonException ex)
+                    {
+                        var parseEx = new LogJsonParseException(jsonString, ex);
+                        ExceptionThrown?.Invoke(this, new ExceptionEventArgs(parseEx, $"parsing {e.Type} log data"));
+                        continue;
+                    }
                     if (eventLine.Contains("Got notification | GroupMatchInviteAccept"))
                     {
                         // GroupMatchInviteAccept occurs when someone you send an invite accepts
@@ -1773,5 +1783,13 @@ namespace TarkovMonitor
     public class ControlSettingsEventArgs : EventArgs
     {
         public JsonNode ControlSettings { get; set; }
+    }
+
+    public class LogJsonParseException : Exception {
+        public string Input { get; set; }
+        public LogJsonParseException(string input, JsonException jsonException) : base("Log parse error", jsonException)
+        {
+            Input = input;
+        }
     }
 }

@@ -384,6 +384,25 @@ namespace TarkovMonitor
             // revealed. Reapply the state-aware color after that transition
             // so the temporary white frame is not left behind.
             BeginInvoke(new Action(ApplyWindowFrameAttributes));
+
+            // Apply the tray hide that MainBlazorUI_Resize deferred while the
+            // host was unrevealed (minimize at startup + minimize to tray).
+            if (WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    if (!IsDisposed && WindowState == FormWindowState.Minimized)
+                    {
+                        HideToTray();
+                    }
+                }));
+            }
+        }
+
+        private void HideToTray()
+        {
+            Hide();
+            notifyIconTarkovMonitor.Visible = true;
         }
 
         public void BeginWindowDrag()
@@ -762,14 +781,9 @@ namespace TarkovMonitor
             {
                 if (Properties.Settings.Default.minimizeAtStartup)
                 {
-                    if (Properties.Settings.Default.minimizeToTray)
-                    {
-                        messageLog.AddMessage("A rendering bug causes issues when both the 'Minimize to Tray' and 'Minimize at startup' options are selected. For this reason, minimize at startup was skipped.");
-                    }
-                    else
-                    {
-                        WindowState = FormWindowState.Minimized;
-                    }
+                    // When minimize-to-tray is also enabled, the tray hide is
+                    // deferred until RevealUiHost has run (see MainBlazorUI_Resize).
+                    WindowState = FormWindowState.Minimized;
                 }
 
                 // Let WebView2 render the startup shell before watcher and
@@ -1770,10 +1784,15 @@ namespace TarkovMonitor
             var startedUtc = DateTime.UtcNow;
             try
             {
-                if (this.WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
+                // Until the startup reveal has run, stay minimized but visible.
+                // RevealUiHost recreates the native handle (ShowInTaskbar) and
+                // drops the layered style (Opacity 0 -> 1); doing that while the
+                // form is hidden leaves WebView2 detached/invisible, which shows
+                // as a black window when restored from the tray. RevealUiHost
+                // performs the deferred tray hide itself.
+                if (uiHostRevealed && this.WindowState == FormWindowState.Minimized && Properties.Settings.Default.minimizeToTray)
                 {
-                    Hide();
-                    notifyIconTarkovMonitor.Visible = true;
+                    HideToTray();
                 }
 
                 if (WindowState == lastPublishedWindowState || windowStateNotificationPending)
