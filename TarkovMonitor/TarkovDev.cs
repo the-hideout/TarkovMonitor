@@ -161,16 +161,145 @@ namespace TarkovMonitor
             NullValueHandling = NullValueHandling.Ignore,
         };
 
+        // Disk cache for json.tarkov.dev responses. Every request is revalidated with
+        // If-None-Match; a 304 means the cached body is still current and nothing is
+        // downloaded. The server's Cache-Control max-age (8 days) is deliberately ignored.
+        internal static string JsonCacheDirectory { get; set; } = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "TarkovMonitor",
+            "ApiCache");
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> jsonCacheLocks = new(StringComparer.Ordinal);
+
         private async static Task<T> GetJson<T>(string path, CancellationToken cancellationToken = default)
         {
-            using var response = await jsonClient.GetAsync(path, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            var gate = jsonCacheLocks.GetOrAdd(path, _ => new SemaphoreSlim(1, 1));
+            await gate.WaitAsync(cancellationToken);
+            try
+            {
+                return await GetJsonCached<T>(path, allowConditional: true, cancellationToken);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        private async static Task<T> GetJsonCached<T>(string path, bool allowConditional, CancellationToken cancellationToken)
+        {
+            var safeName = string.Concat(path.Select(c => c == '/' || Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            var bodyFile = Path.Combine(JsonCacheDirectory, safeName + ".json");
+            var etagFile = Path.Combine(JsonCacheDirectory, safeName + ".etag");
+
+            string? cachedETag = null;
+            try
+            {
+                if (allowConditional && File.Exists(bodyFile) && File.Exists(etagFile))
+                {
+                    cachedETag = File.ReadAllText(etagFile).Trim();
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                cachedETag = null;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            if (!string.IsNullOrEmpty(cachedETag))
+            {
+                request.Headers.TryAddWithoutValidation("If-None-Match", cachedETag);
+            }
+
+            using var response = await jsonClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotModified && !string.IsNullOrEmpty(cachedETag))
+            {
+                try
+                {
+                    return DeserializeJsonFile<T>(bodyFile, path);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+                {
+                    // Cached body is unreadable or corrupt: drop it and download (and re-cache) fresh.
+                    TryDeleteFile(etagFile);
+                    TryDeleteFile(bodyFile);
+                    return await GetJsonCached<T>(path, allowConditional: false, cancellationToken);
+                }
+            }
             response.EnsureSuccessStatusCode();
+
+            string tempFile;
+            try
+            {
+                Directory.CreateDirectory(JsonCacheDirectory);
+                tempFile = Path.Combine(JsonCacheDirectory, $"{safeName}.{Guid.NewGuid():N}.tmp");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return await DeserializeJsonStream<T>(response, path, cancellationToken);
+            }
+
+            try
+            {
+                await using (var fileStream = File.Create(tempFile))
+                {
+                    await response.Content.CopyToAsync(fileStream, cancellationToken);
+                }
+
+                // Deserialize before committing so a bad body never becomes the cached copy.
+                var result = DeserializeJsonFile<T>(tempFile, path);
+
+                var etag = response.Headers.ETag?.ToString();
+                try
+                {
+                    // Remove the old ETag first so it can never be paired with a different body.
+                    TryDeleteFile(etagFile);
+                    File.Move(tempFile, bodyFile, overwrite: true);
+                    if (!string.IsNullOrEmpty(etag))
+                    {
+                        File.WriteAllText(etagFile, etag);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Caching is best-effort; the data was still fetched successfully.
+                }
+                return result;
+            }
+            finally
+            {
+                TryDeleteFile(tempFile);
+            }
+        }
+
+        private async static Task<T> DeserializeJsonStream<T>(HttpResponseMessage response, string path, CancellationToken cancellationToken)
+        {
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream);
+            return DeserializeJson<T>(reader, path);
+        }
+
+        private static T DeserializeJsonFile<T>(string file, string path)
+        {
+            using var reader = new StreamReader(file);
+            return DeserializeJson<T>(reader, path);
+        }
+
+        private static T DeserializeJson<T>(TextReader reader, string path)
+        {
             using var jsonReader = new JsonTextReader(reader);
             var serializer = JsonSerializer.Create(jsonSerializerSettings);
             return serializer.Deserialize<T>(jsonReader)
                 ?? throw new InvalidDataException($"The tarkov.dev response for '{path}' was empty.");
+        }
+
+        private static void TryDeleteFile(string file)
+        {
+            try
+            {
+                File.Delete(file);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
         }
 
         private async static Task<T> JsonApiRequest<T>(string path, string? lang = null, CancellationToken cancellationToken = default) where T : class
