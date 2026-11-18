@@ -1,16 +1,18 @@
+@inject LocalizationService LocalizationService
+
 <MudDialog Class="tracker-settings-dialog">
     <DialogContent>
         <div class="tracker-dialog-note" role="note">
             <MudIcon Icon="@Icons.Material.Filled.AccountBox" Size="Size.Small" Class="tracker-dialog-note__icon" />
             <span class="tracker-dialog-note__copy">
-                <strong>Account overview.</strong>
-                <span>These details summarize the API tokens assigned to this EFT account.</span>
+                <strong>@LocalizationService.GetString("AccountOverview")</strong>
+                <span>@LocalizationService.GetString("AccountOverviewDescription")</span>
             </span>
         </div>
 
         <div class="tracker-dialog-section-heading">
             <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Small" />
-            <span>Account details</span>
+            <span>@LocalizationService.GetString("AccountDetails")</span>
         </div>
         <dl class="tracker-dialog-detail-card">
             @foreach (var detail in Details)
@@ -23,7 +25,7 @@
         </dl>
     </DialogContent>
     <DialogActions>
-        <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Close" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Close</MudButton>
+        <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Close" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">@LocalizationService.GetString("Close")</MudButton>
     </DialogActions>
 </MudDialog>
 

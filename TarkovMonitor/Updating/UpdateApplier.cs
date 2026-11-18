@@ -38,12 +38,12 @@ namespace TarkovMonitor.Updating
                 log.AppendLine(exception.ToString());
                 WriteLog(options, log);
                 MessageBox.Show(
-                    "Tarkov Monitor could not install the update, and the previous version was left in place."
+                    LocalizationService.T("ApplierInstallFailedIntro")
                         + Environment.NewLine + Environment.NewLine
                         + exception.Message
                         + Environment.NewLine + Environment.NewLine
-                        + "Download the new version manually from the releases page.",
-                    "Tarkov Monitor update failed",
+                        + LocalizationService.T("ApplierManualDownloadHint"),
+                    LocalizationService.T("ApplierFailureTitle"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 TryRelaunch(options);

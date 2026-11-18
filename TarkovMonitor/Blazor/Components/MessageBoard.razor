@@ -46,8 +46,8 @@
                                                 <span class="dashboard-message__protected-label">@protectedValue.Label</span>
                                                  <span class="dashboard-message__protected-value"
                                                        tabindex="0"
-                                                       aria-label="@($"{protectedValue.Label}: {protectedValue.Value}. Protected value revealed on focus.")">
-                                                     <span class="dashboard-message__protected-mask" aria-hidden="true">Hidden - hover to reveal</span>
+                                                       aria-label="@($"{protectedValue.Label}: {protectedValue.Value}{LocalizationService.GetString("ProtectedValueAriaSuffix")}")">
+                                                     <span class="dashboard-message__protected-mask" aria-hidden="true">@LocalizationService.GetString("ProtectedValueHidden")</span>
                                                      <span class="dashboard-message__protected-reveal" aria-hidden="true">@protectedValue.Value</span>
                                                  </span>
                                             </span>
@@ -213,7 +213,7 @@
             case "quest":
                 return LocalizationService.GetString("Quest");
             default:
-                return "Info";
+                return LocalizationService.GetString("InfoTitle");
         }
     }
 

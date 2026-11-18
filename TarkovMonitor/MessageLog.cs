@@ -22,7 +22,7 @@ namespace TarkovMonitor
     {
         internal const int MaxMessageLength = 2048;
         internal const int MaxMessages = 200;
-        private const string ShortenedMessageSuffix = "\n[Message shortened by Tarkov Monitor.]";
+        private static string ShortenedMessageSuffix => "\n" + LocalizationService.T("MessageShortenedSuffix");
         private const int MaxRecentDiagnostics = 500;
         private static readonly TimeSpan DeduplicationWindow = TimeSpan.FromSeconds(30);
         private readonly object gate = new();
@@ -154,7 +154,7 @@ namespace TarkovMonitor
                     }
                     previous.Message.DiagnosticKey = snapshot.DiagnosticKey;
                     previous.Message.DiagnosticOccurrenceCount = occurrenceCount;
-                    previous.Message.Message = $"{snapshot.DisplayMessage} (repeated {occurrenceCount} times)";
+                    previous.Message.Message = $"{snapshot.DisplayMessage} {LocalizationService.T("RepeatedOccurrencesSuffix", occurrenceCount)}";
                     if (isIncidentDiagnostic)
                     {
                         incidentDiagnostics[snapshot.IncidentId!] = (previous.Message, now);

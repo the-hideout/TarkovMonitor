@@ -1,10 +1,11 @@
 ﻿@using Humanizer
 @implements IDisposable
 @inject LogRepository logRepository
+@inject LocalizationService LocalizationService
 <MudStack Justify="Justify.FlexStart" AlignItems="AlignItems.Stretch" Class="ma-2" Style="min-width: 0;">
     @if (logRepository.Logs.Count == 0)
     {
-        <MudAlert Severity="Severity.Info">No new log entries since Tarkov Monitor started.</MudAlert>
+        <MudAlert Severity="Severity.Info">@LocalizationService.GetString("NoNewLogEntries")</MudAlert>
     }else{
         @foreach (LogLine line in logRepository.Logs)
         {

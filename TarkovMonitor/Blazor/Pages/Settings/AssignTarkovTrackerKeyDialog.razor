@@ -1,52 +1,53 @@
 @inject GameWatcher eft
+@inject LocalizationService LocalizationService
 
 <MudDialog Class="tracker-assignment-dialog">
     <DialogContent>
         <div class="tracker-dialog-note @(RequiresVerification ? "tracker-dialog-note--warning" : "")" role="note">
             <MudIcon Icon="@(RequiresVerification ? Icons.Material.Filled.GppMaybe : Icons.Material.Filled.AccountTree)" Size="Size.Small" Class="tracker-dialog-note__icon" />
             <span class="tracker-dialog-note__copy">
-                <strong>@(IsReassign ? "Choose another EFT profile." : "Choose an EFT profile.")</strong>
+                <strong>@(IsReassign ? LocalizationService.GetString("ChooseAnotherEftProfile") : LocalizationService.GetString("ChooseEftProfile"))</strong>
                 <span>@(RequiresVerification
-                    ? "This recovered key must be verified before you can assign it."
-                    : "Only saved profiles for this key's game mode are shown.")</span>
+                    ? LocalizationService.GetString("RecoveredKeyRequiresVerification")
+                    : LocalizationService.GetString("OnlyProfilesForGameModeShown"))</span>
             </span>
         </div>
 
         <div class="tracker-profile-guidance" role="note">
             @if (IsReassign)
             {
-                <span class="tracker-profile-guidance-item"><b>Move key</b><span>No key assigned</span></span>
-                <span class="tracker-profile-guidance-item"><b>Swap keys</b><span>Key already assigned</span></span>
+                <span class="tracker-profile-guidance-item"><b>@LocalizationService.GetString("MoveKey")</b><span>@LocalizationService.GetString("NoKeyAssigned")</span></span>
+                <span class="tracker-profile-guidance-item"><b>@LocalizationService.GetString("SwapKeys")</b><span>@LocalizationService.GetString("KeyAlreadyAssigned")</span></span>
             }
             else
             {
-                <span class="tracker-profile-guidance-item"><b>Available</b><span>No key assigned</span></span>
-                <span class="tracker-profile-guidance-item"><b>Unavailable</b><span>Key already assigned</span></span>
+                <span class="tracker-profile-guidance-item"><b>@LocalizationService.GetString("Available")</b><span>@LocalizationService.GetString("NoKeyAssigned")</span></span>
+                <span class="tracker-profile-guidance-item"><b>@LocalizationService.GetString("Unavailable")</b><span>@LocalizationService.GetString("KeyAlreadyAssigned")</span></span>
             }
         </div>
 
         @if (selectedProfile != null)
         {
             <div class="tracker-profile-confirm">
-                <MudText Typo="Typo.subtitle2" Class="tracker-profile-confirm-title">Review assignment</MudText>
+                <MudText Typo="Typo.subtitle2" Class="tracker-profile-confirm-title">@LocalizationService.GetString("ReviewAssignment")</MudText>
                 <dl class="tracker-profile-confirm-grid">
-                    <dt>Account</dt>
+                    <dt>@LocalizationService.GetString("Account")</dt>
                     <dd>@AccountLabel(selectedProfile)</dd>
-                    <dt>Account ID</dt>
+                    <dt>@LocalizationService.GetString("AccountId")</dt>
                     <dd>@selectedProfile.AccountId</dd>
-                    <dt>Mode</dt>
+                    <dt>@LocalizationService.GetString("ModeLabel")</dt>
                     <dd>@selectedProfile.DisplayName</dd>
-                    <dt>Last played</dt>
+                    <dt>@LocalizationService.GetString("LastPlayed")</dt>
                     <dd>@LastPlayedValue(selectedProfile)</dd>
-                    <dt>Profile</dt>
+                    <dt>@LocalizationService.GetString("ProfileLabel")</dt>
                     <dd>@ShortProfileId(selectedProfile.ProfileId)</dd>
                 </dl>
                 <MudAlert Severity="@(WillSwap ? Severity.Warning : Severity.Info)" Dense="true" Class="mt-3">
                     @(WillSwap
-                        ? "This profile already has a key. Confirming will swap the two keys; neither key will become unassigned. Profile nicknames move with their keys."
+                        ? LocalizationService.GetString("SwapWarning")
                         : IsReassign
-                            ? $"This key will move to the selected profile.{(string.IsNullOrWhiteSpace(ProfileNickname) ? "" : " Its profile nickname will move with it.")}"
-                            : "This key will be assigned to the selected profile.")
+                            ? LocalizationService.GetString("MoveKeyConfirmation") + (string.IsNullOrWhiteSpace(ProfileNickname) ? "" : LocalizationService.GetString("NicknameMovesWithKey"))
+                            : LocalizationService.GetString("AssignKeyConfirmation"))
                 </MudAlert>
             </div>
         }
@@ -54,18 +55,18 @@
         {
             <div class="tracker-profile-scan-state">
                 <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                <MudText Typo="Typo.body2">Scanning past EFT logs...</MudText>
+                <MudText Typo="Typo.body2">@LocalizationService.GetString("ScanningPastLogs")</MudText>
             </div>
         }
         else if (MatchingProfiles.Count == 0)
         {
             <MudAlert Severity="Severity.Warning" Dense="true">
-                @NoMatchingProfilesLead Select
+                @NoMatchingProfilesLead @LocalizationService.GetString("SelectLabel")
                 <button type="button"
                         class="tracker-inline-scan-action"
-                        aria-label="Scan profiles from past EFT logs"
-                        @onclick="ScanProfiles">Scan profiles</button>
-                to check past EFT logs, or launch EFT with the profile you want to use.
+                        aria-label="@LocalizationService.GetString("ScanProfilesAria")"
+                        @onclick="ScanProfiles">@LocalizationService.GetString("ScanProfiles")</button>
+                @LocalizationService.GetString("ScanProfilesTrail")
             </MudAlert>
         }
         else
@@ -75,20 +76,20 @@
                 {
                     var disabled = !IsReassign && profile.HasBoundKey;
                     var stateLabel = disabled
-                        ? "Already assigned"
+                        ? LocalizationService.GetString("AlreadyAssigned")
                         : profile.HasBoundKey
-                            ? "Swap"
+                            ? LocalizationService.GetString("Swap")
                             : IsReassign
-                                ? "Move"
-                                : "Select";
+                                ? LocalizationService.GetString("Move")
+                                : LocalizationService.GetString("SelectLabel");
                     <button type="button"
                             class="tracker-profile-choice @(disabled ? "tracker-profile-choice--disabled" : "")"
                             disabled="@disabled"
-                            aria-label="@($"{AccountLabel(profile)}, Account ID {profile.AccountId}, {profile.DisplayName}, {stateLabel}")"
+                            aria-label="@($"{AccountLabel(profile)}, {LocalizationService.GetString("AccountIdAria", profile.AccountId)}, {profile.DisplayName}, {stateLabel}")"
                             @onclick="@(() => Select(profile))">
                         <span class="tracker-profile-choice-main">
                             <span class="tracker-profile-choice-title">@AccountLabel(profile)</span>
-                            <span class="tracker-profile-choice-id">Account ID: @profile.AccountId</span>
+                            <span class="tracker-profile-choice-id">@LocalizationService.GetString("AccountIdValue", profile.AccountId)</span>
                             <span class="tracker-profile-choice-meta">
                                 <span class="tracker-profile-mode">@profile.DisplayName</span>
                                 <span>@LastPlayed(profile)</span>
@@ -98,7 +99,7 @@
                         <span class="tracker-profile-choice-state">
                             @if (profile.IsCurrent)
                             {
-                                <span class="tracker-profile-state tracker-profile-state--current">Current</span>
+                                <span class="tracker-profile-state tracker-profile-state--current">@LocalizationService.GetString("CurrentLabel")</span>
                             }
                             <span class="tracker-profile-state @(profile.HasBoundKey ? "tracker-profile-state--bound" : "tracker-profile-state--available")">@stateLabel</span>
                         </span>
@@ -115,16 +116,16 @@
     <DialogActions>
         @if (selectedProfile == null)
         {
-            <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">Cancel</MudButton>
-            <MudTooltip Text="Reads account, profile, mode, and last-played details from past EFT logs. It does not replay tasks.">
+            <MudButton OnClick="Cancel" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Close" Class="tracker-dialog-footer-button">@LocalizationService.GetString("Cancel")</MudButton>
+            <MudTooltip Text="@LocalizationService.GetString("ScanProfilesTooltip")">
                 <span><MudButton Color="Color.Info" Variant="Variant.Outlined" OnClick="ScanProfiles" Disabled="@scanning" StartIcon="@Icons.Material.Filled.Search" Class="tracker-dialog-footer-button">
-                    Scan profiles
+                    @LocalizationService.GetString("ScanProfiles")
                 </MudButton></span>
             </MudTooltip>
         }
         else
         {
-            <MudButton OnClick="Back" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="tracker-dialog-footer-button">Back</MudButton>
+            <MudButton OnClick="Back" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="tracker-dialog-footer-button">@LocalizationService.GetString("Back")</MudButton>
             <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Confirm" StartIcon="@Icons.Material.Filled.CheckCircle" Class="tracker-dialog-footer-button">@ActionLabel</MudButton>
         }
     </DialogActions>
@@ -192,9 +193,13 @@
     private bool WillSwap => IsReassign && selectedProfile?.HasBoundKey == true;
 
     private string NoMatchingProfilesLead =>
-        $"{(IsReassign ? "No other" : "No")} saved {KeyDisplayName} profiles are available.";
+        LocalizationService.GetString(IsReassign ? "NoMatchingProfilesLeadReassign" : "NoMatchingProfilesLead", KeyDisplayName);
 
-    private string ActionLabel => WillSwap ? "Swap" : IsReassign ? "Reassign" : "Assign";
+    private string ActionLabel => WillSwap
+        ? LocalizationService.GetString("Swap")
+        : IsReassign
+            ? LocalizationService.GetString("Reassign")
+            : LocalizationService.GetString("Assign");
 
     private async Task ScanProfiles()
     {
@@ -206,12 +211,17 @@
             var changed = TarkovTracker.SaveDiscoveredOrgProfiles(discovered);
             ReloadProfiles();
             scanMessage = discovered.Count == 0
-                ? "No EFT profiles were found in past logs."
-                : $"Found {discovered.Count} profile{(discovered.Count == 1 ? "" : "s")} and updated {changed} saved entr{(changed == 1 ? "y" : "ies")}.";
+                ? LocalizationService.GetString("NoEftProfilesFound")
+                : LocalizationService.GetString(
+                    "ScanFoundSkeleton",
+                    discovered.Count,
+                    discovered.Count == 1 ? LocalizationService.GetString("ProfileSingular") : LocalizationService.GetString("ProfilePlural"),
+                    changed,
+                    changed == 1 ? LocalizationService.GetString("SavedEntrySingular") : LocalizationService.GetString("SavedEntryPlural"));
         }
         catch (Exception ex)
         {
-            scanMessage = $"Could not scan profiles: {ex.Message}";
+            scanMessage = LocalizationService.GetString("ScanProfilesFailed", ex.Message);
         }
         finally
         {
@@ -219,28 +229,28 @@
         }
     }
 
-    private static string AccountLabel(TarkovTracker.OrgProfileSummary profile)
+    private string AccountLabel(TarkovTracker.OrgProfileSummary profile)
     {
         return string.IsNullOrWhiteSpace(profile.AccountNickname)
-            ? $"Account {profile.AccountId}"
+            ? LocalizationService.GetString("AccountNumber", profile.AccountId)
             : profile.AccountNickname;
     }
 
-    private static string LastPlayed(TarkovTracker.OrgProfileSummary profile)
+    private string LastPlayed(TarkovTracker.OrgProfileSummary profile)
     {
-        return $"Last played: {LastPlayedValue(profile)}";
+        return LocalizationService.GetString("LastPlayedWithDate", LastPlayedValue(profile));
     }
 
-    private static string LastPlayedValue(TarkovTracker.OrgProfileSummary profile)
+    private string LastPlayedValue(TarkovTracker.OrgProfileSummary profile)
     {
         return profile.LastSeenUtc is { } lastSeen
             ? lastSeen.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
-            : "Unknown";
+            : LocalizationService.GetString("Unknown");
     }
 
-    private static string ShortProfileId(string profileId)
+    private string ShortProfileId(string profileId)
     {
         var suffix = profileId.Length <= 6 ? profileId : profileId[^6..];
-        return $"Profile …{suffix}";
+        return LocalizationService.GetString("ProfileShortId", suffix);
     }
 }

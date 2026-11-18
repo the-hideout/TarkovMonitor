@@ -47,7 +47,7 @@ namespace TarkovMonitor
             }
             catch (Exception ex) when (ex is CryptographicException or FormatException)
             {
-                throw new InvalidDataException("A protected TarkovTracker settings value could not be decrypted.", ex);
+                throw new InvalidDataException(LocalizationService.T("ProtectedValueDecryptFailed"), ex);
             }
         }
     }

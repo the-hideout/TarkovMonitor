@@ -414,4 +414,1222 @@
   <data name="WebsiteAlreadyConnectedMsg" xml:space="preserve">
     <value>The website is already connected</value>
   </data>
+  <data name="NoScreenshotKeybound" xml:space="preserve">
+    <value>EFT has no screenshot key bound. Bind one to update your position on the Tarkov.dev map.</value>
+  </data>
+  <data name="ScreenshotKeyboundIncorrectly" xml:space="preserve">
+    <value>The EFT screenshot key is not bound correctly. Rebind it to update your position on the Tarkov.dev map.</value>
+  </data>
+  <data name="ScreenshotKeybindCheckFailed" xml:space="preserve">
+    <value>EFT screenshot keybind could not be checked.</value>
+  </data>
+  <data name="ScavAvailable" xml:space="preserve">
+    <value>Your Scav is available.</value>
+  </data>
+  <data name="RunthroughPeriodOver" xml:space="preserve">
+    <value>The run-through period is over.</value>
+  </data>
+  <data name="DeletedOneRaidScreenshot" xml:space="preserve">
+    <value>Deleted {0} raid screenshot.</value>
+  </data>
+  <data name="DeletedRaidScreenshots" xml:space="preserve">
+    <value>Deleted {0} raid screenshots.</value>
+  </data>
+  <data name="RaidScreenshotsDeleteFailed" xml:space="preserve">
+    <value>Raid screenshots could not be deleted.</value>
+  </data>
+  <data name="RaidScreenshotsButtonOne" xml:space="preserve">
+    <value>Deleted {0} raid screenshot</value>
+  </data>
+  <data name="RaidScreenshotsButtonMany" xml:space="preserve">
+    <value>Deleted {0} raid screenshots</value>
+  </data>
+  <data name="RaidEndedOn" xml:space="preserve">
+    <value>Raid ended on {0}.</value>
+  </data>
+  <data name="MinimizeAtStartupFailed" xml:space="preserve">
+    <value>The window could not minimize at startup.</value>
+  </data>
+  <data name="GameLogMonitoringStartFailed" xml:space="preserve">
+    <value>Game log monitoring could not start.</value>
+  </data>
+  <data name="UpdateCheckStartFailed" xml:space="preserve">
+    <value>Update checking could not start.</value>
+  </data>
+  <data name="CurrentPositionOn" xml:space="preserve">
+    <value>Current position on {0}: x={1}, y={2}, z={3}.</value>
+  </data>
+  <data name="TarkovDevUnavailableNoResend" xml:space="preserve">
+    <value>Tarkov.dev is unavailable. No messages were resent; the connection will be retried when needed.</value>
+  </data>
+  <data name="UpdateCheckFailedCopyDiagnostics" xml:space="preserve">
+    <value>Update checking failed; copy diagnostics for details.</value>
+  </data>
+  <data name="PlayerProfileLookupFailed" xml:space="preserve">
+    <value>Player profile lookup failed; copy diagnostics for details.</value>
+  </data>
+  <data name="TarkovDevRefreshFailed" xml:space="preserve">
+    <value>Automatic Tarkov.dev refresh failed; copy diagnostics for details.</value>
+  </data>
+  <data name="TaskFailedRestartRequired" xml:space="preserve">
+    <value>Task failed: {0}. Restart required.</value>
+  </data>
+  <data name="RaidStartProcessingFailed" xml:space="preserve">
+    <value>Raid-start processing failed.</value>
+  </data>
+  <data name="GroupInviteAccepted" xml:space="preserve">
+    <value>{0} ({1} {2}) accepted the group invite.</value>
+  </data>
+  <data name="TarkovDevDataUpdateFailedForSession" xml:space="preserve">
+    <value>Tarkov.dev data update failed for {0}; copy diagnostics for details.</value>
+  </data>
+  <data name="EftSessionConfirmed" xml:space="preserve">
+    <value>EFT session confirmed: {0}.</value>
+  </data>
+  <data name="UnknownMap" xml:space="preserve">
+    <value>unknown map</value>
+  </data>
+  <data name="MatchingCompleteOn" xml:space="preserve">
+    <value>Matching complete on {0} after {1} seconds.</value>
+  </data>
+  <data name="MatchingStarted" xml:space="preserve">
+    <value>Matching started</value>
+  </data>
+  <data name="MatchingStartedOn" xml:space="preserve">
+    <value>Matching started on {0}</value>
+  </data>
+  <data name="LogEventStoreFailed" xml:space="preserve">
+    <value>A game log event could not be stored.</value>
+  </data>
+  <data name="TaskCompleted" xml:space="preserve">
+    <value>Task completed: {0}.</value>
+  </data>
+  <data name="TrackerTaskProgressUpdateFailed" xml:space="preserve">
+    <value>Tarkov Tracker task progress could not be updated.</value>
+  </data>
+  <data name="TaskFailed" xml:space="preserve">
+    <value>Task failed: {0}.</value>
+  </data>
+  <data name="TaskStarted" xml:space="preserve">
+    <value>Task started: {0}.</value>
+  </data>
+  <data name="FleaSold" xml:space="preserve">
+    <value>{0} purchased {1} {2} for {3}</value>
+  </data>
+  <data name="FleaOfferExpired" xml:space="preserve">
+    <value>Your offer for {0} (x{1}) has expired.</value>
+  </data>
+  <data name="EftMonitoringFailed" xml:space="preserve">
+    <value>EFT monitoring failed; copy diagnostics for details.</value>
+  </data>
+  <data name="PausedOneMusicSession" xml:space="preserve">
+    <value>Paused {0} music session.</value>
+  </data>
+  <data name="PausedMusicSessions" xml:space="preserve">
+    <value>Paused {0} music sessions.</value>
+  </data>
+  <data name="MediaPauseFailed" xml:space="preserve">
+    <value>Media could not be paused for the raid.</value>
+  </data>
+  <data name="ResumedOneMusicSession" xml:space="preserve">
+    <value>Resumed {0} music session.</value>
+  </data>
+  <data name="ResumedMusicSessions" xml:space="preserve">
+    <value>Resumed {0} music sessions.</value>
+  </data>
+  <data name="MediaResumeFailed" xml:space="preserve">
+    <value>Media could not be resumed after the raid.</value>
+  </data>
+  <data name="StartingRaidOn" xml:space="preserve">
+    <value>Starting a {0} raid on {1}.</value>
+  </data>
+  <data name="StartingRaidChooseMap" xml:space="preserve">
+    <value>Starting a {0} raid. Choose a map:</value>
+  </data>
+  <data name="ChooseMap" xml:space="preserve">
+    <value>Choose a map</value>
+  </data>
+  <data name="SetMap" xml:space="preserve">
+    <value>Set map</value>
+  </data>
+  <data name="ReenteringRaidOn" xml:space="preserve">
+    <value>Re-entering the raid on {0}.</value>
+  </data>
+  <data name="ReportGoons" xml:space="preserve">
+    <value>Report Goons</value>
+  </data>
+  <data name="ReportedGoonsOn" xml:space="preserve">
+    <value>Reported Goons on {0}.</value>
+  </data>
+  <data name="GoonsReportFailed" xml:space="preserve">
+    <value>The Goons report could not be submitted.</value>
+  </data>
+  <data name="ReportGoonsOn" xml:space="preserve">
+    <value>Report Goons on {0}</value>
+  </data>
+  <data name="GoonsReportConfirmHtml" xml:space="preserve">
+    <value>&lt;p&gt;Submit a report only if you saw the Goons during this raid.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Notice:&lt;/strong&gt; By submitting a report, you consent to the collection of your IP address and EFT account ID for verification.&lt;/p&gt;</value>
+  </data>
+  <data name="SubmitReport" xml:space="preserve">
+    <value>Submit report</value>
+  </data>
+  <data name="LeftRaidOn" xml:space="preserve">
+    <value>Left the {0} raid.</value>
+  </data>
+  <data name="RaidExitProcessingFailed" xml:space="preserve">
+    <value>Raid-exit processing failed.</value>
+  </data>
+  <data name="MinimizeToTrayFailed" xml:space="preserve">
+    <value>The application could not minimize to the tray.</value>
+  </data>
+  <data name="RestoreFromTrayFailed" xml:space="preserve">
+    <value>The application could not restore from the tray.</value>
+  </data>
+  <data name="CopyDiagnostics" xml:space="preserve">
+    <value>Copy diagnostics</value>
+  </data>
+  <data name="Report" xml:space="preserve">
+    <value>Report</value>
+  </data>
+  <data name="DiagnosticsCopiedSnack" xml:space="preserve">
+    <value>Sanitized diagnostics copied to the clipboard.</value>
+  </data>
+  <data name="DiagnosticsCopyFailedSnack" xml:space="preserve">
+    <value>Diagnostics could not be copied to the clipboard. Try again.</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="MessageShortenedSuffix" xml:space="preserve">
+    <value>[Message shortened by Tarkov Monitor.]</value>
+  </data>
+  <data name="RepeatedOccurrencesSuffix" xml:space="preserve">
+    <value>(repeated {0} times)</value>
+  </data>
+  <data name="RaidCompletedTimeInRaid" xml:space="preserve">
+    <value>Raid completed — total time in raid: {0}.</value>
+  </data>
+  <data name="DefaultDevice" xml:space="preserve">
+    <value>Default Device</value>
+  </data>
+  <data name="UpdateAvailableInstall" xml:space="preserve">
+    <value>Tarkov Monitor {0} is available. Install it before reporting a bug.</value>
+  </data>
+  <data name="UpdateAvailableDownload" xml:space="preserve">
+    <value>Tarkov Monitor {0} is available. Download it before reporting a bug.</value>
+  </data>
+  <data name="ViewTheRelease" xml:space="preserve">
+    <value>View the release</value>
+  </data>
+  <data name="InstallAndRestart" xml:space="preserve">
+    <value>Install and restart</value>
+  </data>
+  <data name="InstallUpdate" xml:space="preserve">
+    <value>Install update</value>
+  </data>
+  <data name="InstallUpdateConfirmHtml" xml:space="preserve">
+    <value>Tarkov Monitor will download version {0}, close, and reopen to finish installing.&lt;br /&gt;&lt;br /&gt;Do not do this while you are in a raid.</value>
+  </data>
+  <data name="Install" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="NotNow" xml:space="preserve">
+    <value>Not now</value>
+  </data>
+  <data name="PreparingDownload" xml:space="preserve">
+    <value>Preparing to download Tarkov Monitor {0}...</value>
+  </data>
+  <data name="UpdateReadyRestarting" xml:space="preserve">
+    <value>Tarkov Monitor {0} is ready. Restarting...</value>
+  </data>
+  <data name="UpdateCancelled" xml:space="preserve">
+    <value>The update was cancelled.</value>
+  </data>
+  <data name="UpdateInstallFailedDownloadManually" xml:space="preserve">
+    <value>Tarkov Monitor {0} could not be installed. Use the link above to download it.</value>
+  </data>
+  <data name="UpdateInstallFailedCopyDiagnostics" xml:space="preserve">
+    <value>Installing the update failed; copy diagnostics for details.</value>
+  </data>
+  <data name="UpdateStillAvailable" xml:space="preserve">
+    <value>{0} Tarkov Monitor {1} is still available.</value>
+  </data>
+  <data name="DownloadingWithPercent" xml:space="preserve">
+    <value>Downloading Tarkov Monitor {0}... {1}% ({2} of {3})</value>
+  </data>
+  <data name="DownloadingWithSize" xml:space="preserve">
+    <value>Downloading Tarkov Monitor {0}... {1}</value>
+  </data>
+  <data name="VerifyingDownload" xml:space="preserve">
+    <value>Verifying the Tarkov Monitor {0} download...</value>
+  </data>
+  <data name="UnpackingUpdate" xml:space="preserve">
+    <value>Unpacking Tarkov Monitor {0}...</value>
+  </data>
+  <data name="ReadyToInstall" xml:space="preserve">
+    <value>Tarkov Monitor {0} is ready to install.</value>
+  </data>
+  <data name="ApplierInstallFailedIntro" xml:space="preserve">
+    <value>Tarkov Monitor could not install the update, and the previous version was left in place.</value>
+  </data>
+  <data name="ApplierManualDownloadHint" xml:space="preserve">
+    <value>Download the new version manually from the releases page.</value>
+  </data>
+  <data name="ApplierFailureTitle" xml:space="preserve">
+    <value>Tarkov Monitor update failed</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="AccountId" xml:space="preserve">
+    <value>Account ID</value>
+  </data>
+  <data name="AccountIdAria" xml:space="preserve">
+    <value>Account ID {0}</value>
+  </data>
+  <data name="AccountIdValue" xml:space="preserve">
+    <value>Account ID: {0}</value>
+  </data>
+  <data name="AccountNumber" xml:space="preserve">
+    <value>Account {0}</value>
+  </data>
+  <data name="ModeLabel" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="ModesLabel" xml:space="preserve">
+    <value>Modes</value>
+  </data>
+  <data name="LastPlayed" xml:space="preserve">
+    <value>Last played</value>
+  </data>
+  <data name="LastPlayedWithDate" xml:space="preserve">
+    <value>Last played: {0}</value>
+  </data>
+  <data name="ProfileLabel" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="ProfileIdLabel" xml:space="preserve">
+    <value>Profile ID</value>
+  </data>
+  <data name="ProfileNicknameLabel" xml:space="preserve">
+    <value>Profile nickname</value>
+  </data>
+  <data name="ProfileShortId" xml:space="preserve">
+    <value>Profile …{0}</value>
+  </data>
+  <data name="ApiToken" xml:space="preserve">
+    <value>API token</value>
+  </data>
+  <data name="CharacterName" xml:space="preserve">
+    <value>Character name</value>
+  </data>
+  <data name="Rename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="SetName" xml:space="preserve">
+    <value>Set name</value>
+  </data>
+  <data name="SaveName" xml:space="preserve">
+    <value>Save name</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Assign" xml:space="preserve">
+    <value>Assign</value>
+  </data>
+  <data name="Reassign" xml:space="preserve">
+    <value>Reassign</value>
+  </data>
+  <data name="Unbind" xml:space="preserve">
+    <value>Unbind</value>
+  </data>
+  <data name="Swap" xml:space="preserve">
+    <value>Swap</value>
+  </data>
+  <data name="Move" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="SelectLabel" xml:space="preserve">
+    <value>Select</value>
+  </data>
+  <data name="CurrentLabel" xml:space="preserve">
+    <value>Current</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="Available" xml:space="preserve">
+    <value>Available</value>
+  </data>
+  <data name="Unavailable" xml:space="preserve">
+    <value>Unavailable</value>
+  </data>
+  <data name="AlreadyAssigned" xml:space="preserve">
+    <value>Already assigned</value>
+  </data>
+  <data name="NotAssigned" xml:space="preserve">
+    <value>Not assigned</value>
+  </data>
+  <data name="Unassigned" xml:space="preserve">
+    <value>Unassigned</value>
+  </data>
+  <data name="Assigned" xml:space="preserve">
+    <value>Assigned</value>
+  </data>
+  <data name="Verified" xml:space="preserve">
+    <value>Verified</value>
+  </data>
+  <data name="VerifiedState" xml:space="preserve">
+    <value>verified</value>
+  </data>
+  <data name="UnverifiedRecoveredState" xml:space="preserve">
+    <value>unverified recovered</value>
+  </data>
+  <data name="VerifyOnAssign" xml:space="preserve">
+    <value>Verify on assign</value>
+  </data>
+  <data name="NoKeyAssigned" xml:space="preserve">
+    <value>No key assigned</value>
+  </data>
+  <data name="KeyAlreadyAssigned" xml:space="preserve">
+    <value>Key already assigned</value>
+  </data>
+  <data name="MoveKey" xml:space="preserve">
+    <value>Move key</value>
+  </data>
+  <data name="SwapKeys" xml:space="preserve">
+    <value>Swap keys</value>
+  </data>
+  <data name="ManualAssignmentOnly" xml:space="preserve">
+    <value>MANUAL ASSIGNMENT ONLY</value>
+  </data>
+  <data name="NoNickname" xml:space="preserve">
+    <value>No nickname</value>
+  </data>
+  <data name="ScanProfiles" xml:space="preserve">
+    <value>Scan profiles</value>
+  </data>
+  <data name="ScanProfilesAria" xml:space="preserve">
+    <value>Scan profiles from past EFT logs</value>
+  </data>
+  <data name="ScanProfilesTrail" xml:space="preserve">
+    <value>to check past EFT logs, or launch EFT with the profile you want to use.</value>
+  </data>
+  <data name="ScanProfilesTooltip" xml:space="preserve">
+    <value>Reads account, profile, mode, and last-played details from past EFT logs. It does not replay tasks.</value>
+  </data>
+  <data name="ChooseAnotherEftProfile" xml:space="preserve">
+    <value>Choose another EFT profile.</value>
+  </data>
+  <data name="ChooseEftProfile" xml:space="preserve">
+    <value>Choose an EFT profile.</value>
+  </data>
+  <data name="RecoveredKeyRequiresVerification" xml:space="preserve">
+    <value>This recovered key must be verified before you can assign it.</value>
+  </data>
+  <data name="OnlyProfilesForGameModeShown" xml:space="preserve">
+    <value>Only saved profiles for this key's game mode are shown.</value>
+  </data>
+  <data name="ReviewAssignment" xml:space="preserve">
+    <value>Review assignment</value>
+  </data>
+  <data name="SwapWarning" xml:space="preserve">
+    <value>This profile already has a key. Confirming will swap the two keys; neither key will become unassigned. Profile nicknames move with their keys.</value>
+  </data>
+  <data name="MoveKeyConfirmation" xml:space="preserve">
+    <value>This key will move to the selected profile.</value>
+  </data>
+  <data name="NicknameMovesWithKey" xml:space="preserve">
+    <value> Its profile nickname will move with it.</value>
+  </data>
+  <data name="AssignKeyConfirmation" xml:space="preserve">
+    <value>This key will be assigned to the selected profile.</value>
+  </data>
+  <data name="ScanningPastLogs" xml:space="preserve">
+    <value>Scanning past EFT logs...</value>
+  </data>
+  <data name="NoMatchingProfilesLead" xml:space="preserve">
+    <value>No saved {0} profiles are available.</value>
+  </data>
+  <data name="NoMatchingProfilesLeadReassign" xml:space="preserve">
+    <value>No other saved {0} profiles are available.</value>
+  </data>
+  <data name="NoEftProfilesFound" xml:space="preserve">
+    <value>No EFT profiles were found in past logs.</value>
+  </data>
+  <data name="ScanFoundSkeleton" xml:space="preserve">
+    <value>Found {0} {1} and updated {2} {3}.</value>
+  </data>
+  <data name="ProfileSingular" xml:space="preserve">
+    <value>profile</value>
+  </data>
+  <data name="ProfilePlural" xml:space="preserve">
+    <value>profiles</value>
+  </data>
+  <data name="SavedEntrySingular" xml:space="preserve">
+    <value>saved entry</value>
+  </data>
+  <data name="SavedEntryPlural" xml:space="preserve">
+    <value>saved entries</value>
+  </data>
+  <data name="ScanProfilesFailed" xml:space="preserve">
+    <value>Could not scan profiles: {0}</value>
+  </data>
+  <data name="LinkedToEftProfile" xml:space="preserve">
+    <value>Linked to this EFT profile.</value>
+  </data>
+  <data name="KeyUsedWhenActive" xml:space="preserve">
+    <value>Tarkov Monitor uses this key when the account, profile, and game mode below are active.</value>
+  </data>
+  <data name="BindingDetails" xml:space="preserve">
+    <value>Binding details</value>
+  </data>
+  <data name="ApiTokenBindingDetails" xml:space="preserve">
+    <value>API token binding details</value>
+  </data>
+  <data name="QuarantinedKeyWarning" xml:space="preserve">
+    <value>This key has conflicting or invalid profile information. Remove it and import it again before assigning it.</value>
+  </data>
+  <data name="ManageKey" xml:space="preserve">
+    <value>Manage key</value>
+  </data>
+  <data name="ReassignDescription" xml:space="preserve">
+    <value>Move this key and its nickname, or swap it with the key already there.</value>
+  </data>
+  <data name="ReassignTitleQuarantined" xml:space="preserve">
+    <value>Repair or remove this invalid binding before reassigning it</value>
+  </data>
+  <data name="ReassignTitleNormal" xml:space="preserve">
+    <value>Move this key to another saved profile, or swap it with a key already assigned there</value>
+  </data>
+  <data name="UnbindTitle" xml:space="preserve">
+    <value>Keep this key saved, but stop using it</value>
+  </data>
+  <data name="UnbindDescription" xml:space="preserve">
+    <value>Keep the key saved, but stop using it.</value>
+  </data>
+  <data name="RemoveTitle" xml:space="preserve">
+    <value>Delete this saved key from this PC</value>
+  </data>
+  <data name="RemoveDescription" xml:space="preserve">
+    <value>Delete this saved key from this PC.</value>
+  </data>
+  <data name="StorageMustBeRepaired" xml:space="preserve">
+    <value>Saved key storage must be repaired before this action is available.</value>
+  </data>
+  <data name="AddOrgTokenHeading" xml:space="preserve">
+    <value>Add a TarkovTracker.org API token.</value>
+  </data>
+  <data name="VerifyBeforeSaving" xml:space="preserve">
+    <value>Tarkov Monitor verifies the key and identifies its game mode before saving it as Unassigned.</value>
+  </data>
+  <data name="OrgTokenLabel" xml:space="preserve">
+    <value>TarkovTracker.org API token</value>
+  </data>
+  <data name="PasteFullKey" xml:space="preserve">
+    <value>Paste the full key exactly as copied from TarkovTracker.org.</value>
+  </data>
+  <data name="Verifying" xml:space="preserve">
+    <value>Verifying</value>
+  </data>
+  <data name="TryAgainIn" xml:space="preserve">
+    <value>Try again in {0}s</value>
+  </data>
+  <data name="VerifyAndSave" xml:space="preserve">
+    <value>Verify and save</value>
+  </data>
+  <data name="GenerateTokenLink" xml:space="preserve">
+    <value>Click here to generate a new API token on Tarkov Tracker.</value>
+  </data>
+  <data name="SanitizedReportAdded" xml:space="preserve">
+    <value> A sanitized error report was added to Messages so you can copy it when reporting the problem.</value>
+  </data>
+  <data name="ConfirmThisChange" xml:space="preserve">
+    <value>Confirm this change</value>
+  </data>
+  <data name="CheckTokenDetails" xml:space="preserve">
+    <value>Check the API token details before continuing.</value>
+  </data>
+  <data name="AccountOverview" xml:space="preserve">
+    <value>Account overview.</value>
+  </data>
+  <data name="AccountOverviewDescription" xml:space="preserve">
+    <value>These details summarize the API tokens assigned to this EFT account.</value>
+  </data>
+  <data name="AccountDetails" xml:space="preserve">
+    <value>Account details</value>
+  </data>
+  <data name="ChangeAccountNicknameHeading" xml:space="preserve">
+    <value>Change this account's nickname.</value>
+  </data>
+  <data name="SetAccountNicknameHeading" xml:space="preserve">
+    <value>Set a nickname for this EFT account.</value>
+  </data>
+  <data name="AccountNicknameNote" xml:space="preserve">
+    <value>This nickname identifies Account ID {0} and appears on every profile assigned to the account. It does not change your EFT display name.</value>
+  </data>
+  <data name="AccountNickname" xml:space="preserve">
+    <value>Account nickname</value>
+  </data>
+  <data name="MainAccountPlaceholder" xml:space="preserve">
+    <value>Main account</value>
+  </data>
+  <data name="NicknameHelp" xml:space="preserve">
+    <value>Use 1-32 characters. You can change it later.</value>
+  </data>
+  <data name="NicknameLengthError" xml:space="preserve">
+    <value>Enter a name between 1 and 32 characters.</value>
+  </data>
+  <data name="ChangeProfileNicknameHeading" xml:space="preserve">
+    <value>Change this {0} profile's nickname.</value>
+  </data>
+  <data name="SetProfileNicknameHeading" xml:space="preserve">
+    <value>Set a nickname for this {0} profile.</value>
+  </data>
+  <data name="ProfileNicknameNote" xml:space="preserve">
+    <value>If you reassign this API token, the nickname moves with it. Unbinding the key clears the nickname. It does not change your EFT character name.</value>
+  </data>
+  <data name="ProfileNicknameHelp" xml:space="preserve">
+    <value>Use 1-32 characters. You can change it while the key remains assigned.</value>
+  </data>
+  <data name="ShowFloatingRaidTimer" xml:space="preserve">
+    <value>Show the floating raid timer</value>
+  </data>
+  <data name="FloatingTimerDescription" xml:space="preserve">
+    <value>Shows a movable timer in Tarkov Monitor after deployment finishes. It stays hidden on the Timers page.</value>
+  </data>
+  <data name="DisplayedTimers" xml:space="preserve">
+    <value>Displayed timers</value>
+  </data>
+  <data name="ElapsedRaidTime" xml:space="preserve">
+    <value>Elapsed raid time</value>
+  </data>
+  <data name="RunthroughRemaining" xml:space="preserve">
+    <value>Run-through remaining</value>
+  </data>
+  <data name="KeepOneTimerSelected" xml:space="preserve">
+    <value>Keep at least one timer selected. Scav cooldown is not available in the floating panel.</value>
+  </data>
+  <data name="RetiredServicePart1" xml:space="preserve">
+    <value>Support for TarkovTracker.io has been retired. Switch to </value>
+  </data>
+  <data name="RetiredServicePart2" xml:space="preserve">
+    <value> for continued support.</value>
+  </data>
+  <data name="NoEftProfileDetected" xml:space="preserve">
+    <value>No EFT profile detected.</value>
+  </data>
+  <data name="TrackerAutoManageBold" xml:space="preserve">
+    <value>Tarkov Monitor manages API tokens automatically.</value>
+  </data>
+  <data name="TrackerAutoManageRest" xml:space="preserve">
+    <value> Only change an assignment if you understand how EFT profiles and game modes are linked.</value>
+  </data>
+  <data name="PendingDrawerBold" xml:space="preserve">
+    <value>Verified, but unassigned.</value>
+  </data>
+  <data name="PendingDrawerRest" xml:space="preserve">
+    <value> Tarkov Monitor automatically assigns one eligible key to the first complete EFT account, profile, and game mode it observes. If more than one key is eligible, or you intentionally unbound a key, click Assign for the manual fallback.</value>
+  </data>
+  <data name="NoUnassignedTokenStored" xml:space="preserve">
+    <value>No unassigned API token is stored.</value>
+  </data>
+  <data name="AutoAssignBlockedTitle" xml:space="preserve">
+    <value>Automatic assignment is blocked for the account that previously owned this key.</value>
+  </data>
+  <data name="PreviouslySavedKey" xml:space="preserve">
+    <value>Previously saved TarkovTracker.org key</value>
+  </data>
+  <data name="BoundDrawerBold" xml:space="preserve">
+    <value>Verified and assigned.</value>
+  </data>
+  <data name="BoundDrawerRest" xml:space="preserve">
+    <value> Nothing else is required. Tarkov Monitor uses the key linked to your active EFT account, profile, and game mode. If it was assigned incorrectly—such as when using multiple EFT accounts—open Edit and choose Reassign. Set or rename account and profile nicknames as needed.</value>
+  </data>
+  <data name="NoAssignedTokens" xml:space="preserve">
+    <value>No TarkovTracker.org API tokens are assigned.</value>
+  </data>
+  <data name="FilterByNicknameOrAccountId" xml:space="preserve">
+    <value>Filter by nickname or Account ID</value>
+  </data>
+  <data name="NoAccountsMatchFilter" xml:space="preserve">
+    <value>No accounts match this filter.</value>
+  </data>
+  <data name="QuarantinedKeyInactive" xml:space="preserve">
+    <value>This key is inactive because its saved record is ambiguous or invalid.</value>
+  </data>
+  <data name="Updates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="InstalledVersion" xml:space="preserve">
+    <value>Installed version {0}</value>
+  </data>
+  <data name="CheckForUpdates" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="UpToDateMessage" xml:space="preserve">
+    <value>Tarkov Monitor {0} is the latest version.</value>
+  </data>
+  <data name="OrgKeyChangesBlockedReason" xml:space="preserve">
+    <value>TarkovTracker.org key storage must be repaired before saved keys or profiles can be changed.</value>
+  </data>
+  <data name="AllModesHaveUnassigned" xml:space="preserve">
+    <value>PVE, Regular (PVP), and Seasonal already have unassigned keys.</value>
+  </data>
+  <data name="PendingAssignBlockedRecord" xml:space="preserve">
+    <value>This saved record must be removed or repaired before assignment.</value>
+  </data>
+  <data name="ManualAssignmentOnlyLong" xml:space="preserve">
+    <value>MANUAL ASSIGNMENT ONLY: automatic assignment is blocked for the EFT account that previously owned this key. Use Assign to choose its account, profile, and game mode.</value>
+  </data>
+  <data name="ManualAssignmentRequiredConflict" xml:space="preserve">
+    <value>Manual assignment required: more than one {0} key is waiting. Automatic assignment is paused for this mode.</value>
+  </data>
+  <data name="ReadPastLogsTitle" xml:space="preserve">
+    <value>Read past log files</value>
+  </data>
+  <data name="ImportDialogTitle" xml:space="preserve">
+    <value>Import TarkovTracker.org API token</value>
+  </data>
+  <data name="ImportedAutoAssigned" xml:space="preserve">
+    <value>Imported, verified, and automatically assigned the {0} TarkovTracker.org API token to the active EFT profile.</value>
+  </data>
+  <data name="ImportedUnassigned" xml:space="preserve">
+    <value>Imported and verified the {0} TarkovTracker.org API token. It will auto-assign on the first matching EFT profile, or you can assign it manually.</value>
+  </data>
+  <data name="NoEftProfilesFoundScanAgain" xml:space="preserve">
+    <value>No EFT profiles were found in past logs. Launch EFT once, then scan again.</value>
+  </data>
+  <data name="ScanOrgFoundSkeleton" xml:space="preserve">
+    <value>Found {0} EFT {1} in past logs and updated {2} saved profile {3}.</value>
+  </data>
+  <data name="RecordSingular" xml:space="preserve">
+    <value>record</value>
+  </data>
+  <data name="RecordPlural" xml:space="preserve">
+    <value>records</value>
+  </data>
+  <data name="ScanOrgFailed" xml:space="preserve">
+    <value>Could not scan EFT profiles: {0}</value>
+  </data>
+  <data name="CouldNotSwap" xml:space="preserve">
+    <value>Could not swap the TarkovTracker.org API token: {0}</value>
+  </data>
+  <data name="CouldNotReassign" xml:space="preserve">
+    <value>Could not reassign the TarkovTracker.org API token: {0}</value>
+  </data>
+  <data name="CouldNotAssign" xml:space="preserve">
+    <value>Could not assign the TarkovTracker.org API token: {0}</value>
+  </data>
+  <data name="SetAccountNicknameTitle" xml:space="preserve">
+    <value>Set account nickname</value>
+  </data>
+  <data name="ChangeAccountNicknameTitle" xml:space="preserve">
+    <value>Change account nickname</value>
+  </data>
+  <data name="SavedAccountNickname" xml:space="preserve">
+    <value>Saved the TarkovTracker.org account nickname "{0}"</value>
+  </data>
+  <data name="SaveAccountNicknameFailed" xml:space="preserve">
+    <value>Could not save the account nickname: {0}</value>
+  </data>
+  <data name="SetProfileNicknameTitle" xml:space="preserve">
+    <value>Set {0} profile nickname</value>
+  </data>
+  <data name="ChangeProfileNicknameTitle" xml:space="preserve">
+    <value>Change {0} profile nickname</value>
+  </data>
+  <data name="SavedProfileNickname" xml:space="preserve">
+    <value>Saved the {0} profile nickname “{1}”.</value>
+  </data>
+  <data name="SaveProfileNicknameFailed" xml:space="preserve">
+    <value>Could not save the profile nickname: {0}</value>
+  </data>
+  <data name="UnbindTokenTitle" xml:space="preserve">
+    <value>Unbind {0} API token</value>
+  </data>
+  <data name="UnbindMessageNoNickname" xml:space="preserve">
+    <value>The key will remain saved and move to Unassigned and will be marked MANUAL ASSIGNMENT ONLY for its previous EFT account. Assign it explicitly to use it again.</value>
+  </data>
+  <data name="UnbindMessageWithNickname" xml:space="preserve">
+    <value>The key will remain saved and move to Unassigned. Its profile nickname will be cleared, and it will be marked MANUAL ASSIGNMENT ONLY for its previous EFT account.</value>
+  </data>
+  <data name="MovedToUnassigned" xml:space="preserve">
+    <value>Moved the verified {0} TarkovTracker.org API token to Unassigned.</value>
+  </data>
+  <data name="NicknameWasCleared" xml:space="preserve">
+    <value> Its profile nickname was cleared.</value>
+  </data>
+  <data name="UnbindTokenFailed" xml:space="preserve">
+    <value>Could not unbind the TarkovTracker.org API token: {0}</value>
+  </data>
+  <data name="RemoveTokenTitle" xml:space="preserve">
+    <value>Remove {0} API token</value>
+  </data>
+  <data name="DeleteTokenHeading" xml:space="preserve">
+    <value>Delete this API token?</value>
+  </data>
+  <data name="RemoveTokenMessage" xml:space="preserve">
+    <value>This removes the key from Tarkov Monitor on this PC. To restore it, you will need to import it again.</value>
+  </data>
+  <data name="TokenAlreadyRemoved" xml:space="preserve">
+    <value>This TarkovTracker.org API token has already been removed.</value>
+  </data>
+  <data name="RemovedBoundToken" xml:space="preserve">
+    <value>Removed the verified {0} TarkovTracker.org API token from Tarkov Monitor.</value>
+  </data>
+  <data name="RemovedUnboundToken" xml:space="preserve">
+    <value>Removed the {0} unassigned {1} TarkovTracker.org API token.</value>
+  </data>
+  <data name="RemoveTokenFailed" xml:space="preserve">
+    <value>Could not remove the TarkovTracker.org API token: {0}</value>
+  </data>
+  <data name="ReassignedToken" xml:space="preserve">
+    <value>Reassigned the verified {0} TarkovTracker.org API token.</value>
+  </data>
+  <data name="NicknameMovedWithKey" xml:space="preserve">
+    <value> Its profile nickname moved with the key.</value>
+  </data>
+  <data name="SwappedTokens" xml:space="preserve">
+    <value>Swapped the verified {0} TarkovTracker.org API tokens between the two saved profiles.</value>
+  </data>
+  <data name="NicknamesMovedWithKeys" xml:space="preserve">
+    <value> Profile nicknames moved with their keys.</value>
+  </data>
+  <data name="AssignedTokenManually" xml:space="preserve">
+    <value>Assigned the verified {0} TarkovTracker.org API token manually.</value>
+  </data>
+  <data name="PreviousAccountId" xml:space="preserve">
+    <value>Previous Account ID</value>
+  </data>
+  <data name="PreviousProfileId" xml:space="preserve">
+    <value>Previous Profile ID</value>
+  </data>
+  <data name="NewAccountId" xml:space="preserve">
+    <value>New Account ID</value>
+  </data>
+  <data name="NewProfileId" xml:space="preserve">
+    <value>New Profile ID</value>
+  </data>
+  <data name="FirstAccountId" xml:space="preserve">
+    <value>First Account ID</value>
+  </data>
+  <data name="FirstProfileId" xml:space="preserve">
+    <value>First Profile ID</value>
+  </data>
+  <data name="SecondAccountId" xml:space="preserve">
+    <value>Second Account ID</value>
+  </data>
+  <data name="SecondProfileId" xml:space="preserve">
+    <value>Second Profile ID</value>
+  </data>
+  <data name="NotSet" xml:space="preserve">
+    <value>Not set</value>
+  </data>
+  <data name="AssignedProfiles" xml:space="preserve">
+    <value>Assigned profiles</value>
+  </data>
+  <data name="EftAccountDetailsTitle" xml:space="preserve">
+    <value>EFT account details</value>
+  </data>
+  <data name="CurrentAccountMarker" xml:space="preserve">
+    <value>• Current account</value>
+  </data>
+  <data name="ActiveProfileMarker" xml:space="preserve">
+    <value>• Active profile</value>
+  </data>
+  <data name="LastActiveProfileMarker" xml:space="preserve">
+    <value>• Last active profile</value>
+  </data>
+  <data name="ServiceChangeCancelled" xml:space="preserve">
+    <value>Tarkov Tracker service change was canceled and {0} was restored: {1}</value>
+  </data>
+  <data name="ServiceChangeFailed" xml:space="preserve">
+    <value>Tarkov Tracker service change failed and could not be fully restored. Restart Tarkov Monitor before using Tarkov Tracker. Change error: {0} Restore error: {1}</value>
+  </data>
+  <data name="TrackerProfileLoadFailed" xml:space="preserve">
+    <value>Tarkov Tracker profile could not be loaded.</value>
+  </data>
+  <data name="RestartToApplyLanguage" xml:space="preserve">
+    <value>Restart Tarkov Monitor to finish applying the language change.</value>
+  </data>
+  <data name="SelectLogsFolderDescription" xml:space="preserve">
+    <value>Select your Escape from Tarkov logs folder.</value>
+  </data>
+  <data name="LogsFolderLocateFailed" xml:space="preserve">
+    <value>The default EFT logs folder could not be located.</value>
+  </data>
+  <data name="LogsFolderPickerFailed" xml:space="preserve">
+    <value>The EFT logs folder picker could not be opened.</value>
+  </data>
+  <data name="EditTokenTitle" xml:space="preserve">
+    <value>Edit {0} API token</value>
+  </data>
+  <data name="RepairNicknameBlockedBindings" xml:space="preserve">
+    <value>Repair or remove invalid profile bindings before naming this account.</value>
+  </data>
+  <data name="ImportApiToken" xml:space="preserve">
+    <value>Import API Token</value>
+  </data>
+  <data name="WindowControls" xml:space="preserve">
+    <value>Window controls</value>
+  </data>
+  <data name="Minimize" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="Maximize" xml:space="preserve">
+    <value>Maximize</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="CollapseNavigation" xml:space="preserve">
+    <value>Collapse navigation</value>
+  </data>
+  <data name="RaidTimers" xml:space="preserve">
+    <value>Raid timers</value>
+  </data>
+  <data name="ResetTimerPosition" xml:space="preserve">
+    <value>Reset timer position</value>
+  </data>
+  <data name="ExpandTimerPanel" xml:space="preserve">
+    <value>Expand the timer panel</value>
+  </data>
+  <data name="CollapseTimerPanel" xml:space="preserve">
+    <value>Collapse the timer panel</value>
+  </data>
+  <data name="CompactTimerElapsed" xml:space="preserve">
+    <value>ERT</value>
+  </data>
+  <data name="CompactTimerRemaining" xml:space="preserve">
+    <value>RT</value>
+  </data>
+  <data name="MediaControls" xml:space="preserve">
+    <value>Media controls</value>
+  </data>
+  <data name="PauseMediaOnRaidStart" xml:space="preserve">
+    <value>Pause media on raid start</value>
+  </data>
+  <data name="PauseMediaDescription" xml:space="preserve">
+    <value>Automatically fade and pause music when you enter a raid, then resume it when you leave.</value>
+  </data>
+  <data name="Mp3FilesFilter" xml:space="preserve">
+    <value>MP3 files (*.mp3)|*.mp3</value>
+  </data>
+  <data name="SelectSoundRaidStart" xml:space="preserve">
+    <value>Select a sound for raid start</value>
+  </data>
+  <data name="SelectSoundMatchFound" xml:space="preserve">
+    <value>Select a sound for match found</value>
+  </data>
+  <data name="SelectSoundTaskRestart" xml:space="preserve">
+    <value>Select a sound for task restart</value>
+  </data>
+  <data name="SelectSoundRunthrough" xml:space="preserve">
+    <value>Select a sound for run-through</value>
+  </data>
+  <data name="SelectSoundAirFilterOn" xml:space="preserve">
+    <value>Select a sound for air filter on</value>
+  </data>
+  <data name="SelectSoundAirFilterOff" xml:space="preserve">
+    <value>Select a sound for air filter off</value>
+  </data>
+  <data name="SelectSoundScavAvailable" xml:space="preserve">
+    <value>Select a sound for Scav availability</value>
+  </data>
+  <data name="CustomSoundRemoveFailed" xml:space="preserve">
+    <value>The custom sound could not be removed.</value>
+  </data>
+  <data name="FloatingTimerPanel" xml:space="preserve">
+    <value>Floating timer panel</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="TimersShown" xml:space="preserve">
+    <value>Timers shown: {0}</value>
+  </data>
+  <data name="LogActions" xml:space="preserve">
+    <value>Log actions</value>
+  </data>
+  <data name="ProcessCustomLogData" xml:space="preserve">
+    <value>Process custom log data</value>
+  </data>
+  <data name="LogType" xml:space="preserve">
+    <value>Log type</value>
+  </data>
+  <data name="LogTypeHelper" xml:space="preserve">
+    <value>Choose which GameWatcher monitor should process this log</value>
+  </data>
+  <data name="LogData" xml:space="preserve">
+    <value>Log data</value>
+  </data>
+  <data name="NoEftProfileLoaded" xml:space="preserve">
+    <value>No EFT profile loaded.</value>
+  </data>
+  <data name="ReadPastLogsUnavailableWhileRunning" xml:space="preserve">
+    <value>Read Past Logs is unavailable while Escape from Tarkov is running. Close EFT before importing historical task updates.</value>
+  </data>
+  <data name="ReadPastLogsNotStartedRunning" xml:space="preserve">
+    <value>Read Past Logs was not started because Escape from Tarkov is running. Close EFT before importing historical task updates.</value>
+  </data>
+  <data name="TrackerUnsupportedModeHistory" xml:space="preserve">
+    <value>Tarkov Tracker does not support {0} historical task updates. No updates were sent.</value>
+  </data>
+  <data name="ReadPastLogsRequiresOrg" xml:space="preserve">
+    <value>Read Past Logs requires TarkovTracker.org. Switch the Tarkov Tracker service in Settings and try again.</value>
+  </data>
+  <data name="ReadPastLogsRequiresToken" xml:space="preserve">
+    <value>A verified {0} TarkovTracker.org API token assigned to this exact EFT profile is required to read past logs.</value>
+  </data>
+  <data name="ReadPastLogsCancelledStarted" xml:space="preserve">
+    <value>Read Past Logs was cancelled because Escape from Tarkov started before historical processing began.</value>
+  </data>
+  <data name="ReadPastLogsCancelledBeforeSend" xml:space="preserve">
+    <value>Read Past Logs was cancelled because Escape from Tarkov started before task updates were sent.</value>
+  </data>
+  <data name="PastLogUpdatesCompileFailed" xml:space="preserve">
+    <value>Past-log task updates could not be compiled.</value>
+  </data>
+  <data name="PastLogUpdatesSendFailed" xml:space="preserve">
+    <value>Past-log task updates could not be sent.</value>
+  </data>
+  <data name="PastLogUpdatedTasks" xml:space="preserve">
+    <value>Updated {0} of {1} tasks found in the selected logs.</value>
+  </data>
+  <data name="PastLogCheckedTasks" xml:space="preserve">
+    <value>Checked {0} tasks in the selected logs. Tarkov Tracker was already up to date.</value>
+  </data>
+  <data name="NoNewLogEntries" xml:space="preserve">
+    <value>No new log entries since Tarkov Monitor started.</value>
+  </data>
+  <data name="ProtectedValueAriaSuffix" xml:space="preserve">
+    <value>. Protected value revealed on focus.</value>
+  </data>
+  <data name="ProtectedValueHidden" xml:space="preserve">
+    <value>Hidden - hover to reveal</value>
+  </data>
+  <data name="InfoTitle" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="TrackerOrgStorageUnreadable" xml:space="preserve">
+    <value>TarkovTracker.org key storage could not be read. Its original value was preserved and key changes are disabled until it is repaired. {0}</value>
+  </data>
+  <data name="TrackerOrgTokenProtectionFailed" xml:space="preserve">
+    <value>TarkovTracker.org API tokens could not be protected for this Windows user. The original value was preserved and key changes remain disabled until storage is repaired. {0}</value>
+  </data>
+  <data name="TrackerSingletonKeyUndecryptable" xml:space="preserve">
+    <value>The saved TarkovTracker singleton key could not be decrypted and will remain unavailable until storage is repaired. {0}</value>
+  </data>
+  <data name="TrackerLegacyKeysProtectionFailed" xml:space="preserve">
+    <value>Legacy TarkovTracker keys could not be protected for this Windows user. Their original values were preserved. {0}</value>
+  </data>
+  <data name="TrackerSettingUnreadable" xml:space="preserve">
+    <value>Tarkov Tracker storage setting {0} could not be read. Its original value was preserved and Tarkov Monitor will not overwrite it. {1} until the setting is repaired.</value>
+  </data>
+  <data name="TrackerLegacyIoDisabled" xml:space="preserve">
+    <value>Legacy TarkovTracker.io key changes and profile-keyed TarkovTracker.org recovery are disabled</value>
+  </data>
+  <data name="TrackerOrgRecoveryUnavailable" xml:space="preserve">
+    <value>Recovery of previously saved TarkovTracker.org keys is unavailable</value>
+  </data>
+  <data name="TrackerTokenFormatInvalid" xml:space="preserve">
+    <value>The TarkovTracker.org API token format is invalid.</value>
+  </data>
+  <data name="TrackerTokenMismatchReturned" xml:space="preserve">
+    <value>TarkovTracker returned a different API token than the one supplied.</value>
+  </data>
+  <data name="TrackerUnsupportedGameMode" xml:space="preserve">
+    <value>TarkovTracker returned an unsupported game mode for this API token.</value>
+  </data>
+  <data name="TrackerPrefixMismatch" xml:space="preserve">
+    <value>This API token is {0}, but TarkovTracker verified it as {1}.</value>
+  </data>
+  <data name="TrackerServiceChanged" xml:space="preserve">
+    <value>The Tarkov Tracker service changed. Switch to TarkovTracker.org and try again.</value>
+  </data>
+  <data name="AssignOrRemoveBeforeImport" xml:space="preserve">
+    <value>Assign or remove the unassigned {0} API token before importing another one.</value>
+  </data>
+  <data name="TrackerTokenAlreadySaved" xml:space="preserve">
+    <value>This {0} API token is already saved locally.</value>
+  </data>
+  <data name="TrackerTokenNoWritePermission" xml:space="preserve">
+    <value>This API token is valid but does not have write permission.</value>
+  </data>
+  <data name="TrackerAnotherPendingAdded" xml:space="preserve">
+    <value>Another unassigned {0} API token was added before this import finished.</value>
+  </data>
+  <data name="TrackerPendingTokenNotFound" xml:space="preserve">
+    <value>The pending API token was not found.</value>
+  </data>
+  <data name="TrackerSavedModeMismatch" xml:space="preserve">
+    <value>The saved API token mode no longer matches its verified mode.</value>
+  </data>
+  <data name="TrackerPendingTokenChanged" xml:space="preserve">
+    <value>The unassigned API token changed before assignment finished.</value>
+  </data>
+  <data name="TrackerTokenNotFound" xml:space="preserve">
+    <value>The saved API token was not found.</value>
+  </data>
+  <data name="AssignOrRemoveBeforeUnbind" xml:space="preserve">
+    <value>Assign or remove the unassigned {0} API token before unbinding another one.</value>
+  </data>
+  <data name="TrackerRecoverySourceChanged" xml:space="preserve">
+    <value>The saved API token changed before its recovery source could be updated.</value>
+  </data>
+  <data name="TrackerOrgStorageNeedsRepair" xml:space="preserve">
+    <value>TarkovTracker.org key storage needs repair before keys can be changed. The unreadable saved value was preserved.</value>
+  </data>
+  <data name="TrackerProfileChangedSelectAgain" xml:space="preserve">
+    <value>The selected EFT profile changed. Select the matching profile and try again.</value>
+  </data>
+  <data name="TrackerPasteTokenFirst" xml:space="preserve">
+    <value>Paste a TarkovTracker.org API token before validating.</value>
+  </data>
+  <data name="TrackerTokenHasSpaces" xml:space="preserve">
+    <value>The API token contains a space before or after the key. Copy it directly from TarkovTracker.org and try again.</value>
+  </data>
+  <data name="TrackerTokenNonAscii" xml:space="preserve">
+    <value>The API token contains a non-ASCII character. Copy it directly from TarkovTracker.org instead of typing or editing it manually.</value>
+  </data>
+  <data name="TrackerTokenFormatExpected" xml:space="preserve">
+    <value>The API token format is invalid. Expected PVP_, PVE_, or SZN_ followed by an 18-character hexadecimal identifier. Copy the key directly from TarkovTracker.org and try again.</value>
+  </data>
+  <data name="TrackerVerifyCooldown" xml:space="preserve">
+    <value>Please wait {0} seconds before verifying another API token.</value>
+  </data>
+  <data name="TrackerVerifyInProgress" xml:space="preserve">
+    <value>An API token verification is already in progress.</value>
+  </data>
+  <data name="TrackerNoEftProfile" xml:space="preserve">
+    <value>No EFT profile initialized, please launch Escape from Tarkov first</value>
+  </data>
+  <data name="TrackerLegacyStorageUnreadable" xml:space="preserve">
+    <value>Legacy Tarkov Tracker token storage could not be read, so it was not overwritten.</value>
+  </data>
+  <data name="TrackerOrgTokenOnLegacyService" xml:space="preserve">
+    <value>This is a TarkovTracker.org API token. Switch to TarkovTracker.org to recover or manage it.</value>
+  </data>
+  <data name="TrackerIoRetired" xml:space="preserve">
+    <value>Support for TarkovTracker.io has been retired. Switch to TarkovTracker.org.</value>
+  </data>
+  <data name="TrackerTokenModeMismatchActive" xml:space="preserve">
+    <value>The active API token does not match the current EFT mode.</value>
+  </data>
+  <data name="OrgStoreVerifiedPrefixMismatch" xml:space="preserve">
+    <value>The verified API token and mode prefix do not match.</value>
+  </data>
+  <data name="OrgStoreTokenProfileMismatch" xml:space="preserve">
+    <value>The {0} API token does not match the selected {1} profile.</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyAssigned" xml:space="preserve">
+    <value>This API token is already assigned.</value>
+  </data>
+  <data name="OrgStoreTokenMustBeVerified" xml:space="preserve">
+    <value>This API token must be verified before it can be assigned.</value>
+  </data>
+  <data name="OrgStoreRecordMustBeRepaired" xml:space="preserve">
+    <value>This API token record must be repaired before it can be assigned.</value>
+  </data>
+  <data name="OrgStoreTokenCannotAssignProfile" xml:space="preserve">
+    <value>This {0} API token cannot be assigned to the selected {1} profile.</value>
+  </data>
+  <data name="OrgStoreTokenDecryptFailed" xml:space="preserve">
+    <value>A stored TarkovTracker.org API token could not be decrypted.</value>
+  </data>
+  <data name="OrgStoreTokenNotAssigned" xml:space="preserve">
+    <value>This API token is not assigned.</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyAssignedToProfile" xml:space="preserve">
+    <value>This API token is already assigned to that profile.</value>
+  </data>
+  <data name="OrgStoreProfileHasIncompatibleToken" xml:space="preserve">
+    <value>The selected profile already has an incompatible API token.</value>
+  </data>
+  <data name="OrgStoreTokenAlreadyUnassigned" xml:space="preserve">
+    <value>This API token is already unassigned.</value>
+  </data>
+  <data name="OrgStoreAssignBeforeNickname" xml:space="preserve">
+    <value>Assign this API token before setting its profile nickname.</value>
+  </data>
+  <data name="NicknameRangeError" xml:space="preserve">
+    <value>Enter a nickname between 1 and 32 characters.</value>
+  </data>
+  <data name="OrgStoreAssignAccountBeforeNickname" xml:space="preserve">
+    <value>Assign an API token to this account before setting its nickname.</value>
+  </data>
+  <data name="OrgStoreProfileNotInList" xml:space="preserve">
+    <value>The selected EFT profile is not in the saved profile list. Scan profiles and try again.</value>
+  </data>
+  <data name="OrgStoreBindingOccupied" xml:space="preserve">
+    <value>The selected EFT account, profile, and mode already have an assigned API token. Reassign, unbind, or remove it before assigning another key.</value>
+  </data>
+  <data name="OrgStoreValueEmpty" xml:space="preserve">
+    <value>The stored value is empty.</value>
+  </data>
+  <data name="OrgStoreValueNull" xml:space="preserve">
+    <value>The stored value is null.</value>
+  </data>
+  <data name="OrgStoreValueNullKeyOrValue" xml:space="preserve">
+    <value>The stored value contains a null key or value.</value>
+  </data>
+  <data name="OrgStoreUnsupportedVersion" xml:space="preserve">
+    <value>Unsupported store version {0}.</value>
+  </data>
+  <data name="OrgStoreKeyListNull" xml:space="preserve">
+    <value>The key list is null.</value>
+  </data>
+  <data name="OrgStoreKeyListNullRecord" xml:space="preserve">
+    <value>The key list contains a null record.</value>
+  </data>
+  <data name="OrgStoreKeyNoId" xml:space="preserve">
+    <value>A stored key record has no identifier.</value>
+  </data>
+  <data name="OrgStoreKeyDuplicateIds" xml:space="preserve">
+    <value>The stored key list contains duplicate identifiers.</value>
+  </data>
+  <data name="OrgStoreNicknameInvalid" xml:space="preserve">
+    <value>A stored profile nickname record is invalid.</value>
+  </data>
+  <data name="OrgStoreAccountNicknameConflict" xml:space="preserve">
+    <value>Account ID {0} has conflicting saved nicknames.</value>
+  </data>
+  <data name="OrgStoreAccountListNull" xml:space="preserve">
+    <value>The account list is null.</value>
+  </data>
+  <data name="OrgStoreAccountListNullRecord" xml:space="preserve">
+    <value>The account list contains a null record.</value>
+  </data>
+  <data name="OrgStoreAccountDuplicateIds" xml:space="preserve">
+    <value>The stored account list contains duplicate Account IDs.</value>
+  </data>
+  <data name="OrgStoreAccountNicknameInvalid" xml:space="preserve">
+    <value>A stored account nickname record is invalid.</value>
+  </data>
+  <data name="OrgStoreProfileListNull" xml:space="preserve">
+    <value>The profile list is null.</value>
+  </data>
+  <data name="OrgStoreProfileListNullRecord" xml:space="preserve">
+    <value>The profile list contains a null record.</value>
+  </data>
+  <data name="ProtectedValueDecryptFailed" xml:space="preserve">
+    <value>A protected TarkovTracker settings value could not be decrypted.</value>
+  </data>
 </root>
